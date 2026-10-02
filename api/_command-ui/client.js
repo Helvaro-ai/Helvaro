@@ -450,12 +450,9 @@ function cmdHandToFaro(text) {
 function cmdReviewAll() {
   var d = cmdState.data;
   var n = d ? (d.totalOpportunities || 0) : 0;
-  cmdHandToFaro(
-    'Overloop mijn openstaande kansen. Zoek de leads die opvolging nodig hebben, ' +
-    'groepeer ze per type actie, en stel per groep voor wat je zou doen. ' +
-    'Vraag bevestiging voor alles wat naar buiten gaat. ' +
-    (n ? 'Het Command Center telt er op dit moment ' + n + '.' : '')
-  );
+  /* In de taal van het dashboard: dit bericht staat daarna als JOUW vraag in
+     het Faro-gesprek, dus een Nederlandse zin in een Engelse sessie viel op. */
+  cmdHandToFaro(CT('faro.reviewAll') + (n ? ' ' + CTn('faro.reviewAll.telling', n) : ''));
 }
 
 /* ── Automatisch bijwerken ────────────────────────────────────────────────────

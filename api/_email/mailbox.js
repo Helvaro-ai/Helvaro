@@ -130,8 +130,16 @@ function prov(naam) {
 async function verbind(projectCode, code, providerNaam = 'gmail') {
   const ctx = await lees(projectCode);
   const p = prov(providerNaam);
-  const { refreshToken, accessToken } = await p.wisselCode(code);
+  const { refreshToken, accessToken, scope } = await p.wisselCode(code);
   if (!refreshToken) throw new MailboxFout('De provider gaf geen blijvende toegang terug.', 'geen_refresh');
+  /* Google geeft terug welke rechten echt zijn aangevinkt. Ontbreekt een
+     mailrecht, dan is dat het vinkje -- en alleen dan zeggen we dat. */
+  const gevraagd = String(p.SCOPES || '').split(' ').filter((s) => /^https:/.test(s));
+  const ontbreekt = scope ? gevraagd.filter((s) => scope.split(' ').indexOf(s) === -1) : [];
+  if (ontbreekt.length) {
+    console.warn('[mailbox] rechten niet aangevinkt:', ontbreekt.join(', '));
+    throw new MailboxFout('Helvaro kreeg geen toegang tot je mailbox. Vink alle gevraagde rechten aan.', 'scope_geweigerd');
+  }
   let prof;
   try {
     prof = await p.profiel(accessToken);
@@ -139,9 +147,12 @@ async function verbind(projectCode, code, providerNaam = 'gmail') {
        alleen mail van NA het koppelen binnenkomt. */
     if (!prof.historyId) prof.historyId = (await p.nieuweBerichten(accessToken, '')).historyId;
   } catch (e) {
-    /* Geen mailrechten toegekend (vinkje niet aangezet): een echte fout, geen
-       half-gekoppelde mailbox. */
-    throw new MailboxFout('Helvaro kreeg geen toegang tot je mailbox. Vink alle gevraagde rechten aan.', 'scope_geweigerd');
+    /* Rechten WEL aangevinkt maar de mailbox-API weigert toch. Dat is geen
+       vinkje: meestal staat de Gmail API niet aan in het Google Cloud-project.
+       Vroeger viel dit onder "vink alle rechten aan" en was de echte reden
+       onzichtbaar. */
+    console.error('[mailbox] mailbox-API weigerde na geldige toestemming:', e && e.code, e && e.message);
+    throw new MailboxFout('De mailbox kon niet gelezen worden: ' + ((e && e.message) || 'onbekende fout'), 'mailbox_api');
   }
   const nu = new Date().toISOString();
   await schrijf(ctx.rec, {

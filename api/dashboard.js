@@ -785,7 +785,7 @@ ${faro.navCta}
     <div class="sidebar-bottom">
       <button type="button" class="sidebar-collapse-btn" id="sidebar-collapse-btn"
               onclick="toggleSidebarCollapsed()" aria-controls="sidebar" aria-expanded="true"
-              title="Menu inklappen">
+              title="${T('nav.collapse')}">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
         <span>${T('nav.collapse')}</span>
       </button>
@@ -808,7 +808,7 @@ ${faro.navCta}
         <div class="credit-usage-pop" id="credit-usage-pop" role="dialog"
              aria-label="Gesprekstegoed" style="display:none"></div>
       </div>
-      <button type="button" class="user-info" id="user-info-btn" onclick="navigateTo('profile')" title="Bekijk profiel">
+      <button type="button" class="user-info" id="user-info-btn" onclick="navigateTo('profile')" title="${T('nav.profile')}">
         <div class="user-avatar" id="user-avatar">HV</div>
         <div>
           <div class="user-name" id="user-name">${T('profiel.standaardNaam')}</div>
@@ -5992,7 +5992,7 @@ async function refreshData(skipFetch = false, vers = false) {
         followupList.innerHTML = needsFollowup.map(l => {
           const name = l.naam || 'Onbekend';
           const score = l.leadScore ?? '—';
-          const bron  = l.bron || 'Onbekende bron';
+          const bron  = l.bron ? bronLabel(l.bron) : tr('bron.onbekend');
           return \`<div class="followup-item" onclick="(function(){var lead=state.leads.find(x=>String(x.id)==='\${escJs(String(l.id))}');if(lead)openPanel(lead);})()">
             <div style="flex:1;min-width:0">
               <div class="followup-item-name">\${escHtml(name)}</div>
@@ -6491,7 +6491,8 @@ function renderBronChart() {
   state.bronChart = new Chart(canvas, {
     type: 'doughnut',
     data: {
-      labels,
+      /* De sleutels blijven de ruwe bron (tellen), de legende is vertaald. */
+      labels: labels.map(bronLabel),
       datasets: [{ data, backgroundColor: colors, borderWidth: 0, hoverOffset: 4 }]
     },
     options: {
@@ -10181,7 +10182,7 @@ function openCalEvent(idx) {
   const durMin  = Math.round((end - start) / 60000) || 30;
   const durH    = Math.floor(durMin / 60);
   const durM    = durMin % 60;
-  const durLbl  = durH > 0 ? (durM > 0 ? \`\${durH}u \${durM}min\` : \`\${durH}u\`) : \`\${durMin}min\`;
+  const durLbl  = durH > 0 ? (durM > 0 ? \`\${durH}h \${durM}min\` : \`\${durH}h\`) : \`\${durMin}min\`;
   const rows = [
     { label: tr('cal.ev.date'),  val: fmtD(start) },
     { label: tr('cal.ev.time'),  val: fmtT(start) + ' – ' + fmtT(end) },
@@ -11004,7 +11005,7 @@ function renderCalSidebar() {
       <div class="cal-call-actions">
         \${phone ? \`<a class="cal-call-btn" href="tel:\${escHtml(phone)}" onclick="event.stopPropagation()">\${escHtml(tr('pnl.bellen'))}</a>\` : ''}
         \${waPhone ? \`<a class="cal-call-btn" href="\${escHtml(waLink)}" target="_blank" onclick="event.stopPropagation()">WA</a>\` : ''}
-        <button class="cal-call-btn primary" onclick="event.stopPropagation();openCalBookModal(lokaleDatum(new Date()),(state.leads||[]).find(x=>String(x.id)==='\${idStr}'))">Boeken</button>
+        <button class="cal-call-btn primary" onclick="event.stopPropagation();openCalBookModal(lokaleDatum(new Date()),(state.leads||[]).find(x=>String(x.id)==='\${idStr}'))">\${escHtml(tr('cal.boekKort'))}</button>
       </div>
     </div>\`;
   }).join('');
@@ -11233,7 +11234,7 @@ async function renderCalendar() {
       const dateStr = lokaleDatum(d);
       const rows = Array.from({ length: CAL_HOURS }, (_, hIdx) => {
         const h = CAL_START_HOUR + hIdx;
-        return \`<div class="cal-hour-row"><button class="cal-hour-add" onclick="bookSlot('\${dateStr}',\${h})" title="Boek afspraak \${h}:00">+</button></div>\`;
+        return \`<div class="cal-hour-row"><button class="cal-hour-add" onclick="bookSlot('\${dateStr}',\${h})" title="\${escHtml(tr('cal.boekUur', { u: String(h).padStart(2, '0') + ':00' }))}">+</button></div>\`;
       }).join('');
 
       let nowLine = '';
@@ -11249,6 +11250,20 @@ async function renderCalendar() {
       const dayEvents = events.filter(ev => new Date(ev.startTime).toDateString() === dayDate);
 
       const fiveHoursAgo = Date.now() - 5 * 60 * 60 * 1000;
+      /* Overlappende afspraken naast elkaar in plaats van over elkaar: een
+         Helvaro-afspraak en dezelfde afspraak uit Google stonden exact op
+         elkaar, en dan zie je er maar één. Per afspraak een baan (lane);
+         de breedte deelt het aantal banen dat op dat moment tegelijk loopt. */
+      const banen = [];
+      const baanVan = new Map();
+      dayEvents.slice().sort((a, b) => new Date(a.startTime) - new Date(b.startTime)).forEach(ev => {
+        const s = new Date(ev.startTime).getTime();
+        let i = banen.findIndex(eind => eind <= s);
+        if (i === -1) { i = banen.length; banen.push(0); }
+        banen[i] = new Date(ev.endTime).getTime() || s + 30 * 60000;
+        baanVan.set(ev, i);
+      });
+      const aantalBanen = Math.max(1, banen.length);
       const evHtml = dayEvents.map(ev => {
         const evIdx    = events.indexOf(ev);
         const start    = new Date(ev.startTime);
@@ -11262,13 +11277,13 @@ async function renderCalendar() {
         const mm       = String(start.getMinutes()).padStart(2,'0');
         const endHH    = String(end.getHours()).padStart(2,'0');
         const endMM    = String(end.getMinutes()).padStart(2,'0');
-        const fullName = escHtml(ev.name || 'Afspraak');
+        const fullName = escHtml(ev.name || tr('cal.afspraak'));
         const eventTypeTxt = escHtml(ev.eventType || '');
         // Duration label
         const durH   = Math.floor(durMin / 60);
         const durM   = durMin % 60;
         const durLbl = durH > 0
-          ? (durM > 0 ? \`\${durH}u \${durM}min\` : \`\${durH}u\`)
+          ? (durM > 0 ? \`\${durH}h \${durM}min\` : \`\${durH}h\`)
           : \`\${durMin}min\`;
         // Orange dot: past event where matched lead has no attendance marked
         let attDot = '';
@@ -11298,10 +11313,12 @@ async function renderCalendar() {
         // Google entries are read-only context, not Helvaro appointments:
         // muted, hatched, no click handler. Making them look like bookings
         // would be worse than not showing them at all.
+        const baan = baanVan.get(ev) || 0;
+        const plek = aantalBanen > 1 ? \`left:calc(\${(baan * 100 / aantalBanen).toFixed(3)}% + 2px);right:auto;width:calc(\${(100 / aantalBanen).toFixed(3)}% - 4px);\` : '';
         if (ev.external) {
-          return \`<div class="cal-event cal-event-external" style="top:\${top}px;height:\${height}px;position:relative;" title="\${fullName} · \${hh}:\${mm}–\${endHH}:\${endMM} (uit je Google Agenda)">\${bodyHtml}</div>\`;
+          return \`<div class="cal-event cal-event-external" style="top:\${top}px;height:\${height}px;\${plek}" title="\${fullName} · \${hh}:\${mm}–\${endHH}:\${endMM} (\${escHtml(tr('cal.uitGoogle'))})">\${bodyHtml}</div>\`;
         }
-        return \`<div class="cal-event" data-ev-idx="\${evIdx}" style="top:\${top}px;height:\${height}px;background:linear-gradient(135deg,\${color},\${color}cc);cursor:pointer;position:relative;" title="\${fullName} · \${hh}:\${mm}–\${endHH}:\${endMM} (\${durLbl})" onclick="openCalEvent(\${evIdx})">\${bodyHtml}\${attDot}</div>\`;
+        return \`<div class="cal-event" data-ev-idx="\${evIdx}" style="top:\${top}px;height:\${height}px;\${plek}background:linear-gradient(135deg,\${color},\${color}cc);cursor:pointer;" title="\${fullName} · \${hh}:\${mm}–\${endHH}:\${endMM} (\${durLbl})" onclick="openCalEvent(\${evIdx})">\${bodyHtml}\${attDot}</div>\`;
       }).join('');
 
       const colClass = \`cal-day-col\${isToday ? ' cal-today-col' : ''}\${isWeekend ? ' cal-weekend-col' : ''}\`;
@@ -11448,16 +11465,16 @@ function renderProfile() {
       recentEl.innerHTML = '<div style="padding:8px 0"><div style="font-weight:600;color:var(--text);font-size:13px">' + escHtml(tr('leeg.leadsKort')) + '</div><div style="color:var(--text-muted);font-size:13px;margin-top:4px">' + escHtml(tr('leeg.leadsUitleg')) + '</div></div>';
     } else {
       recentEl.innerHTML = recents.map(l => {
-        const name  = l.fields?.['Naam'] || l.naam || 'Onbekend';
+        const name  = l.fields?.['Naam'] || l.naam || tr('bron.onbekend');
         const score = l.fields?.['Score'] ?? l.leadScore ?? '—';
-        const bron  = l.fields?.['Bron'] || l.bron || '';
+        const bron  = bronLabel(l.fields?.['Bron'] || l.bron || '');
         const initials = name.split(' ').map(w => w[0]).join('').slice(0,2).toUpperCase();
         const qual = l.fields?.['Qualified'] === true || l.qualified === true || (l.fields?.['Score'] >= 7) || l.leadScore >= 7;
         return \`<div class="profile-recent-lead-row" onclick="(function(){var lead=state.leads.find(x=>String(x.id)==='\${escJs(String(l.id))}');if(lead){navigateTo('dashboard');setTimeout(function(){openPanel(lead);},120);}})()">
           <div class="profile-recent-lead-avatar">\${initials}</div>
           <div style="flex:1;min-width:0">
             <div class="profile-recent-lead-name">\${escHtml(name)}</div>
-            <div class="profile-recent-lead-meta">\${escHtml(bron || 'Onbekende bron')}</div>
+            <div class="profile-recent-lead-meta">\${escHtml(bron || tr('bron.onbekend'))}</div>
           </div>
           \${qual ? '<span style="font-size:10px;padding:3px 8px;border-radius:20px;background:rgba(var(--success-rgb),0.15);color: var(--success-ink);font-weight:700">&#10003; Gekw.</span>' : ''}
           <div class="profile-recent-lead-score">\${score}</div>
@@ -11522,7 +11539,7 @@ function applySidebarCollapsed(on) {
   const btn = document.getElementById('sidebar-collapse-btn');
   if (btn) {
     btn.setAttribute('aria-expanded', on ? 'false' : 'true');
-    btn.setAttribute('title', on ? 'Menu uitklappen' : 'Menu inklappen');
+    btn.setAttribute('title', on ? tr('nav.expand') : tr('nav.collapse'));
   }
   const sb = document.getElementById('sidebar');
   if (sb) sb.setAttribute('aria-expanded', on ? 'false' : 'true');
@@ -11800,7 +11817,7 @@ function renderNotifDropdown() {
     .slice(0, 10);
 
   if (leads.length === 0) {
-    body.innerHTML = '<div class="notif-dd-empty">Nog geen meldingen.<br>Nieuwe leads verschijnen hier.</div>';
+    body.innerHTML = '<div class="notif-dd-empty">' + escHtml(tr('notif.leeg')) + '<br>' + escHtml(tr('notif.leegSub')) + '</div>';
     return;
   }
 
@@ -12293,7 +12310,7 @@ async function startDashboard(skipRefresh = false) {
   const mailResult = urlParams.get('mail');
   if (mailResult) {
     window.history.replaceState({}, document.title, window.location.pathname);
-    const mailSleutel = ['connected', 'denied', 'invalid_state', 'scope', 'schema', 'error'].indexOf(mailResult) !== -1 ? mailResult : 'error';
+    const mailSleutel = ['connected', 'denied', 'invalid_state', 'scope', 'api', 'schema', 'error'].indexOf(mailResult) !== -1 ? mailResult : 'error';
     setTimeout(() => toast(tr('mail.terug.' + mailSleutel), mailSleutel === 'connected' ? 'success' : (mailSleutel === 'denied' ? 'info' : 'error')), 600);
     setTimeout(() => navigateTo('instellingen'), 800);
   }
@@ -13541,7 +13558,7 @@ function runGlobalSearch() {
     const initials = name.split(' ').filter(Boolean).map(w=>w[0]).join('').slice(0,2).toUpperCase() || 'HV';
     const score = l.leadScore !== null && l.leadScore !== undefined ? l.leadScore : '';
     const phonePart = l.telefoon ? \`\${l.telefoon}\` : '';
-    const bronPart = l.bron ? \`· \${l.bron}\` : '';
+    const bronPart = l.bron ? \`· \${bronLabel(l.bron)}\` : '';
     const datePart = l.datum ? \`· \${new Date(l.datum).toLocaleDateString(LOCALE,{day:'numeric',month:'short'})}\` : '';
     const meta = [phonePart, bronPart, datePart].filter(Boolean).join(' ');
     const isQualified = l.qualified === true || l.qualified === 'true' || l.qualified === 1;
@@ -15113,7 +15130,7 @@ function exportPDF() {
     doc.setFontSize(8);
     const naam = (l.naam || '—').slice(0,28);
     const tel  = (l.telefoon || '—').slice(0,18);
-    const bron = (l.bron || '—').slice(0,18);
+    const bron = (l.bron ? bronLabel(l.bron) : '—').slice(0,18);
     const sc   = String(l.leadScore || '—');
     const dat  = l.datum ? new Date(l.datum).toLocaleDateString(LOCALE,{day:'2-digit',month:'2-digit',year:'numeric'}) : '—';
     doc.text(naam, 16, y+5);

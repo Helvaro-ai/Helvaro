@@ -119,7 +119,8 @@ async function exchangeCode(code) {
       email = payload.email || '';
     }
   } catch { /* email is display-only, ignore */ }
-  return { refreshToken: d.refresh_token || '', accessToken: d.access_token, email };
+  /* scope = wat de gebruiker WERKELIJK aanvinkte (granulaire toestemming). */
+  return { refreshToken: d.refresh_token || '', accessToken: d.access_token, email, scope: String(d.scope || '') };
 }
 
 // Trade a stored refresh token for a short-lived access token.

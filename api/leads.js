@@ -4308,7 +4308,7 @@ async function handleGcal(req, res) {
         return gcalRedirect(res, '/dashboard?mail=connected');
       } catch (e) {
         console.error('[mail callback ms]', e && e.code, e && e.message);
-        return gcalRedirect(res, '/dashboard?mail=' + encodeURIComponent(e && e.code === 'scope_geweigerd' ? 'scope' : e && e.code === 'schema_ontbreekt' ? 'schema' : 'error'));
+        return gcalRedirect(res, '/dashboard?mail=' + encodeURIComponent(e && e.code === 'scope_geweigerd' ? 'scope' : e && e.code === 'mailbox_api' ? 'api' : e && e.code === 'schema_ontbreekt' ? 'schema' : 'error'));
       }
     }
   }
@@ -4377,7 +4377,7 @@ async function handleGcal(req, res) {
         return gcalRedirect(res, '/dashboard?mail=connected');
       } catch (e) {
         console.error('[mail callback]', e && e.code, e && e.message);
-        return gcalRedirect(res, '/dashboard?mail=' + encodeURIComponent(e && e.code === 'scope_geweigerd' ? 'scope' : e && e.code === 'schema_ontbreekt' ? 'schema' : 'error'));
+        return gcalRedirect(res, '/dashboard?mail=' + encodeURIComponent(e && e.code === 'scope_geweigerd' ? 'scope' : e && e.code === 'mailbox_api' ? 'api' : e && e.code === 'schema_ontbreekt' ? 'schema' : 'error'));
       }
     }
     if (url.searchParams.get('error')) return gcalRedirect(res, '/dashboard?gcal=denied');
