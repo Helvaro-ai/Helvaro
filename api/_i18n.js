@@ -1230,6 +1230,7 @@ const TEKST = {
   'dash.form.copy': { nl: 'Kopieer', fr: 'Copier', en: 'Copy', de: 'Kopieren' },
   'dash.form.open': { nl: 'Open', fr: 'Ouvrir', en: 'Open', de: 'Öffnen' },
   'dash.form.moreTitle': { nl: 'QR-code, embed-code, deel-opties', fr: 'QR code, code intégré, options de partage', en: 'QR code, embed code, sharing options', de: 'QR-Code, Embed-Code, Teilen' },
+  'dash.form.qrMore': { nl: 'QR-code, embed-code en meer →', fr: 'QR code, code intégré et plus →', en: 'QR code, embed code and more →', de: 'QR-Code, Embed-Code und mehr →' },
   'dash.form.more': { nl: 'Meer opties', fr: 'Plus d’options', en: 'More options', de: 'Mehr Optionen' },
   'dash.loading': { nl: 'Laden...', fr: 'Chargement...', en: 'Loading...', de: 'Wird geladen...' },
   'dash.chart.week': { nl: 'Leads per week (laatste 8 weken)', fr: 'Prospects par semaine (8 dernières semaines)', en: 'Leads per week (last 8 weeks)', de: 'Leads pro Woche (letzte 8 Wochen)' },

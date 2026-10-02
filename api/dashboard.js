@@ -2120,7 +2120,7 @@ ${faro.navCta}
                 <div class="ap-formlink-actions">
                   <button class="ap-formlink-link" onclick="navigateTo('formulier')">
                     <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
-                    QR, embed-code &amp; meer →
+                    ${T('dash.form.qrMore')}
                   </button>
                 </div>
               </div>
