@@ -136,6 +136,8 @@ const anthropic = {
          die regel stond er op 2026-09-13 alleen "HTTP 400" en was de
          oorzaak (assistant-beurt vooraan) uit het log niet te halen. */
       if (r.status === 400) console.warn('[ai] Anthropic 400:', String((data.error && data.error.message) || '').slice(0, 200));
+      // Saldo op: de eigenaar moet dat WETEN, niet raden (api/_ai-alarm.js). Nooit afwachten.
+      try { require('../_ai-alarm').meldBetaalfout('Anthropic (assistent op WhatsApp en overige AI-taken)', data.error && data.error.message).catch(() => {}); } catch (e) { /* optioneel */ }
       throw new ProviderError(
         `Anthropic weigerde het verzoek (HTTP ${r.status}${type ? ', ' + type : ''}, model ${model}).`,
         r.status === 429 ? 'rate_limited' : 'provider_error', r.status);

@@ -110,6 +110,12 @@ async function httpError(res) {
   if (res.status === 529 || res.status >= 500) {
     return new ProviderError('Faro is tijdelijk niet bereikbaar. Probeer het opnieuw.', { code: 'upstream', retryable: true });
   }
+  /* Saldo op: geen "probeer opnieuw" (dat helpt niet), wel de eigenaar waarschuwen. */
+  if (require('../../_ai-alarm').isBetaalfout(detail, res.status)) {
+    require('../../_ai-alarm').meldBetaalfout('Faro', detail).catch(() => {});
+    console.error('[faro/claude] AI-saldo op:', detail);
+    return new ProviderError('Faro is niet beschikbaar.', { code: 'provider_unconfigured' });
+  }
   // 400s that are our fault (a malformed tool schema, an oversized image) must
   // be loud in the logs even though the user gets a generic line.
   console.error('[faro/claude] request rejected:', res.status, detail);
