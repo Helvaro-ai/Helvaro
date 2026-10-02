@@ -9356,7 +9356,7 @@ function openPanel(lead) {
         <div class="panel-suggest-row" id="panel-suggest-row">
           <button class="panel-suggest-btn" id="panel-suggest-btn" onclick="loadReplySuggestions()">
             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
-            AI suggesties voor antwoord
+            ${T('lp.suggesties')}
           </button>
           <div class="panel-suggest-chips" id="panel-suggest-chips"></div>
         </div>
@@ -16314,8 +16314,7 @@ function koopTekenTegels() {
     return '<button type="button" class="koop-tegel" data-bedrag="' + t.bedragEur
       + '" onclick="koopKiesPreset(' + t.bedragEur + ')">'
       + '<span class="koop-tegel-bedrag">\u20AC ' + koopFmt(t.bedragEur) + '</span>'
-      + '<span class="koop-tegel-sub">' + koopFmt(t.credits) + ' credits<br>~'
-      + koopFmt(t.gesprekken) + ' gesprekken</span>'
+      + '<span class="koop-tegel-sub">' + tr('kp.tegelSub', { c: koopFmt(t.credits), n: koopFmt(t.gesprekken) }) + '</span>'
       + '</button>';
   }).join('');
   koopMarkeerTegel();
@@ -16417,10 +16416,10 @@ async function koopOfferteOphalen() {
   }
   /* Nederlandse notatie: een komma, en twee tot drie cijfers. "0.5" leest
      als een tikfout; "0,50" leest als een prijs. */
-  stukken.push('\\u20AC ' + o.perCredit.toLocaleString(LOCALE, { minimumFractionDigits: 2, maximumFractionDigits: 3 }) + ' per credit');
+  stukken.push(tr('kp.perCredit', { p: o.perCredit.toLocaleString(LOCALE, { minimumFractionDigits: 2, maximumFractionDigits: 3 }) }));
   /* Vertaald naar iets dat een makelaar herkent. Hij denkt in gesprekken, niet
      in credits. */
-  stukken.push('ongeveer ' + koopFmt(o.gesprekken) + ' leadgesprekken');
+  stukken.push(tr('kp.ongeveer', { n: koopFmt(o.gesprekken) }));
   detail.textContent = stukken.join(' \\u00B7 ');
 
   /* De bedragen, uitgesplitst. Het totaal onderaan is exact wat Stripe
