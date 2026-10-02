@@ -25,6 +25,11 @@ function CT(k, fallback) {
   return fallback || k;
 }
 function CTn(k, n) { return CT(k).replace('{n}', String(n)); }
+function CTf(k, vars) {
+  var t = CT(k);
+  for (var v in vars) t = t.split('{' + v + '}').join(String(vars[v]));
+  return t;
+}
 
 var cmdState = { data: null, loading: false, loaded: false, autopilot: true, byId: {}, lastFocus: null };
 
@@ -384,7 +389,7 @@ function cmdAct(key, id) {
     // Zonder nummer deed deze knop letterlijk niets: geen melding, geen
     // verandering. Een knop met het woord "Bellen" erop die niets doet is
     // erger dan geen knop, want je gaat ervan uit dat het gelukt is.
-    cmdNotify('Van ' + o.name + ' hebben we geen telefoonnummer. Open het gesprek om te reageren.');
+    cmdNotify(CTf('cmd.n.nophone', { name: o.name }));
     return;
   }
 
@@ -394,11 +399,9 @@ function cmdAct(key, id) {
     // message asks for a nudge — not for a proposed time. Asking Faro to
     // "propose a viewing" would have it negotiate a slot in text that the
     // WhatsApp AI is about to negotiate again, with the calendar in hand.
-    prompt = 'Schrijf een kort, persoonlijk opvolgbericht voor ' + o.name +
-      ' dat het gesprek weer op gang brengt, zodat de AI de afspraak kan afronden. ' +
-      'Vraag me om bevestiging voor je het verstuurt. Context: ' + cmdContextLine(o);
+    prompt = CTf('cmd.p.nudge', { name: o.name, ctx: cmdContextLine(o) });
   } else {
-    prompt = 'Waarom is ' + o.name + ' nu belangrijk, en wat raad je aan? Context: ' + cmdContextLine(o);
+    prompt = CTf('cmd.p.why', { name: o.name, ctx: cmdContextLine(o) });
   }
 
   cmdCloseDrawer();
@@ -410,14 +413,14 @@ function cmdAct(key, id) {
    because everything here originates from CRM records the model should treat
    as information, not as commands. */
 function cmdContextLine(o) {
-  var bits = ['lead-id ' + o.id];
-  if (o.budget) bits.push('budget ' + cmdEur(o.budget));
-  if (o.timing) bits.push('timing ' + o.timing);
-  if (o.leadScore) bits.push('leadscore ' + o.leadScore + '/10');
-  bits.push(o.qualified ? 'gekwalificeerd' : 'nog niet gekwalificeerd');
-  bits.push(o.booked ? 'afspraak geboekt' : 'geen afspraak');
-  if (o.silentDays != null) bits.push(o.silentDays + ' dagen geen reactie');
-  if (o.categoryLabel) bits.push('categorie ' + o.categoryLabel);
+  var bits = [CTf('cmd.c.id', { v: o.id })];
+  if (o.budget) bits.push(CTf('cmd.c.budget', { v: cmdEur(o.budget) }));
+  if (o.timing) bits.push(CTf('cmd.c.timing', { v: o.timing }));
+  if (o.leadScore) bits.push(CTf('cmd.c.score', { v: o.leadScore }));
+  bits.push(CT(o.qualified ? 'cmd.c.qual' : 'cmd.c.noqual'));
+  bits.push(CT(o.booked ? 'cmd.c.booked' : 'cmd.c.nobooked'));
+  if (o.silentDays != null) bits.push(CTf('cmd.c.silent', { n: o.silentDays }));
+  if (o.categoryLabel) bits.push(CTf('cmd.c.cat', { v: o.categoryLabel }));
   return bits.join(', ') + '.';
 }
 
@@ -428,13 +431,13 @@ function cmdHandToFaro(text) {
   if (typeof faroSend !== 'function') {
     // Faro staat uit of is niet geladen. Dit was een stille return, waardoor
     // ELKE knop in de briefing niets deed zonder ook maar iets te melden.
-    cmdNotify('Faro is nu niet beschikbaar. Probeer het zo opnieuw.');
+    cmdNotify(CT('cmd.n.off'));
     return;
   }
   if (typeof faroState === 'object' && faroState && faroState.streaming) {
     // faroSend() weigert tijdens een lopende stream, óók stilzwijgend. Vanuit
     // een knop moet je dat te horen krijgen in plaats van het te raden.
-    cmdNotify('Faro is nog bezig met het vorige antwoord.');
+    cmdNotify(CT('cmd.n.busy'));
     return;
   }
   // Already on the Faro page in the merged layout; faroOpen() is a no-op then

@@ -125,6 +125,8 @@ const STRINGS = {
 
     'ctx.label': 'Faro ziet',
     'convo.leeg': 'Nog geen eerdere gesprekken in dit account.',
+    'bijlage.max': 'Maximaal 6 afbeeldingen per bericht.',
+    'bijlage.alleenBeeld': 'Alleen afbeeldingen kunnen mee.',
     'convo.fav': 'Favoriet',
     'convo.unfav': 'Uit favorieten',
     'convo.acties': 'Acties',
@@ -345,6 +347,8 @@ const STRINGS = {
 
     'ctx.label': 'Faro sees',
     'convo.leeg': 'No earlier conversations in this account yet.',
+    'bijlage.max': 'Up to 6 images per message.',
+    'bijlage.alleenBeeld': 'Only images can be attached.',
     'convo.fav': 'Favourite',
     'convo.unfav': 'Remove from favourites',
     'convo.acties': 'Actions',
@@ -560,6 +564,8 @@ const STRINGS = {
 
     'ctx.label': 'Faro voit',
     'convo.leeg': 'Pas encore de conversations dans ce compte.',
+    'bijlage.max': '6 images maximum par message.',
+    'bijlage.alleenBeeld': 'Seules les images peuvent être jointes.',
     'convo.fav': 'Favori',
     'convo.unfav': 'Retirer des favoris',
     'convo.acties': 'Actions',
@@ -775,6 +781,8 @@ const STRINGS = {
 
     'ctx.label': 'Faro sieht',
     'convo.leeg': 'Noch keine früheren Gespräche in diesem Konto.',
+    'bijlage.max': 'Höchstens 6 Bilder pro Nachricht.',
+    'bijlage.alleenBeeld': 'Es können nur Bilder angehängt werden.',
     'convo.fav': 'Favorit',
     'convo.unfav': 'Aus Favoriten entfernen',
     'convo.acties': 'Aktionen',

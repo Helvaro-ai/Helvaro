@@ -3272,7 +3272,7 @@ module.exports = _errors.vangAf(async function handler(req, res) {
         }
 
         return res.status(200).json(_command.build(cmdLeads, {
-          calendarConnected, appointmentsToday,
+          calendarConnected, appointmentsToday, lang: _i18n.resolveer(req),
         }));
       } catch (err) {
         console.error('[command-center] failed:', err && err.message);

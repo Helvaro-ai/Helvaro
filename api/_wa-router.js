@@ -52,6 +52,25 @@ function laatsteInkomend(history) {
   return best;
 }
 
+/**
+ * Seconden tussen het EERSTE bericht van de klant en ons eerste antwoord.
+ * Nul of null als dit geen eerste antwoord is. Het veld "Response Time (sec)"
+ * werd gelezen (dashboard: "Gem. reactietijd") maar nergens geschreven, dus
+ * dat kerngetal -- "een antwoord binnen de minuut" is de belofte van het
+ * product -- stond voor elke lead van het huidige systeem leeg.
+ *
+ * @param {Array} history  gespreksgeschiedenis VOOR het nieuwe antwoord erin zit
+ */
+function eersteReactietijdSec(history, nuMs = Date.now()) {
+  const h = Array.isArray(history) ? history : [];
+  if (h.some((m) => m && m.role === 'assistant')) return null;   // er is al eerder geantwoord
+  const eerste = h.filter((m) => m && m.role === 'user' && typeof m.ts === 'number').map((m) => m.ts);
+  if (!eerste.length) return null;
+  const sec = Math.round((nuMs - Math.min.apply(null, eerste)) / 1000);
+  if (!Number.isFinite(sec) || sec < 0 || sec > 7 * 86400) return null;   // een klok die niet klopt is geen meting
+  return Math.max(1, sec);
+}
+
 /* ── 2. Wat de klant bedoelt (zonder AI) ──────────────────────────────────── */
 
 /*
@@ -235,5 +254,5 @@ function idempotentieSleutel({ tenant, conversation, event, target, emmerMs = 10
 
 module.exports = {
   VENSTER_MS, ACTIE, GEAUTOMATISEERD,
-  venster, laatsteInkomend, intentie, besluit, volgOpBesluit, idempotentieSleutel,
+  venster, laatsteInkomend, eersteReactietijdSec, intentie, besluit, volgOpBesluit, idempotentieSleutel,
 };

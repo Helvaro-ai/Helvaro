@@ -590,6 +590,12 @@ function briefing(analysis, ov, appointmentsToday) {
         top.leadScore ? `en een leadscore van ${top.leadScore}/10` : null,
       ].filter(Boolean).join(' ') + (top.booked ? '.' : ', en heeft nog geen afspraak.'),
       action: top.action,
+      // De losse feiten achter `line`, zodat api/_command-tekst.js de zin in een andere taal kan bouwen.
+      lineParts: {
+        name: top.name, budget: top.budget ? fmtEur(top.budget) : null,
+        timing: top.timing ? top.timing.toLowerCase() : null,
+        score: top.leadScore || null, booked: Boolean(top.booked),
+      },
     } : null,
   };
 }
@@ -610,7 +616,7 @@ function fmtEur(n) {
 function build(leads, opts = {}) {
   const analysis = analyse(leads, opts);
   const ov = overview(leads, analysis.all);
-  return {
+  const resultaat = {
     overview: ov,
     opportunities: analysis.opportunities,
     totalOpportunities: analysis.totalOpportunities,
@@ -620,6 +626,9 @@ function build(leads, opts = {}) {
     briefing: briefing(analysis, ov, opts.appointmentsToday || 0),
     calendarConnected: Boolean(opts.calendarConnected),
   };
+  /* De rekenlaag spreekt Nederlands; de vertaling komt erachteraan (zie
+     api/_command-tekst.js). Nederlands en onbekend blijven ongewijzigd. */
+  return opts.lang ? require('./_command-tekst').vertaal(resultaat, String(opts.lang).slice(0, 2)) : resultaat;
 }
 
 module.exports = {

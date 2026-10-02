@@ -1521,6 +1521,15 @@ async function processMessage(phone, text, scopedProjectCode, inkomendId) {
     // above) — getLead()'s cross-client collision resolver uses "most
     // recent outbound message" as its primary signal, and that only works
     // if assistant turns carry a timestamp same as user turns already do.
+    /* Reactietijd, één keer: het veld Response Time (sec) werd nergens
+       geschreven, dus "Gem. reactietijd" stond voor elke lead leeg. Alleen voor
+       het EERSTE antwoord (de geschiedenis heeft nog geen assistent-beurt) en
+       alleen als het veld nog leeg is. */
+    try {
+      const rt = require('./_wa-router').eersteReactietijdSec(history, Date.now());
+      const al = Number(lead.fields['fldUJJ8oSmAMQ9wB3'] ?? lead.fields['Response Time (sec)']);
+      if (rt !== null && !(al > 0)) updateFields.fldUJJ8oSmAMQ9wB3 = rt;
+    } catch (e) { /* een meting mag het opslaan van het gesprek nooit raken */ }
     history.push({ role: 'assistant', content: replyText, ts: Date.now() });
     /* 50, net als het handmatige antwoord in api/leads.js. Stond op 20: een
        handmatig gesprek van 40 regels werd bij de volgende AI-beurt stil

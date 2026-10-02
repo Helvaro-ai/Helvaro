@@ -2330,8 +2330,8 @@ function faroAcceptFiles(files) {
   // Stil weigeren laat je raden waarom je pdf niet verschijnt.
   if (rejected) {
     var msg = faroState.attachments.length >= 6
-      ? 'Maximaal 6 afbeeldingen per bericht.'
-      : 'Alleen afbeeldingen kunnen mee.';
+      ? T('bijlage.max', 'Maximaal 6 afbeeldingen per bericht.')
+      : T('bijlage.alleenBeeld', 'Alleen afbeeldingen kunnen mee.');
     if (typeof toast === 'function') { try { toast(msg, 'info'); } catch (e) {} }
   }
 }
