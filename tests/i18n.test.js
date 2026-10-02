@@ -510,7 +510,8 @@ console.log('\n— het product noemt zichzelf niet "AI" —');
      eerder al met de Duitse KI-Kennzeichnung). Daarom staat er hieronder een
      POSITIEVE controle bij: deze sleutels MOETEN het woord bevatten. */
   const BEELD_SLEUTELS = ['tst.beeldKlaar', 'tst.beeldGeenDl', 'tst.beeldGeenExp',
-                          'tst.beeldPdfNiet', 'tst.origineelWeg'];
+                          'tst.beeldPdfNiet', 'tst.origineelWeg',
+                          'pi.aiLabel'];   // het label op een gegenereerd beeld MOET AI zeggen
   const TOEGESTAAN = new Set(['img.honest', ...BEELD_SLEUTELS]);
   for (const taal of ['nl', 'fr', 'en', 'de']) {
     const d = i18n.woordenboek(taal);
