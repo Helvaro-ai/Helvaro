@@ -630,7 +630,6 @@ ${_intro.css()}
         <button class="brand-dot active" data-target="0" role="tab" aria-selected="true" aria-label="${T('promo.slide',{n:1})}"><span class="brand-dot-label">${T('promo.tab.1')}</span></button>
         <button class="brand-dot" data-target="1" role="tab" aria-selected="false" aria-label="${T('promo.slide',{n:2})}"><span class="brand-dot-label">${T('promo.tab.2')}</span></button>
         <button class="brand-dot" data-target="2" role="tab" aria-selected="false" aria-label="${T('promo.slide',{n:3})}"><span class="brand-dot-label">${T('promo.tab.3')}</span></button>
-        <button type="button" class="brand-pauze" id="brand-pauze" aria-pressed="false" aria-label="${T('promo.pause')}"></button>
       </div>
     </div>
 
@@ -21131,9 +21130,12 @@ function initLoginSlideshow() {
   const dots   = document.querySelectorAll('#brand-dots .brand-dot');
   if (!slides.length) return;
 
+  /* Geen automatische doorloop meer. De dia's wisselden elke vijf seconden met
+     een fade en een meelopende lijn: een eindeloze animatie op het eerste
+     scherm dat een klant ziet, die een trage laptop de hele tijd bezig houdt
+     en die je (WCAG 2.2.2) ook nog pauzeerbaar moet maken. Nu staat er een
+     rustige dia en wissel je zelf met de tabs -- er is niets om te pauzeren. */
   let current = 0;
-  let timer = null;
-
   function goTo(idx) {
     slides[current].classList.remove('active');
     dots[current].classList.remove('active');
@@ -21143,53 +21145,7 @@ function initLoginSlideshow() {
     dots[current].classList.add('active');
     if (dots[current].getAttribute('aria-selected') !== null) dots[current].setAttribute('aria-selected', 'true');
   }
-
-  /* WCAG 2.2.2 (audit 26/09): beweging die uit zichzelf doorloopt moet te
-     pauzeren zijn, en stopt helemaal bij prefers-reduced-motion. Pauze bij
-     hover en focus, plus een knop die de toestand onthoudt voor deze sessie. */
-  const rustig = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-  const pauzeKnop = document.getElementById('brand-pauze');
-  let gepauzeerd = rustig;
-  let even = false;   // tijdelijk stil door hover of focus
-
-  /* De lijn onder de actieve tab loopt mee met de timer. Hij herstart met
-     elke start() en staat stil zodra de diavoorstelling stilstaat. */
-  const dotsWrap = document.getElementById('brand-dots');
-  function lijn(loopt) {
-    if (!dotsWrap) return;
-    dotsWrap.classList.remove('brand-loopt');
-    if (loopt) { void dotsWrap.offsetWidth; dotsWrap.classList.add('brand-loopt'); }
-  }
-  function start() {
-    clearInterval(timer);
-    if (gepauzeerd || even) { lijn(false); return; }
-    lijn(true);
-    timer = setInterval(() => { goTo(current + 1); lijn(true); }, 5000);
-  }
-
-  function restart() { start(); }
-
-  function toonKnop() {
-    if (!pauzeKnop) return;
-    pauzeKnop.setAttribute('aria-pressed', gepauzeerd ? 'true' : 'false');
-    pauzeKnop.setAttribute('aria-label', tr(gepauzeerd ? 'promo.play' : 'promo.pause'));
-  }
-
-  // Dot click
-  dots.forEach((dot, i) => {
-    dot.addEventListener('click', () => { goTo(i); restart(); });
-  });
-  if (pauzeKnop) pauzeKnop.addEventListener('click', () => { gepauzeerd = !gepauzeerd; toonKnop(); start(); });
-  const wrap = document.querySelector('.login-brand-side');
-  if (wrap) {
-    wrap.addEventListener('mouseenter', () => { even = true; start(); });
-    wrap.addEventListener('mouseleave', () => { even = false; start(); });
-    wrap.addEventListener('focusin', () => { even = true; start(); });
-    wrap.addEventListener('focusout', () => { even = false; start(); });
-  }
-
-  toonKnop();
-  start();
+  dots.forEach((dot, i) => dot.addEventListener('click', () => goTo(i)));
 }
 
 // ── Documenten Hub ────────────────────────────────────────────────────────

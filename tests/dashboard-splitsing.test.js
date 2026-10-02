@@ -265,8 +265,11 @@ function render(lang) {
    2026-10-02: herontwerp inlogpodium + onboarding-wizard (twee nieuwe blokken
    achteraan, inline stijlen van de wizard naar klassen, hoeken uit de schaal).
    +29.175 bytes. Vorige waarden: 417431 bytes / f36214f54e02c739. */
-const CSS_BYTES = 446606;
-const CSS_SHA   = '11d84a20e8b0a159';
+/* 2026-10-03: tweede herontwerp van het inlogpodium (formulier gecentreerd,
+   kop boven het beeld, diavoorstelling zonder timer of animatie, pauzeknop weg).
+   -1.099 bytes. Vorige waarden: 446606 bytes / 11d84a20e8b0a159. */
+const CSS_BYTES = 445514;
+const CSS_SHA   = '8b3ddee531cb8834';
 
 (async () => {
   console.log('\n  het CSS-blok is precies wat er uit dashboard.js kwam');

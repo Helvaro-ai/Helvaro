@@ -12,10 +12,15 @@ const dash = fs.readFileSync(BASE + 'api/dashboard.js', 'utf8');
 const css = fs.readFileSync(BASE + 'api/_dash/styles.js', 'utf8');
 const i18n = fs.readFileSync(BASE + 'api/_i18n.js', 'utf8');
 
-ck('de diavoorstelling kent prefers-reduced-motion', /matchMedia\('\(prefers-reduced-motion: reduce\)'\)/.test(dash));
-ck('er is een pauzeknop met aria-pressed', /id="brand-pauze" aria-pressed=/.test(dash));
-ck('hover en focus pauzeren', /addEventListener\('mouseenter'/.test(dash) && /addEventListener\('focusin'/.test(dash));
-ck('de knopteksten bestaan in vier talen', /'promo\.pause':\s*\{ nl: .*fr: .*en: .*de: /.test(i18n) && /'promo\.play':\s*\{ nl: .*fr: .*en: .*de: /.test(i18n));
+/* WCAG 2.2.2: beweging die uit zichzelf doorloopt moet te pauzeren. De eenvoudigste
+   manier om daaraan te voldoen is er geen te hebben: de diavoorstelling wisselt
+   alleen op een klik. Dat is ook wat de pagina op een trage laptop licht houdt. */
+const slideshow = (dash.match(/function initLoginSlideshow\(\) \{[\s\S]*?\n\}\n/) || [''])[0];
+ck('de diavoorstelling bestaat', slideshow.length > 100);
+ck('en loopt niet uit zichzelf door (geen timer)', !/setInterval|setTimeout|requestAnimationFrame/.test(slideshow.replace(/\/\*[\s\S]*?\*\//g, '')));
+ck('er is geen pauzeknop meer, want er is niets om te pauzeren', !/brand-pauze/.test(dash) && !/brand-pauze/.test(css));
+ck('de dia\'s fade en schuiven niet meer', /#login-page \.brand-slide \{[^}]*transition: none/.test(css));
+ck('geen oneindige animatie op het inlogscherm', !/#login-page[^{]*\{[^}]*animation:[^;}]*infinite/.test(css));
 const blok = (css.match(/#clerk-toggle \{[\s\S]*?\}/) || [''])[0];
 ck('de tekst onder het inlogvak gebruikt geen --text-disabled meer', /color: var\(--text-secondary\)/.test(blok) && !/text-disabled/.test(blok.replace(/\/\*[\s\S]*?\*\//g, '')));
 
