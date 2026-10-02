@@ -218,6 +218,10 @@ module.exports = _errors.vangAf(function handler(req, res) {
   </ul>
   <p>Deze lijst komt overeen met Bijlage 3 van onze verwerkersovereenkomst. Wij houden ze actueel en werken dit beleid bij zodra ze wijzigt.</p>
 
+  <h3>Gegevens uit Google (Gmail en Agenda)</h3>
+  <p>Koppelt u uw Google-account, dan vragen wij alleen de rechten die de functie nodig heeft: nieuwe binnenkomende e-mail lezen (gmail.readonly), e-mail versturen vanaf uw adres (gmail.send) en afspraken in uw agenda lezen en aanmaken. Wij lezen alleen berichten die binnenkomen na het koppelen, niet uw bestaande mailbox. Wij gebruiken deze gegevens uitsluitend om u die functie te leveren: uw klantgesprekken tonen en beantwoorden en afspraken inplannen. Wij verkopen ze niet, delen ze niet met derden voor hun eigen doeleinden, gebruiken ze niet voor reclame en trainen er geen AI-modellen mee. U kunt de koppeling op elk moment verbreken in de instellingen; wij trekken dan de toegang bij Google in en wissen de bewaarde toegangssleutel.</p>
+  <p>Helvaro's use and transfer to any other app of information received from Google APIs will adhere to the <a href="https://developers.google.com/terms/api-services-user-data-policy#additional_requirements_for_specific_api_scopes">Google API Services User Data Policy</a>, including the Limited Use requirements.</p>
+
   <h2>7. Internationale doorgifte</h2>
   <p>Sommige van de hierboven genoemde partijen zijn gevestigd buiten de Europese Economische Ruimte (EER), met name in de Verenigde Staten (o.a. Anthropic, Vercel, Airtable, Clerk en Upstash). Voor die doorgiften steunen wij op een geldig doorgiftemechanisme onder de AVG, zoals de Standard Contractual Clauses (SCC) van de Europese Commissie of, waar van toepassing, het EU-US Data Privacy Framework — dezelfde waarborgen die zijn vastgelegd in onze verwerkersovereenkomst met klanten.</p>
 
@@ -323,6 +327,10 @@ function privacyEn() {
     <li><strong>Upstash Inc.</strong> (United States) — briefly counts sign-in attempts per IP address to prevent abuse. Stores no names or messages; counters expire within fifteen minutes.</li>
   </ul>
   <p>This list matches Annex 3 of our data processing agreement. We keep it current and update this policy whenever it changes.</p>
+
+  <h3>Data from Google (Gmail and Calendar)</h3>
+  <p>If you connect your Google account, we only request the permissions the feature needs: read new incoming e-mail (gmail.readonly), send e-mail from your address (gmail.send), and read and create appointments in your calendar. We only read messages that arrive after you connect, not your existing mailbox. We use this data solely to provide that feature to you: showing and answering your customer conversations and scheduling appointments. We do not sell it, share it with third parties for their own purposes, use it for advertising, or train AI models on it. You can disconnect at any time in the settings; we then revoke access at Google and delete the stored access token.</p>
+  <p>Helvaro's use and transfer to any other app of information received from Google APIs will adhere to the <a href="https://developers.google.com/terms/api-services-user-data-policy#additional_requirements_for_specific_api_scopes">Google API Services User Data Policy</a>, including the Limited Use requirements.</p>
 
   <h2>7. International transfers</h2>
   <p>Some of the parties above are established outside the European Economic Area (EEA), notably in the United States (Anthropic, Vercel, Airtable, Clerk and Upstash among others). For those transfers we rely on a valid transfer mechanism under the GDPR, such as the European Commission's Standard Contractual Clauses (SCCs) or, where applicable, the EU-US Data Privacy Framework — the same safeguards laid down in our data processing agreement with customers.</p>
