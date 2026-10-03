@@ -47,7 +47,9 @@ api.calState.zoom = 0; ck('kleinste zoom', api.calRowH() === api.CAL_ZOOM[0]);
 api.calState.zoom = 99; ck('zoom buiten bereik valt terug op 80', api.calRowH() === 80);
 
 ck('geen Nederlandse afspraaklabels meer in de code',
-  !/'Door je assistent geboekt'|'Geannuleerd'|'Bezet'|'Handmatig'/.test(bron));
+  !/'Door je assistent geboekt'|'Geannuleerd'|'Handmatig'/.test(bron)
+  /* 'Bezet' mag alleen voorkomen als de letterlijke serverwaarde die we vertalen. */
+  && (bron.match(/'Bezet'/g) || []).length === 1 && /e\.title === 'Bezet'\) \? tr\('cal\.bezet'\)/.test(bron));
 const i18n = require('../api/_i18n.js');
 const nodig = ['cal.v.dag', 'cal.v.week', 'cal.v.maand', 'cal.v.lijst', 'cal.zoomIn', 'cal.zoomUit', 'cal.meer', 'cal.lijst.leeg',
   'cal.bron.assistent', 'cal.bron.handmatig', 'cal.st.geannuleerd', 'cal.st.noshow', 'cal.bezet', 'cal.googleAgenda'];

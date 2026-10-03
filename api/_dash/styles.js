@@ -8628,7 +8628,15 @@ summary.ap-tpl-header:focus-visible { outline: 2px solid var(--accent); outline-
 .cal-event-regel .cal-event-name { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
 .cal-event--geannuleerd { opacity: 0.55; }
 .cal-event--geannuleerd .cal-event-name { text-decoration: line-through; }
-.cal-event-external { border-left-color: var(--border-c); }
+.cal-event-external { border-left: 3px dashed var(--border-c); opacity: 0.85; }
+.cal-event-external:hover { opacity: 1; }
+.cal-legenda { display: inline-flex; gap: 14px; margin-left: 10px; font-size: 0.7333rem; color: var(--text-secondary); }
+.cal-legenda[hidden] { display: none; }
+.cal-legenda-item { display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; }
+.cal-legenda-blok { width: 14px; height: 10px; border-radius: var(--r-xs); flex: none; }
+.cal-legenda-blok--eigen { background: var(--accent); }
+.cal-legenda-blok--google { background: repeating-linear-gradient(135deg, var(--bg-card-alt) 0 3px, var(--hover-c) 3px 6px); border: 1px dashed var(--border-c); }
+@media (max-width: 1100px) { .cal-legenda { display: none; } }
 
 /* Maand */
 .cal-alt-view { flex: 1; min-height: 0; overflow: auto; }
@@ -8951,7 +8959,9 @@ summary.ap-tpl-header:focus-visible { outline: 2px solid var(--accent); outline-
 .fa-plan-regel { font-size: 0.8667rem; color: var(--text-secondary); line-height: 1.55; }
 .fa-plan-knop { margin-top: auto; }
 
-.fa-wrap { display: flex; flex-direction: column; gap: 16px; max-width: 940px; }
+.fa-wrap { display: flex; flex-direction: column; gap: 16px; max-width: 1280px; }
+.fa-onder { display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 7fr); gap: 16px; align-items: start; }
+@media (max-width: 1000px) { .fa-onder { grid-template-columns: 1fr; } }
 .fa-top { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
 @media (max-width: 780px) { .fa-top { grid-template-columns: 1fr; } }
 

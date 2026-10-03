@@ -1497,6 +1497,10 @@ ${faro.navCta}
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M9 18l6-6-6-6"/></svg>
           </button>
           <span id="cal-range-label" class="cal-range-label"></span>
+          <span class="cal-legenda" id="cal-legenda" hidden>
+            <span class="cal-legenda-item"><span class="cal-legenda-blok cal-legenda-blok--eigen" aria-hidden="true"></span>${T('cal.leg.helvaro')}</span>
+            <span class="cal-legenda-item"><span class="cal-legenda-blok cal-legenda-blok--google" aria-hidden="true"></span>${T('cal.leg.google')}</span>
+          </span>
           <div class="cal-toolbar-rechts">
             <div class="cal-zoom" id="cal-zoom" role="group" aria-label="${T('cal.zoom')}">
               <button type="button" class="cal-nav-btn" id="cal-zoom-uit" onclick="calZoom(-1)" aria-label="${T('cal.zoomUit')}" title="${T('cal.zoomUit')} (-)">
@@ -2216,17 +2220,20 @@ ${faro.navCta}
         </section>
 
         <!-- Waar de credits heen gingen -->
-        <div class="fa-card">
-          <div class="fa-kop">${T('fa.where')}</div>
-          <div class="fa-sub" id="fa-verdeling-sub">${T('fa.thisPeriod')}</div>
-          <div id="fa-verdeling"></div>
-        </div>
+        <!-- Naast elkaar op een breed scherm (2026-10-03): de rechterhelft bleef leeg -->
+        <div class="fa-onder">
+          <div class="fa-card">
+            <div class="fa-kop">${T('fa.where')}</div>
+            <div class="fa-sub" id="fa-verdeling-sub">${T('fa.thisPeriod')}</div>
+            <div id="fa-verdeling"></div>
+          </div>
 
-        <!-- Boekingen -->
-        <div class="fa-card">
-          <div class="fa-kop">${T('fa.entries')}</div>
-          <div class="fa-sub" id="fa-boekingen-sub">${T('fa.entries.sub')}</div>
-          <div id="fa-boekingen"></div>
+          <!-- Boekingen -->
+          <div class="fa-card">
+            <div class="fa-kop">${T('fa.entries')}</div>
+            <div class="fa-sub" id="fa-boekingen-sub">${T('fa.entries.sub')}</div>
+            <div id="fa-boekingen"></div>
+          </div>
         </div>
       </div>
     </main>

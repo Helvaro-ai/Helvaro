@@ -1325,6 +1325,8 @@ const TEKST = {
   'adm.ph.naam': { nl: 'Jan Janssen', fr: 'Jean Dupont', en: 'John Smith', de: 'Max Mustermann' },
   'adm.ph.bedrijf': { nl: 'bijv. Immo Janssen', fr: 'ex. Garage Dupont', en: 'e.g. Smith Motors', de: 'z. B. Autohaus Müller' },
   'ap.badges.ph': { nl: '15 jaar ervaring | Erkend garagist | Lokaal in Gent', fr: '15 ans d’expérience | Garagiste agréé | Local à Gand', en: '15 years in business | Approved dealer | Local in Ghent', de: '15 Jahre Erfahrung | Zertifizierter Händler | Vor Ort in Gent' },
+  'cal.leg.helvaro': { nl: 'Helvaro-afspraak', fr: 'Rendez-vous Helvaro', en: 'Helvaro appointment', de: 'Helvaro-Termin' },
+  'cal.leg.google': { nl: 'Bezet in Google Agenda', fr: 'Occupé dans Google Agenda', en: 'Busy in Google Calendar', de: 'Belegt in Google Kalender' },
   'cal.prev': { nl: 'Vorige week', fr: 'Semaine précédente', en: 'Previous week', de: 'Vorherige Woche' },
   'cal.next': { nl: 'Volgende week', fr: 'Semaine suivante', en: 'Next week', de: 'Nächste Woche' },
   'cal.book': { nl: 'Boek afspraak', fr: 'Planifier un rendez-vous', en: 'Book appointment', de: 'Termin buchen' },

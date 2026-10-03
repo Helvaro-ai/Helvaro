@@ -178,8 +178,21 @@ async function calHaal(dagen) {
     return {
       id: r.id, name: f['Lead Name'] || tr('cal.afspraak'), phone: f['Lead Phone'] || '',
       startTime: start.toISOString(), endTime: end.toISOString(),
-      eventType: eventType, status: status, source: source, notes: f['Notes'] || ''
+      eventType: eventType, status: status, source: source, notes: f['Notes'] || '',
+      googleId: String(f['Google Event ID'] || '')
     };
+  });
+  /* Helvaro zet elke afspraak ook in de Google Agenda van de klant. Die kopie
+     kwam er als aparte, gearceerde "Google"-afspraak overheen te liggen, dus
+     dezelfde afspraak stond twee keer in beeld. Een Google-item dat bij een
+     Helvaro-afspraak hoort (zelfde event-id; of, voor oudere afspraken zonder
+     opgeslagen id, hetzelfde tijdstip met "(Helvaro)" in de titel) tonen we niet
+     nog eens. Echte Google-afspraken van de klant blijven gewoon staan. */
+  const eigenIds = {};
+  const eigenTijden = {};
+  eigen.forEach(function (a) {
+    if (a.googleId) eigenIds[a.googleId] = true;
+    eigenTijden[new Date(a.startTime).getTime() + '_' + new Date(a.endTime).getTime()] = true;
   });
   /* De echte Google-afspraken van de klant ernaast: alleen-lezen, nooit
      verward met Helvaro-afspraken. Hele-dagitems overschilderen anders een
@@ -188,13 +201,18 @@ async function calHaal(dagen) {
     const st = new Date(e.start);
     const en = e.end ? new Date(e.end) : new Date(st.getTime() + 30 * 60000);
     return {
-      id: 'g_' + (e.id || Math.random().toString(36).slice(2)),
-      name: e.title || tr('cal.bezet'), phone: '',
+      id: 'g_' + (e.id || Math.random().toString(36).slice(2)), googleId: String(e.id || ''),
+      name: (!e.title || e.title === 'Bezet') ? tr('cal.bezet') : e.title, phone: '',
       startTime: st.toISOString(), endTime: en.toISOString(),
       eventType: tr('cal.googleAgenda'), status: 'external', source: 'google',
       external: true, allDay: !!e.allDay, notes: ''
     };
-  }).filter(function (e) { return !e.allDay; });
+  }).filter(function (e) {
+    if (e.allDay) return false;
+    if (e.googleId && eigenIds[e.googleId]) return false;
+    const eigenKopie = /\(Helvaro\)\s*$/.test(e.name) && eigenTijden[new Date(e.startTime).getTime() + '_' + new Date(e.endTime).getTime()];
+    return !eigenKopie;
+  });
   const samen = eigen.concat(extern).sort(function (a, b) { return new Date(a.startTime) - new Date(b.startTime); });
   calState.cache[sleutel] = samen;
   return samen;
@@ -484,6 +502,8 @@ async function renderCalendar() {
   /* Een tragere, oudere aanvraag mag een nieuwere weergave niet overschrijven. */
   if (nr !== calState.teken || !events) return;
   calState.lastEvents = events;
+  const leg = document.getElementById('cal-legenda');
+  if (leg) leg.hidden = !(events.some(function (e) { return e.external; }));
   const vandaag = new Date().toDateString();
   if (dagen.some(function (d) { return d.toDateString() === vandaag; })) {
     renderTodayWidget(events);
