@@ -18390,7 +18390,7 @@ async function setupBronBewaar() {
   var k = document.querySelector('input[name="su-bron"]:checked');
   var waarde = k ? k.value : 'native';
   var url = ((document.getElementById('su-bron-url') || {}).value || '').trim();
-  if (waarde === 'autoscout24' && !/^https:\\/\\/(www\\.)?autoscout24\\.[a-z]{2,3}\\/(([a-z]{2})\\/)?(verkopers|haendler|professionnel|professionnels|concessionari|concesionarios|dealers|vendeurs)\\/[a-z0-9-]+/i.test(url)) {
+  if (waarde === 'autoscout24' && !/^https:\\/\\/(www\\.)?autoscout24\\.[a-z]{2,3}\\/(([a-z]{2})\\/)?(verkopers|haendler|professional|professionals|professionnel|professionnels|concessionari|concesionarios|dealers|vendeurs)\\/[a-z0-9-]+/i.test(url)) {
     toast(tr('su.v.as24.ongeldig'), 'error');
     return;
   }

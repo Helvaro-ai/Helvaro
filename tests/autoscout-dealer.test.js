@@ -60,6 +60,10 @@ const snel = { wacht: async () => {} };
     ck('geweigerd: ' + slecht, T.autoscoutDealerUrl(slecht) === null);
   }
   const b = inv.saneerBron({ type: 'feed', url: 'https://www.autoscout24.be/nl/verkopers/provan-motors?x=1' });
+  ck('het Franse profielpad /fr/professional/<naam> wordt herkend (Sindi, 2026-10-03)',
+    (T.autoscoutDealerUrl('https://www.autoscout24.be/fr/professional/renga-occasion?x=1') || {}).url === 'https://www.autoscout24.be/fr/professional/renga-occasion');
+  ck('en als feed ingevuld wordt het toch een autoscout24-bron',
+    (inv.saneerBron({ type: 'feed', url: 'https://www.autoscout24.be/fr/professional/renga-occasion' }) || {}).provider === 'autoscout24');
   ck('saneerBron herkent het profiel als provider autoscout24', b.provider === 'autoscout24' && b.url === 'https://www.autoscout24.be/nl/verkopers/provan-motors', b);
   ck('een gewone feed blijft provider feed', inv.saneerBron({ type: 'feed', url: 'https://dms.example/feed.xml' }).provider === 'feed');
 

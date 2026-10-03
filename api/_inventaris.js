@@ -447,7 +447,7 @@ function parseFeed(tekst, formaat, contentType) {
  * bron; die gaat via de provider 'feed' hierboven.
  */
 const AS24_HOST = /^(www\.)?autoscout24\.(be|nl|de|at|fr|it|es|lu|com)$/i;
-const AS24_PAD = /^\/(?:[a-z]{2}\/)?(verkopers|haendler|professionnel|professionnels|concessionari|concesionarios|dealers|vendeurs)\/([a-z0-9][a-z0-9-]{1,80})\/?$/i;
+const AS24_PAD = /^\/(?:[a-z]{2}\/)?(verkopers|haendler|professional|professionals|professionnel|professionnels|concessionari|concesionarios|dealers|vendeurs)\/([a-z0-9][a-z0-9-]{1,80})\/?$/i;
 const MAX_AS24_PAGINAS = 60;           // 1.200 wagens
 const AS24_PAUZE_MS = 1000;
 const AS24_UA = 'HelvaroInventory/1.0 (+https://helvaro.pro; voorraadsync voor de dealer zelf)';
