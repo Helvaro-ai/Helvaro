@@ -17314,6 +17314,7 @@ function renderPanden() {
       +     '<button class="pd-mini" onclick="openPandModal(&quot;' + pandEsc(p.code) + '&quot;)">' + escHtml(tr('btn.bewerken')) + '</button>'
       +     '<button class="pd-mini" onclick="archivePand(&quot;' + pandEsc(p.code) + '&quot;, ' + (p.gearchiveerd ? 'false' : 'true') + ')">'
       +       escHtml(tr(p.gearchiveerd ? 'btn.terugzetten' : 'btn.archiveren')) + '</button>'
+      +     (isDealer() ? '<button class="pd-mini pd-mini--gevaar" onclick="deletePand(&quot;' + pandEsc(p.code) + '&quot;)">' + escHtml(tr('btn.verwijderen')) + '</button>' : '')
       +   '</div>'
       + '</div></div>';
   }).join('');
@@ -17742,6 +17743,26 @@ async function archivePand(code, archiveren) {
     await loadPanden(true);   // anders blijft het gearchiveerde voertuig in de lijst en in de tellers staan
   } catch (e) {
     toast(tr('tst.archiverenMislukt'), 'error');
+  }
+}
+
+/* Voorgoed weg (alleen voertuigen). Archiveren blijft de voorzichtige keuze;
+   de tekst zegt dat, en de server vraagt zelf ook om confirm:true. */
+async function deletePand(code) {
+  if (!confirm(tr('pd.verwijderVraag'))) return;
+  try {
+    var r = await fetch(API_BASE + '/leads', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-api-key': state.apiKey },
+      body: JSON.stringify({ mode: 'vehicle-delete', code: code, confirm: true })
+    });
+    var d = await r.json().catch(function () { return {}; });
+    if (!r.ok) { toast(tr('tst.verwijderenMislukt'), 'error'); return; }
+    toast(tr(d.uitgesloten ? 'pd.verwijderdSync' : 'pd.verwijderd'), 'success');
+    await loadPanden(true);
+    try { voorraadState.data = null; if (typeof setupRenderKaarten === 'function') setupRenderKaarten(); } catch (e) { /* bijzaak */ }
+  } catch (e) {
+    toast(tr('tst.verwijderenMislukt'), 'error');
   }
 }
 

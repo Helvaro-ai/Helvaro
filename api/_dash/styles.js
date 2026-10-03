@@ -9308,6 +9308,8 @@ summary.ap-tpl-header:focus-visible { outline: 2px solid var(--accent); outline-
   transition: var(--transition);
 }
 .pd-mini:hover { background: var(--bg-card-alt); color: var(--text-primary); }
+.pd-mini--gevaar { color: var(--red-ink); border-color: rgba(var(--error-rgb), 0.35); }
+.pd-mini--gevaar:hover { background: rgba(var(--error-rgb), 0.10); color: var(--red-ink); }
 .pd-leads { font-size: 0.8rem; color: var(--text-muted); }
 .pd-leads strong { color: var(--text-primary); }
 .pd-volgende-afspraak { font-size: 0.7333rem; color: var(--text-muted); margin-top: 2px; }

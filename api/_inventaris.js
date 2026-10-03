@@ -133,6 +133,10 @@ function saneerBron(ruw) {
        koos hem ooit: het dashboardformulier stuurt dit veld niet mee. Daarom
        leest de oude spelling-met-spatie hier als de nieuwe standaard. Wie echt
        'uit aanbod' wil, schrijft 'uit_aanbod'. */
+    /* Wagens die de dealer zelf verwijderde: de sync maakt ze niet opnieuw aan. */
+    bron.uitgesloten = Array.isArray(o.uitgesloten)
+      ? Array.from(new Set(o.uitgesloten.map((x) => String(x || '').trim().slice(0, 120)).filter(Boolean))).slice(-1000)
+      : [];
     bron.verdwenen = o.verdwenen === 'negeren' ? 'negeren'
       : o.verdwenen === 'uit_aanbod' ? 'uit_aanbod'
       : 'verkocht';
@@ -617,7 +621,9 @@ async function syncFeed(projectCode, bron, vorige, opties = {}) {
   const { vehicles: bestaand, afgekapt: bestaandAfgekapt } = await vehicles.listMetStatus(projectCode, { inclusiefGearchiveerd: true, maxPaginas: 30 });
   if (bestaandAfgekapt) { const e = new Error('voorraad groter dan 3000 wagens; sync gestopt om dubbels te vermijden'); e.code = 'voorraad_te_groot'; throw e; }
   const nu = new Date().toISOString();
-  const plan = _sync.verzoen(bestaand, feed.voertuigen, { nu, verdwenen: bron.verdwenen, bevestigDaling: opties.bevestigDaling, kentReservering: provider.kentReservering !== false });
+  const uitgesloten = new Set((bron.uitgesloten || []).map(String));
+  const aangeboden = uitgesloten.size ? feed.voertuigen.filter((f) => !uitgesloten.has(String(f.bronId))) : feed.voertuigen;
+  const plan = _sync.verzoen(bestaand, aangeboden, { nu, verdwenen: bron.verdwenen, bevestigDaling: opties.bevestigDaling, kentReservering: provider.kentReservering !== false });
   const res = await _sync.pasToe(projectCode, plan, { nu, codes: bestaand.map((v) => v.code), max: MAX_SCHRIJF_PER_RUN });
   _sync.logGebeurtenissen(projectCode, plan.gebeurtenissen);
 
@@ -799,10 +805,24 @@ async function status(projectCode) {
   return { ok: true, ...weergave(staat, bron) };
 }
 
-async function bewaarBron(projectCode, invoer) {
-  const { rec, staat } = await lees(projectCode);
+/** Een wagen uit de feed uitsluiten (na verwijderen), zodat de sync hem niet terugzet. */
+async function sluitUit(projectCode, bronId) {
+  const id = String(bronId || '').trim();
+  if (!id) return { ok: false, reden: 'geen_bronid' };
+  const { rec, bron } = await lees(projectCode);
   if (!rec) return { ok: false, reden: 'geen_klantrecord' };
-  const bron = saneerBron(invoer);
+  if (bron.type !== 'feed') return { ok: true, overgeslagen: true };
+  const nieuw = saneerBron(Object.assign({}, bron, { uitgesloten: (bron.uitgesloten || []).concat(id) }));
+  await schrijf(rec.id, { [F_SOURCE]: JSON.stringify(nieuw) });
+  return { ok: true };
+}
+
+async function bewaarBron(projectCode, invoer) {
+  const { rec, staat, bron: huidig } = await lees(projectCode);
+  if (!rec) return { ok: false, reden: 'geen_klantrecord' };
+  /* Het dashboardformulier kent de uitsluitlijst niet; die mag een nieuwe
+     bronkeuze niet wissen. */
+  const bron = saneerBron(Object.assign({}, invoer, { uitgesloten: invoer && invoer.uitgesloten ? invoer.uitgesloten : huidig.uitgesloten }));
   if (bron.type === 'feed' && !bron.url) return { ok: false, reden: 'ongeldig_adres' };
   /* Van bron wisselen = de vorige toestand geldt niet meer. */
   const nieuweStaat = Object.assign({}, staat, { feedHash: '', lastResult: staat.lastResult === 'ok' ? 'ok' : staat.lastResult });
@@ -927,7 +947,7 @@ function promptNotitie(v) {
 module.exports = {
   TOESTANDEN, STANDAARD,
   bereken, vertrouwen, saneerBron, weergave,
-  controleer, sync, status, bewaarBron, vertrouwenVoor,
+  controleer, sync, status, bewaarBron, sluitUit, vertrouwenVoor,
   momentopname, hercontroleer, beoordeelVoorVerzenden, promptNotitie, genoemdIn, genoemdeMomentopnames, meldVoorraadAlsNodig,
   // voor tests
   _test: { noemtGetal, parseCsv, parseJson, parseXml, parseFeed, mapRegel, hashVan, isInternIp, probeNative, autoscoutDealerUrl, robotsStaatToe, mapAutoscout, leesAutoscoutPagina, haalAutoscout },

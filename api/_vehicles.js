@@ -839,6 +839,25 @@ async function archive(projectCode, code, gearchiveerd = true) {
   return vanRecord(await r.json());
 }
 
+/**
+ * Een voertuig voorgoed verwijderen (Sindi, 2026-10-03: "make an option to
+ * delete a vehicle"). Archiveren blijft de voorzichtige keuze en de standaard;
+ * dit is voor een wagen die er nooit had mogen staan (een testwagen, een
+ * dubbele, een verkeerde import). Leads en afspraken die de code noemen blijven
+ * staan, ze verwijzen dan naar niets meer. Geeft de oude gegevens terug, zodat
+ * de aanroeper bij een gesynchroniseerde wagen kan onthouden dat de sync hem
+ * niet opnieuw moet aanmaken.
+ */
+async function verwijder(projectCode, code) {
+  const tenant = String(projectCode || '').trim();
+  if (!tenant) throw new VehicleError('Voertuig verwijderen zonder projectcode.', 'no_tenant');
+  const bestaand = await getByCode(tenant, code);
+  if (!bestaand) throw new VehicleError('Voertuig niet gevonden.', 'not_found');
+  const r = await atFetch(`${TABEL}/${bestaand.id}`, { method: 'DELETE' });
+  if (!r.ok) throw new VehicleError('Voertuig kon niet verwijderd worden.', 'write_failed');
+  return { code: bestaand.code, bron: bestaand.bron, bronId: bestaand.bronId, merk: bestaand.merk, model: bestaand.model };
+}
+
 /* ── Uit een advertentielink ─────────────────────────────────────────────────
  *
  * De dealer plakt een AutoScout24-link en krijgt een ingevulde fiche terug. Dat
@@ -1014,6 +1033,7 @@ module.exports = {
   matchUitTekst,
   save,
   archive,
+  verwijder,
   importeerUitLink,
   prijsTekst,
   kmTekst,

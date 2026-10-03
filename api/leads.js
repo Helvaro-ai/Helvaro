@@ -3113,6 +3113,29 @@ module.exports = _errors.vangAf(async function handler(req, res) {
       }
     }
 
+    /* Voorgoed verwijderen. Alleen met een expliciete bevestiging in de body
+       (confirm: true), nooit als bijwerking van iets anders. Bij een wagen uit
+       een feed wordt zijn bron-id onthouden, anders zet de volgende uursync hem
+       terug. */
+    if (body.mode === 'vehicle-delete') {
+      if (!projectCode) return res.status(403).json({ error: 'Geen client context' });
+      if (body.confirm !== true) return res.status(400).json({ error: 'Verwijderen vraagt een bevestiging.', code: 'confirm_required' });
+      try {
+        const weg = await _vehicles.verwijder(projectCode, body.code);
+        let uitgesloten = false;
+        if (weg.bron === 'feed' && weg.bronId) {
+          try { uitgesloten = (await _inventaris.sluitUit(projectCode, weg.bronId)).ok === true; }
+          catch (e) { console.error('[vehicle-delete] uitsluiten mislukt', e && e.message); }
+        }
+        console.log('[vehicle-delete]', projectCode, weg.code, weg.bron || 'native', uitgesloten ? '(uitgesloten van sync)' : '');
+        return res.status(200).json({ ok: true, code: weg.code, uitgesloten });
+      } catch (err) {
+        console.error('[vehicle-delete]', err && err.code, err && err.message);
+        if (err && err.code === 'not_found') return res.status(404).json({ error: 'Voertuig niet gevonden.' });
+        return res.status(500).json({ error: 'Het voertuig kon niet verwijderd worden.' });
+      }
+    }
+
     /* ── E-mail en gesprekken (api/_email/mailbox.js, api/_gesprekken.js) ─────
        Alles tenant-gescoped via projectCode uit de sessie. Een gespreks-id uit
        de body wordt altijd opgezocht MET de projectcode; een id van een andere
