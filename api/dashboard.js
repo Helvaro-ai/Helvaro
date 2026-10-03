@@ -1387,11 +1387,11 @@ ${faro.navCta}
           <div style="display:flex;flex-direction:column;gap:12px">
             <div>
               <label style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.5px;color:var(--text-muted);display:block;margin-bottom:6px" for="nc-inv-email">E-mailadres klant *</label>
-              <input id="nc-inv-email" type="email" placeholder="klant@bedrijf.be" style="width:100%;padding:10px 12px;background:var(--bg-card-alt);border:1px solid var(--border);border-radius:8px;color:var(--text-primary);font-size:14px;outline:none">
+              <input id="nc-inv-email" type="email" placeholder="${T('adm.ph.email')}" style="width:100%;padding:10px 12px;background:var(--bg-card-alt);border:1px solid var(--border);border-radius:8px;color:var(--text-primary);font-size:14px;outline:none">
             </div>
             <div>
               <label style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.5px;color:var(--text-muted);display:block;margin-bottom:6px" for="nc-inv-name">Naam <span style="font-weight:400;text-transform:none">(optioneel)</span></label>
-              <input id="nc-inv-name" type="text" placeholder="Jan Janssen" style="width:100%;padding:10px 12px;background:var(--bg-card-alt);border:1px solid var(--border);border-radius:8px;color:var(--text-primary);font-size:14px;outline:none">
+              <input id="nc-inv-name" type="text" placeholder="${T('adm.ph.naam')}" style="width:100%;padding:10px 12px;background:var(--bg-card-alt);border:1px solid var(--border);border-radius:8px;color:var(--text-primary);font-size:14px;outline:none">
             </div>
           </div>
 
@@ -1429,7 +1429,7 @@ ${faro.navCta}
           <div style="display:flex;flex-direction:column;gap:12px">
             <div>
               <label style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.5px;color:var(--text-muted);display:block;margin-bottom:6px" for="nc-name">Naam klant *</label>
-              <input id="nc-name" type="text" placeholder="bijv. Immo Janssen" style="width:100%;padding:10px 12px;background:var(--bg-card-alt);border:1px solid var(--border);border-radius:8px;color:var(--text-primary);font-size:14px;outline:none">
+              <input id="nc-name" type="text" placeholder="${T('adm.ph.bedrijf')}" style="width:100%;padding:10px 12px;background:var(--bg-card-alt);border:1px solid var(--border);border-radius:8px;color:var(--text-primary);font-size:14px;outline:none">
             </div>
             <div>
               <label style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.5px;color:var(--text-muted);display:block;margin-bottom:6px" for="nc-code">Projectcode * <span style="font-weight:400;text-transform:none">(letters, cijfers, _)</span></label>
@@ -1437,7 +1437,7 @@ ${faro.navCta}
             </div>
             <div>
               <label style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.5px;color:var(--text-muted);display:block;margin-bottom:6px" for="nc-email">E-mail <span style="font-weight:400;text-transform:none">(welkomstmail)</span></label>
-              <input id="nc-email" type="email" placeholder="klant@bedrijf.be" style="width:100%;padding:10px 12px;background:var(--bg-card-alt);border:1px solid var(--border);border-radius:8px;color:var(--text-primary);font-size:14px;outline:none">
+              <input id="nc-email" type="email" placeholder="${T('adm.ph.email')}" style="width:100%;padding:10px 12px;background:var(--bg-card-alt);border:1px solid var(--border);border-radius:8px;color:var(--text-primary);font-size:14px;outline:none">
             </div>
             <!-- Calendly veld DEPRECATED. Hidden input voor backwards compat. -->
             <input id="nc-calendly" type="hidden" value="">
@@ -2042,7 +2042,7 @@ ${faro.navCta}
                 ${T('ap.badges')}
                 <span class="ap-label-hint">${T('ap.badges.h')}</span>
               </label>
-              <input id="ap-badges" type="text" class="ap-input" placeholder="15 jaar ervaring | ISO-gecertificeerd | Lokaal Gent" maxlength="300">
+              <input id="ap-badges" type="text" class="ap-input" placeholder="${T('ap.badges.ph')}" maxlength="300">
               <div class="ap-hint">
                 ${T('ap.badges.hint')}
               </div>
