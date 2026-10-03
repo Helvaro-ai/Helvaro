@@ -59,10 +59,11 @@ async function koppel() { try { await mailbox.verbind('TEST', 'code-123', 'gmail
   ck('er is een Engelse melding voor mail.terug.api', !d || typeof d['mail.terug.api'] === 'string' || /mail\.terug\.api/.test(fs.readFileSync(path.join(__dirname, '..', 'api', '_i18n.js'), 'utf8')));
 
   console.log('\nAgenda-weergave');
-  const dash = fs.readFileSync(path.join(__dirname, '..', 'api', 'dashboard.js'), 'utf8');
-  const blok = dash.slice(dash.indexOf('const evHtml = dayEvents.map'), dash.indexOf("const colClass = "));
+  /* Sinds 2026-10-03 in api/_dash/agenda.js (calTekenTijd). */
+  const dash = require('../api/_dash/agenda.js').js();
+  const blok = dash.slice(dash.indexOf('const gesorteerd = dagEvents'), dash.indexOf("const colClass = "));
   ck('afspraken krijgen geen inline position:relative', blok.length > 500 && !/position:relative/.test(blok), blok.match(/position:[a-z]+/g));
-  ck('overlappende afspraken krijgen een eigen baan', /baanVan/.test(blok) && /aantalBanen/.test(blok));
+  ck('overlappende afspraken krijgen een eigen baan', /plek\.set\(ev, \{ baan: i/.test(blok) && /p\.van > 1/.test(blok));
   const css = require('../api/_dash/styles.js');
   const cssTekst = typeof css === 'function' ? css() : Object.values(css).map(v => typeof v === 'function' ? v() : v).find(v => typeof v === 'string' && v.length > 10000) || '';
   ck('.cal-event blijft absolute in de stylesheet', /\.cal-event\s*\{\s*position:\s*absolute/.test(cssTekst));

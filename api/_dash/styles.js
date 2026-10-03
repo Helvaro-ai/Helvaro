@@ -7955,9 +7955,23 @@ body.panel-open .main-content { transform: scale(0.985); }
 .ap-photo-advanced summary:hover { color: var(--accent-ink); }
 .ap-photo-advanced[open] summary { margin-bottom: 8px; }
 
-/* Template inspiration library */
+/* Template inspiration library, ingeklapt tot je hem opent (2026-10-03) */
 .ap-tpl-wrap { margin-bottom: 12px; }
 .ap-tpl-header { display: flex; align-items: baseline; gap: 8px; margin-bottom: 8px; }
+summary.ap-tpl-header { cursor: pointer; list-style: none; margin-bottom: 0; padding: 6px 0; }
+summary.ap-tpl-header::-webkit-details-marker { display: none; }
+summary.ap-tpl-header::before { content: ''; width: 6px; height: 6px; border-right: 1.5px solid var(--accent-ink); border-bottom: 1.5px solid var(--accent-ink); transform: rotate(-45deg); transition: transform .15s ease; align-self: center; margin-right: 2px; }
+.ap-tpl-wrap[open] > summary.ap-tpl-header { margin-bottom: 8px; }
+.ap-tpl-wrap[open] > summary.ap-tpl-header::before { transform: rotate(45deg); }
+summary.ap-tpl-header:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: var(--r-sm); }
+/* Vier secties op de assistentpagina */
+.ap-secties { display: flex; gap: 4px; padding: 4px; background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--r-md); position: sticky; top: 0; z-index: 3; }
+.ap-sec-knop { flex: 1; padding: 9px 12px; border: 0; border-radius: var(--r-sm); background: none; color: var(--text-secondary); font: inherit; font-weight: 600; font-size: 0.8667rem; cursor: pointer; white-space: nowrap; }
+.ap-sec-knop:hover { color: var(--text-primary); }
+.ap-sec-knop[aria-selected="true"] { background: var(--accent); color: var(--on-accent); }
+.ap-sec-knop:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.ap-sectie { display: flex; flex-direction: column; gap: 18px; min-width: 0; }
+.ap-sectie[hidden] { display: none; }
 .ap-tpl-title { font-size: 0.7333rem; font-weight: 700; color: var(--accent-ink); text-transform: uppercase; letter-spacing: .06em; }
 .ap-tpl-sub { font-size: 0.7333rem; color: var(--text-muted); }
 .ap-tpl-grid {
@@ -8581,6 +8595,84 @@ body.panel-open .main-content { transform: scale(0.985); }
 .cal-hour-add:hover { background: rgba(var(--accent-rgb),0.25); }
 .cal-hour-row:hover .cal-hour-add { display: flex; }
 
+/* ── Agenda: dag/week/maand/lijst + zoom (2026-10-03) ─────────────────────
+   De rijhoogte komt uit --cal-row-h (gezet door renderCalendar), zodat het
+   raster, de urenas en de halfuurlijn samen meeschalen. */
+#page-kalender { --cal-row-h: 80px; }
+.cal-hour-row, .cal-time-label { height: var(--cal-row-h); }
+.cal-hour-row::after { top: calc(var(--cal-row-h) / 2); }
+.cal-time-grid { min-height: 0; }
+.cal-toolbar-rechts { margin-left: auto; display: flex; align-items: center; gap: 10px; }
+.cal-toolbar-rechts .cal-book-btn { margin-left: 0; }
+.cal-zoom { display: flex; gap: 4px; }
+.cal-zoom[hidden] { display: none; }
+.cal-nav-btn:disabled { opacity: 0.4; cursor: default; border-color: var(--border); color: var(--text-primary); }
+.cal-views { display: flex; padding: 3px; gap: 2px; border: 1px solid var(--border); border-radius: var(--r-sm); background: var(--bg-card); }
+.cal-view-btn { padding: 5px 12px; border: 0; border-radius: var(--r-xs); background: none; color: var(--text-secondary); font: inherit; font-size: 0.8rem; font-weight: 600; cursor: pointer; }
+.cal-view-btn:hover { color: var(--text-primary); }
+.cal-view-btn[aria-pressed="true"] { background: var(--accent); color: var(--on-accent); }
+.cal-view-btn:focus-visible, .cal-chip:focus-visible, .cal-maand-num:focus-visible, .cal-lijst-rij:focus-visible, .cal-event:focus-visible, .cal-day-header-knop:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.cal-day-header-knop { background: none; border: 0; border-left: 1px solid var(--border); font: inherit; color: inherit; cursor: pointer; width: 100%; }
+.cal-day-header-knop:hover .cal-day-num { background: rgba(var(--accent-rgb), 0.14); }
+.cal-day-header-knop.cal-today:hover .cal-day-num { background: var(--accent); }
+.cal-day-headers[hidden], .cal-scroll-area[hidden], .cal-alt-view[hidden] { display: none; }
+
+/* Afspraakblokken: vlak, geen verloop. Een knop, dus bereikbaar met Tab. */
+.cal-event { border: 0; border-left: 3px solid rgba(var(--on-accent-rgb), 0.35); font: inherit; text-align: left; align-items: stretch; box-shadow: 0 1px 4px rgba(0,0,0,0.25); padding: 5px 8px; }
+.cal-event:hover { transform: none; filter: brightness(1.06); box-shadow: 0 4px 14px rgba(0,0,0,0.32); }
+.cal-event--compact { padding: 3px 6px; justify-content: flex-start; }
+/* Trapsgewijs gestapeld: een dunne rand in de achtergrondkleur scheidt ze. */
+.cal-day-col .cal-event + .cal-event { outline: 1px solid var(--bg-primary); }
+.cal-event-regel { display: flex; gap: 4px; align-items: baseline; min-width: 0; white-space: nowrap; overflow: hidden; }
+.cal-event-regel .cal-event-time { flex: none; }
+.cal-event-regel .cal-event-name { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.cal-event--geannuleerd { opacity: 0.55; }
+.cal-event--geannuleerd .cal-event-name { text-decoration: line-through; }
+.cal-event-external { border-left-color: var(--border-c); }
+
+/* Maand */
+.cal-alt-view { flex: 1; min-height: 0; overflow: auto; }
+.cal-maand { display: flex; flex-direction: column; height: 100%; min-height: 560px; }
+.cal-maand-kop { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); border-bottom: 1px solid var(--border); }
+.cal-maand-kop > div { padding: 10px 10px 8px; font-size: 0.7333rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.073em; color: var(--text-muted); }
+.cal-maand-grid { flex: 1; display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); }
+.cal-maand-dag { border-right: 1px solid var(--border); border-bottom: 1px solid var(--border); padding: 6px 6px 8px; display: flex; flex-direction: column; gap: 3px; min-width: 0; min-height: 96px; }
+.cal-maand-dag:nth-child(7n) { border-right: 0; }
+.cal-maand-dag--buiten { background: rgba(0,0,0,0.08); }
+.cal-maand-dag--buiten .cal-maand-num { color: var(--text-muted); }
+.cal-maand-dagkop { display: flex; align-items: center; justify-content: space-between; margin-bottom: 2px; }
+.cal-maand-num { width: 28px; height: 28px; border-radius: 50%; border: 0; background: none; color: var(--text-primary); font: inherit; font-size: 0.8667rem; font-weight: 700; cursor: pointer; }
+.cal-maand-num:hover { background: rgba(var(--accent-rgb), 0.14); }
+.cal-maand-dag--vandaag .cal-maand-num { background: var(--accent); color: var(--on-accent); }
+.cal-maand-plus { width: 22px; height: 22px; border-radius: var(--r-xs); border: 1px solid rgba(var(--accent-rgb), 0.35); background: rgba(var(--accent-rgb), 0.12); color: var(--accent-ink); font: inherit; font-size: 1rem; line-height: 1; cursor: pointer; opacity: 0; transition: opacity .15s ease; }
+.cal-maand-dag:hover .cal-maand-plus, .cal-maand-plus:focus-visible { opacity: 1; }
+.cal-chip { display: flex; gap: 5px; align-items: baseline; width: 100%; min-width: 0; padding: 3px 6px; border: 0; border-radius: var(--r-xs); background: rgba(var(--accent-rgb), 0.16); color: var(--text-primary); font: inherit; font-size: 0.7333rem; text-align: left; cursor: pointer; white-space: nowrap; overflow: hidden; }
+.cal-chip:hover { background: rgba(var(--accent-rgb), 0.28); }
+.cal-chip-tijd { flex: none; font-weight: 700; font-variant-numeric: tabular-nums; color: var(--accent-ink); }
+.cal-chip-naam { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.cal-chip--extern { background: var(--bg-card-alt); color: var(--text-muted-c); cursor: default; }
+.cal-chip--extern .cal-chip-tijd { color: var(--text-muted-c); }
+.cal-chip--geannuleerd { opacity: 0.55; }
+.cal-chip--geannuleerd .cal-chip-naam { text-decoration: line-through; }
+.cal-maand-meer { border: 0; background: none; padding: 2px 6px; color: var(--accent-ink); font: inherit; font-size: 0.7333rem; font-weight: 600; text-align: left; cursor: pointer; }
+.cal-maand-meer:hover { text-decoration: underline; }
+
+/* Lijst */
+.cal-lijst { max-width: 880px; margin: 0 auto; padding: 18px 20px 40px; display: flex; flex-direction: column; gap: 18px; }
+.cal-lijst-kop { display: flex; align-items: center; gap: 8px; margin: 0 0 8px; font-size: 0.8667rem; font-weight: 700; color: var(--text-primary); position: sticky; top: 0; padding: 6px 0; background: var(--bg-primary); z-index: 1; }
+.cal-lijst-aantal { font-size: 0.7333rem; font-weight: 700; padding: 1px 8px; border-radius: var(--r-lg); background: rgba(var(--accent-rgb), 0.14); color: var(--accent-ink); }
+.cal-lijst-rij { display: grid; grid-template-columns: 110px minmax(0, 1fr) auto; gap: 14px; align-items: center; width: 100%; padding: 12px 14px; margin-bottom: 6px; border: 1px solid var(--border); border-left: 3px solid var(--accent); border-radius: var(--r-sm); background: var(--bg-card); color: var(--text-primary); font: inherit; text-align: left; cursor: pointer; }
+.cal-lijst-rij:hover { border-color: rgba(var(--accent-rgb), 0.5); border-left-color: var(--accent); }
+.cal-lijst-tijd { font-weight: 700; font-size: 0.8667rem; font-variant-numeric: tabular-nums; }
+.cal-lijst-naam { display: flex; flex-direction: column; gap: 2px; min-width: 0; font-weight: 600; font-size: 0.9333rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.cal-lijst-tel { font-weight: 400; font-size: 0.8rem; color: var(--text-secondary); }
+.cal-lijst-type { font-size: 0.7333rem; color: var(--text-secondary); white-space: nowrap; }
+.cal-lijst-rij--extern { border-left-color: var(--border-c); background: var(--bg-card-alt); color: var(--text-muted-c); cursor: default; }
+.cal-lijst-rij--geannuleerd { opacity: 0.6; }
+.cal-lijst-rij--geannuleerd .cal-lijst-naam { text-decoration: line-through; }
+.cal-lijst-leeg { display: flex; flex-direction: column; align-items: center; gap: 14px; padding: 80px 20px; color: var(--text-secondary); }
+.cal-lijst-leeg-titel { font-size: 0.9333rem; }
+
 /* ── Attendance banner ────────────────────────────────────────── */
 .cal-attendance-banner {
   display: none; flex-shrink: 0;
@@ -8966,7 +9058,7 @@ body.panel-open .main-content { transform: scale(0.985); }
    Vijf statuskaarten, tabs, en het voorraadpaneel. Alleen bestaande tokens en
    de hoekschaal van Fase 4 (--radius-sm/-btn/-card). */
 .su-wrap { display: grid; gap: 20px; }
-.su-kaarten { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 12px; }
+.su-kaarten { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 12px; }
 .su-kaart { display: grid; gap: 6px; text-align: left; padding: 14px 16px; border-radius: var(--radius-card); border: 1px solid var(--border); background: var(--bg-card); color: var(--text-primary); font: inherit; cursor: pointer; min-height: 104px; align-content: start; }
 .su-kaart:hover { border-color: rgba(var(--accent-rgb), 0.45); }
 .su-kaart:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
@@ -8978,12 +9070,14 @@ body.panel-open .main-content { transform: scale(0.985); }
 .su-dot--let { background: rgb(var(--warning-rgb)); }
 .su-dot--fout { background: rgb(var(--error-rgb)); }
 .su-dot--laden { background: var(--text-secondary); opacity: 0.5; }
-.su-tabs { display: flex; gap: 4px; flex-wrap: wrap; border-bottom: 1px solid var(--border); }
-.su-tab { padding: 10px 14px; border: 0; border-bottom: 2px solid transparent; background: none; color: var(--text-secondary); font: inherit; font-weight: 600; font-size: 0.9333rem; cursor: pointer; margin-bottom: -1px; }
-.su-tab[aria-selected="true"] { color: var(--text-primary); border-bottom-color: var(--accent); }
-.su-tab:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; border-radius: var(--radius-sm); }
+/* De kaart is de tab: de gekozen kaart draagt de accentrand en een balk
+   onderaan, zodat duidelijk is welk paneel eronder open staat. */
+.su-kaart { position: relative; min-height: 0; }
+.su-kaart[aria-selected="true"] { border-color: var(--accent); background: rgba(var(--accent-rgb), 0.08); }
+.su-kaart[aria-selected="true"]::after { content: ''; position: absolute; left: 16px; right: 16px; bottom: -1px; height: 2px; border-radius: var(--radius-sm); background: var(--accent); }
+.su-kaart[hidden], .su-kaart-actie[hidden] { display: none; }
 .su-paneel { display: grid; gap: 16px; }
-.su-paneel[hidden], .su-bron-invoer[hidden], .su-tab[hidden] { display: none; }
+.su-paneel[hidden], .su-bron-invoer[hidden] { display: none; }
 .su-blok { display: grid; gap: 12px; padding: 16px 18px; }
 .su-blok-kop { display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; flex-wrap: wrap; }
 .su-blok-titel { font-weight: 700; font-size: 1rem; color: var(--text-primary); }
@@ -9006,7 +9100,6 @@ body.panel-open .main-content { transform: scale(0.985); }
 .su-feed-url { font-size: 0.8rem; word-break: break-all; }
 @media (max-width: 520px) {
   .su-kaarten { grid-template-columns: 1fr 1fr; }
-  .su-tab { padding: 10px 10px; font-size: 0.8667rem; }
 }
 .inv-dot--onbekend { background: transparent; border: 1.5px solid var(--text-muted); }
 .inv-sync {

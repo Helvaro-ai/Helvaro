@@ -28,6 +28,7 @@ const _session = require('./_session');
 const _dashStyles = require('./_dash/styles');   // het CSS-blok, zie daar
 const _help       = require('./_dash/help');     // de helpartikelen, vier talen
 const _persona    = require('./_dash/persona-sjablonen'); // voorbeeldteksten, vier talen
+const _agenda     = require('./_dash/agenda');     // de agenda, client-side
 const _vsync      = require('./_voorraad-sync');          // BEWAAR_DAGEN: één bron voor de 14 dagen
 const _faroUI = require('./_faro/ui');
 
@@ -1489,17 +1490,33 @@ ${faro.navCta}
         <!-- Calendar toolbar -->
         <div class="cal-toolbar">
           <button class="cal-today-btn" onclick="calToday()">${T('dash.today')}</button>
-          <button class="cal-nav-btn" onclick="calPrev()" aria-label="${T('cal.prev')}" title="${T('cal.prev')}">
+          <button class="cal-nav-btn" id="cal-vorige" onclick="calPrev()" aria-label="${T('cal.prev')}" title="${T('cal.prev')}">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M15 18l-6-6 6-6"/></svg>
           </button>
-          <button class="cal-nav-btn" onclick="calNext()" aria-label="${T('cal.next')}" title="${T('cal.next')}">
+          <button class="cal-nav-btn" id="cal-volgende" onclick="calNext()" aria-label="${T('cal.next')}" title="${T('cal.next')}">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M9 18l6-6-6-6"/></svg>
           </button>
           <span id="cal-range-label" class="cal-range-label"></span>
+          <div class="cal-toolbar-rechts">
+            <div class="cal-zoom" id="cal-zoom" role="group" aria-label="${T('cal.zoom')}">
+              <button type="button" class="cal-nav-btn" id="cal-zoom-uit" onclick="calZoom(-1)" aria-label="${T('cal.zoomUit')}" title="${T('cal.zoomUit')} (-)">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14"/></svg>
+              </button>
+              <button type="button" class="cal-nav-btn" id="cal-zoom-in" onclick="calZoom(1)" aria-label="${T('cal.zoomIn')}" title="${T('cal.zoomIn')} (+)">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 5v14M5 12h14"/></svg>
+              </button>
+            </div>
+            <div class="cal-views" role="group" aria-label="${T('cal.weergave')}">
+              <button type="button" class="cal-view-btn" id="cal-view-day" aria-pressed="false" onclick="calView('day')" title="${T('cal.v.dag')} (D)">${T('cal.v.dag')}</button>
+              <button type="button" class="cal-view-btn" id="cal-view-week" aria-pressed="true" onclick="calView('week')" title="${T('cal.v.week')} (W)">${T('cal.v.week')}</button>
+              <button type="button" class="cal-view-btn" id="cal-view-month" aria-pressed="false" onclick="calView('month')" title="${T('cal.v.maand')} (M)">${T('cal.v.maand')}</button>
+              <button type="button" class="cal-view-btn" id="cal-view-list" aria-pressed="false" onclick="calView('list')" title="${T('cal.v.lijst')} (L)">${T('cal.v.lijst')}</button>
+            </div>
           <button id="kalender-open-btn" class="cal-book-btn" onclick="openCalBookModal(lokaleDatum(new Date()),null)">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 5v14M5 12h14"/></svg>
             ${T('cal.book')}
           </button>
+          </div>
         </div>
 
         <!-- Attendance banner. Appears 5h after appointment -->
@@ -1524,6 +1541,9 @@ ${faro.navCta}
             <div class="cal-day-cols" id="cal-day-cols"></div>
           </div>
         </div>
+
+        <!-- Maand en lijst (calTekenMaand / calTekenLijst) -->
+        <div class="cal-alt-view" id="cal-alt-view" hidden></div>
       </div>
 
       <!-- Te Bellen sidebar -->
@@ -1816,6 +1836,16 @@ ${faro.navCta}
               <p class="ap-hero-sub">${T('ap.sub')}</p>
             </div>
 
+            <!-- Vier korte secties in plaats van één lange lijst (2026-10-03).
+                 Elk veld staat er nog, met hetzelfde id: alleen de indeling is anders. -->
+            <div class="ap-secties" role="tablist" aria-label="${T('ap.sec.label')}">
+              <button type="button" class="ap-sec-knop" role="tab" id="ap-sec-gesprek" aria-controls="ap-sectie-gesprek" aria-selected="true" onclick="apSectie('gesprek')">${T('ap.sec.gesprek')}</button>
+              <button type="button" class="ap-sec-knop" role="tab" id="ap-sec-melding" aria-controls="ap-sectie-melding" aria-selected="false" onclick="apSectie('melding')">${T('ap.sec.melding')}</button>
+              <button type="button" class="ap-sec-knop" role="tab" id="ap-sec-bedrijf" aria-controls="ap-sectie-bedrijf" aria-selected="false" onclick="apSectie('bedrijf')">${T('ap.sec.bedrijf')}</button>
+              <button type="button" class="ap-sec-knop" role="tab" id="ap-sec-formulier" aria-controls="ap-sectie-formulier" aria-selected="false" onclick="apSectie('formulier')">${T('ap.sec.formulier')}</button>
+            </div>
+
+            <section class="ap-sectie" id="ap-sectie-gesprek" role="tabpanel" aria-labelledby="ap-sec-gesprek">
             <!-- AI Name -->
             <div class="ap-field">
               <label class="ap-label" for="ap-name">
@@ -1834,13 +1864,13 @@ ${faro.navCta}
               </label>
 
               <!-- Inspiration library: clickable templates -->
-              <div class="ap-tpl-wrap">
-                <div class="ap-tpl-header">
+              <details class="ap-tpl-wrap">
+                <summary class="ap-tpl-header">
                   <span class="ap-tpl-title">${T('ap.inspiration')}</span>
                   <span class="ap-tpl-sub">${T('ap.template')}</span>
-                </div>
+                </summary>
                 <div class="ap-tpl-grid" id="ap-tpl-grid"></div>
-              </div>
+              </details>
 
               <textarea id="ap-template" aria-label="${T('a11y.veld.begroeting')}" class="ap-textarea" rows="3" placeholder="${_welkomVoorbeeld}" maxlength="1000"></textarea>
               <div class="ap-hint">
@@ -1861,13 +1891,13 @@ ${faro.navCta}
               </label>
 
               <!-- Inspiration library for instructions -->
-              <div class="ap-tpl-wrap">
-                <div class="ap-tpl-header">
+              <details class="ap-tpl-wrap">
+                <summary class="ap-tpl-header">
                   <span class="ap-tpl-title">${T('ap.inspiration')}</span>
                   <span class="ap-tpl-sub">${T('ap.extra.add')}</span>
-                </div>
+                </summary>
                 <div class="ap-tpl-grid" id="ap-instr-grid"></div>
-              </div>
+              </details>
 
               <textarea id="ap-instructions" aria-label="${T('a11y.veld.instructies')}" class="ap-textarea" rows="5" placeholder="${T('ap.instr.ph')}" maxlength="3000"></textarea>
               <div class="ap-hint">${T('ap.extra.note')}</div>
@@ -1886,30 +1916,23 @@ ${faro.navCta}
               </div>
             </div>
 
-            <!-- Website -->
+            <!-- Language -->
             <div class="ap-field">
-              <label class="ap-label" for="ap-website">
-                ${T('ap.website')}
-                <span class="ap-label-hint">${T('ap.website.h')}</span>
+              <label class="ap-label" for="ap-lang-select">
+                ${T('ap.lang')}
+                <span class="ap-label-hint">${T('ap.lang.h')}</span>
               </label>
-              <input id="ap-website" type="url" class="ap-input" placeholder="${T('ap.websitePh')}">
-              <div class="ap-hint">${T('ap.website.n')}</div>
+              <select id="ap-lang-select" class="ap-input"></select>
+              <div class="ap-hint">${T('ap.lang.hint')}</div>
+              <label class="ap-checkbox-row" style="margin-top:14px">
+                <input type="checkbox" id="ap-match-lead-lang">
+                <span>${T('ap.lang.match')}</span>
+              </label>
+              <div class="ap-hint">${T('ap.langmatch.hint')}</div>
             </div>
 
-            <!-- Address -->
-            <div class="ap-field">
-              <label class="ap-label" for="ap-address">
-                ${T('ap.address')}
-                <span class="ap-label-hint">${T('ap.address.h')}</span>
-              </label>
-              <input id="ap-address" type="text" class="ap-input" placeholder="Kerkstraat 12, 9000 Gent">
-            </div>
-
-            <!-- Calendly veld DEPRECATED. Sinds in_chat booking is dit niet meer
-                 actief gebruikt. Hidden input behouden voor backwards-compat zodat
-                 oude config-save calls niet crashen. -->
-            <input id="ap-calendly" type="hidden" value="">
-
+            </section>
+            <section class="ap-sectie" id="ap-sectie-melding" role="tabpanel" aria-labelledby="ap-sec-melding" hidden>
             <!-- Notifications: WhatsApp number + Email -->
             <div class="ap-field">
               <label class="ap-label" for="ap-notify-phone">
@@ -1971,20 +1994,31 @@ ${faro.navCta}
               </div>
             </div>
 
-            <!-- Language -->
+            </section>
+            <section class="ap-sectie" id="ap-sectie-bedrijf" role="tabpanel" aria-labelledby="ap-sec-bedrijf" hidden>
+            <!-- Website -->
             <div class="ap-field">
-              <label class="ap-label" for="ap-lang-select">
-                ${T('ap.lang')}
-                <span class="ap-label-hint">${T('ap.lang.h')}</span>
+              <label class="ap-label" for="ap-website">
+                ${T('ap.website')}
+                <span class="ap-label-hint">${T('ap.website.h')}</span>
               </label>
-              <select id="ap-lang-select" class="ap-input"></select>
-              <div class="ap-hint">${T('ap.lang.hint')}</div>
-              <label class="ap-checkbox-row" style="margin-top:14px">
-                <input type="checkbox" id="ap-match-lead-lang">
-                <span>${T('ap.lang.match')}</span>
-              </label>
-              <div class="ap-hint">${T('ap.langmatch.hint')}</div>
+              <input id="ap-website" type="url" class="ap-input" placeholder="${T('ap.websitePh')}">
+              <div class="ap-hint">${T('ap.website.n')}</div>
             </div>
+
+            <!-- Address -->
+            <div class="ap-field">
+              <label class="ap-label" for="ap-address">
+                ${T('ap.address')}
+                <span class="ap-label-hint">${T('ap.address.h')}</span>
+              </label>
+              <input id="ap-address" type="text" class="ap-input" placeholder="Kerkstraat 12, 9000 Gent">
+            </div>
+
+            <!-- Calendly veld DEPRECATED. Sinds in_chat booking is dit niet meer
+                 actief gebruikt. Hidden input behouden voor backwards-compat zodat
+                 oude config-save calls niet crashen. -->
+            <input id="ap-calendly" type="hidden" value="">
 
             <!-- Working Hours -->
             <div class="ap-field">
@@ -2000,6 +2034,8 @@ ${faro.navCta}
               </div>
             </div>
 
+            </section>
+            <section class="ap-sectie" id="ap-sectie-formulier" role="tabpanel" aria-labelledby="ap-sec-formulier" hidden>
             <!-- Trust Badges -->
             <div class="ap-field">
               <label class="ap-label" for="ap-badges">
@@ -2062,6 +2098,7 @@ ${faro.navCta}
               <div class="ap-hint">${T('ap.bubble.hint')}</div>
             </div>
 
+            </section>
             <!-- Save button row -->
             <div class="ap-actions">
               <button class="ap-btn ap-btn-primary" id="ap-save-btn" onclick="saveAiPersona()">
@@ -2243,13 +2280,34 @@ ${faro.navCta}
            staat er ongewijzigd in; website-assistent, agenda en e-mail zijn
            hierheen verhuisd uit Instellingen; de voorraad is nieuw. -->
       <div class="su-wrap">
-        <div class="su-kaarten" id="su-kaarten" aria-live="polite"></div>
-        <div class="su-tabs" role="tablist" aria-label="${T('su.tabs')}">
-          <button type="button" class="su-tab" role="tab" id="su-tab-chatbot" aria-controls="su-p-chatbot" aria-selected="false" onclick="setupTab('chatbot')">${T('su.chatbot')}</button>
-          <button type="button" class="su-tab" role="tab" id="su-tab-formulier" aria-controls="su-p-formulier" aria-selected="true" onclick="setupTab('formulier')">${T('su.formulier')}</button>
-          <button type="button" class="su-tab su-alleen-dealer" role="tab" id="su-tab-voorraad" aria-controls="su-p-voorraad" aria-selected="false" onclick="setupTab('voorraad')">${T('su.voorraad')}</button>
-          <button type="button" class="su-tab" role="tab" id="su-tab-agenda" aria-controls="su-p-agenda" aria-selected="false" onclick="setupTab('agenda')">${T('su.agenda')}</button>
-          <button type="button" class="su-tab" role="tab" id="su-tab-email" aria-controls="su-p-email" aria-selected="false" onclick="setupTab('email')">${T('su.email')}</button>
+        <!-- Eén rij: elke statuskaart IS de tab van zijn paneel (2026-10-03).
+             Hier stonden vijf kaarten en daaronder dezelfde vijf als tabs. -->
+        <div class="su-kaarten" id="su-kaarten" role="tablist" aria-label="${T('su.tabs')}" aria-live="polite">
+          <button type="button" class="su-kaart" role="tab" id="su-tab-chatbot" aria-controls="su-p-chatbot" aria-selected="false" onclick="setupTab('chatbot')">
+            <span class="su-kaart-kop"><span class="su-dot su-dot--laden" id="su-dot-chatbot" aria-hidden="true"></span>${T('su.chatbot')}</span>
+            <span class="su-kaart-regel" id="su-regel-chatbot">${T('laden')}</span>
+            <span class="su-kaart-actie" id="su-actie-chatbot" hidden>${T('su.instellen')}</span>
+          </button>
+          <button type="button" class="su-kaart" role="tab" id="su-tab-formulier" aria-controls="su-p-formulier" aria-selected="false" onclick="setupTab('formulier')">
+            <span class="su-kaart-kop"><span class="su-dot su-dot--laden" id="su-dot-formulier" aria-hidden="true"></span>${T('su.formulier')}</span>
+            <span class="su-kaart-regel" id="su-regel-formulier">${T('laden')}</span>
+            <span class="su-kaart-actie" id="su-actie-formulier" hidden>${T('su.instellen')}</span>
+          </button>
+          <button type="button" class="su-kaart su-alleen-dealer" role="tab" id="su-tab-voorraad" aria-controls="su-p-voorraad" aria-selected="false" onclick="setupTab('voorraad')">
+            <span class="su-kaart-kop"><span class="su-dot su-dot--laden" id="su-dot-voorraad" aria-hidden="true"></span>${T('su.voorraad')}</span>
+            <span class="su-kaart-regel" id="su-regel-voorraad">${T('laden')}</span>
+            <span class="su-kaart-actie" id="su-actie-voorraad" hidden>${T('su.instellen')}</span>
+          </button>
+          <button type="button" class="su-kaart" role="tab" id="su-tab-agenda" aria-controls="su-p-agenda" aria-selected="false" onclick="setupTab('agenda')">
+            <span class="su-kaart-kop"><span class="su-dot su-dot--laden" id="su-dot-agenda" aria-hidden="true"></span>${T('su.agenda')}</span>
+            <span class="su-kaart-regel" id="su-regel-agenda">${T('laden')}</span>
+            <span class="su-kaart-actie" id="su-actie-agenda" hidden>${T('su.instellen')}</span>
+          </button>
+          <button type="button" class="su-kaart" role="tab" id="su-tab-email" aria-controls="su-p-email" aria-selected="false" onclick="setupTab('email')">
+            <span class="su-kaart-kop"><span class="su-dot su-dot--laden" id="su-dot-email" aria-hidden="true"></span>${T('su.email')}</span>
+            <span class="su-kaart-regel" id="su-regel-email">${T('laden')}</span>
+            <span class="su-kaart-actie" id="su-actie-email" hidden>${T('su.instellen')}</span>
+          </button>
         </div>
 
         <section class="su-paneel" id="su-p-chatbot" role="tabpanel" aria-labelledby="su-tab-chatbot" hidden>
@@ -10517,24 +10575,8 @@ function updateCalBadge(events) {
   badge.style.display = 'inline-flex';
 }
 
-/* ── Week Calendar ── */
-const CAL_START_HOUR = 8;
-const CAL_HOURS      = 13;   // 8 AM. 9 PM
-const CAL_ROW_H      = 80;
-
-const calState = { weekStart: null, cache: {}, lastEvents: [] };
-
-function calGetMonday(d) {
-  const dt = new Date(d);
-  const diff = dt.getDay() === 0 ? -6 : 1 - dt.getDay();
-  dt.setDate(dt.getDate() + diff);
-  dt.setHours(0, 0, 0, 0);
-  return dt;
-}
-
-function calToday() { calState.weekStart = calGetMonday(new Date()); renderCalendar(); }
-function calPrev()  { calState.weekStart.setDate(calState.weekStart.getDate() - 7); renderCalendar(); }
-function calNext()  { calState.weekStart.setDate(calState.weekStart.getDate() + 7); renderCalendar(); }
+/* De agenda (dag/week/maand/lijst, zoom, sneltoetsen) staat in api/_dash/agenda.js. */
+${_agenda.js()}
 
 /* ── Custom Calendly booking modal ──────────────────────────── */
 const calBookState = {
@@ -11163,273 +11205,6 @@ function renderAppointments() {
   if (!calState.weekStart) calState.weekStart = calGetMonday(new Date());
   renderCalSidebar();
   renderCalendar();
-}
-
-async function renderCalendar() {
-  const ws = calState.weekStart;
-  if (!ws) return;
-
-  const days = Array.from({ length: 7 }, (_, i) => {
-    const d = new Date(ws); d.setDate(d.getDate() + i); return d;
-  });
-
-  // Range label
-  /* Een week die twee maanden raakt: "28 sep – 4 okt 2026" via Intl.formatRange (de taal en
-     de volgorde van het scherm). Het stond als "sep. oktober 2026": een afkorting, een punt
-     en een volle maand achter elkaar, zonder streepje en zonder dagen. */
-  const sameMonth = days[0].getMonth() === days[6].getMonth() && days[0].getFullYear() === days[6].getFullYear();
-  let label;
-  if (sameMonth) {
-    label = days[0].toLocaleDateString(LOCALE, { month: 'long', year: 'numeric' });
-  } else {
-    try {
-      label = new Intl.DateTimeFormat(LOCALE, { day: 'numeric', month: 'short', year: 'numeric' }).formatRange(days[0], days[6]);
-    } catch (e) {
-      label = days[0].toLocaleDateString(LOCALE, { day: 'numeric', month: 'short' }) + ' \u2013 ' + days[6].toLocaleDateString(LOCALE, { day: 'numeric', month: 'short', year: 'numeric' });
-    }
-  }
-  const rangeEl = document.getElementById('cal-range-label');
-  if (rangeEl) rangeEl.textContent = label.charAt(0).toUpperCase() + label.slice(1);
-
-  const today    = new Date(); today.setHours(0,0,0,0);
-  /* Dagnamen uit de taal van het scherm, niet hardgecodeerd Nederlands:
-     een Engelse klant zag hier MA DI WO. Intl geeft "Mon"/"lun."/"Mo". */
-  const dayNames = [0,1,2,3,4,5,6].map(d => new Date(Date.UTC(2024, 0, 7 + d)).toLocaleDateString(LOCALE, { weekday: 'short', timeZone: 'UTC' }).replace('.', '').toUpperCase());
-
-  // Day headers
-  const headerEl = document.getElementById('cal-day-cols-header');
-  if (headerEl) {
-    headerEl.innerHTML = days.map(d => {
-      const isToday = d.getTime() === today.getTime();
-      return \`<div class="cal-day-header-cell\${isToday ? ' cal-today' : ''}">
-        <div class="cal-day-name">\${dayNames[d.getDay()]}</div>
-        <div class="cal-day-num">\${d.getDate()}</div>
-      </div>\`;
-    }).join('');
-  }
-
-  // Time labels (with half-hour ticks)
-  const timeLabels = document.getElementById('cal-time-labels');
-  if (timeLabels) {
-    timeLabels.innerHTML = Array.from({ length: CAL_HOURS }, (_, i) => {
-      const h   = CAL_START_HOUR + i;
-      // 24-uurs, zoals de rest van de app (die toLocaleTimeString(LOCALE)
-      // gebruikt). Hier stond een 12-uursnotatie ZONDER am/pm, dus 13:00 tot
-      // 20:00 lazen als 1:00 tot 8:00 en "8:00" kwam twee keer voor in dezelfde
-      // dagkolom. Een makelaar kan dan niet zien of een bezichtiging 's ochtends
-      // of 's avonds is.
-      // Beide labels 24-uurs. Het halfuur-label bleef bij de vorige fix staan
-      // op de oude 12-uurslogica, dus de kolom toonde "13:00" met daaronder
-      // "1:30", en 20:30 kreeg exact dezelfde tekst als 08:30 -- twee keer
-      // "8:30" in dezelfde dagkolom, in een agenda waarin je bezichtigingen
-      // boekt. Dat is dezelfde fout als hierboven beschreven, een regel lager.
-      const lbl     = String(h).padStart(2, '0') + ':00';
-      const halfLbl = String(h).padStart(2, '0') + ':30';
-      return \`<div class="cal-time-label">\${lbl}<span class="cal-time-label-half">\${halfLbl}</span></div>\`;
-    }).join('');
-  }
-
-  // Render skeleton columns immediately, then fill events
-  const colsEl = document.getElementById('cal-day-cols');
-  if (!colsEl) return;
-
-  const renderCols = (events) => {
-    const eventColors = ['#E8D7B1','#E8D7B1','#C9AE7C','#34D399','#C9AE7C'];
-
-    // Store events for modal lookup
-    calState.lastEvents = events;
-
-    // Update today widget and nav badge
-    renderTodayWidget(events);
-    updateCalBadge(events);
-    renderAttendanceBanner();
-
-    colsEl.innerHTML = days.map(d => {
-      const isToday   = d.getTime() === today.getTime();
-      const dow       = d.getDay();
-      const isWeekend = dow === 0 || dow === 6;
-      const dateStr = lokaleDatum(d);
-      const rows = Array.from({ length: CAL_HOURS }, (_, hIdx) => {
-        const h = CAL_START_HOUR + hIdx;
-        return \`<div class="cal-hour-row"><button class="cal-hour-add" onclick="bookSlot('\${dateStr}',\${h})" title="\${escHtml(tr('cal.boekUur', { u: String(h).padStart(2, '0') + ':00' }))}">+</button></div>\`;
-      }).join('');
-
-      let nowLine = '';
-      if (isToday) {
-        const now = new Date();
-        const mins = (now.getHours() - CAL_START_HOUR) * 60 + now.getMinutes();
-        if (mins >= 0 && mins < CAL_HOURS * 60)
-          nowLine = \`<div class="cal-now-line" style="top:\${Math.round((mins / 60) * CAL_ROW_H)}px"></div>\`;
-      }
-
-      // Events for this day
-      const dayDate   = d.toDateString();
-      const dayEvents = events.filter(ev => new Date(ev.startTime).toDateString() === dayDate);
-
-      const fiveHoursAgo = Date.now() - 5 * 60 * 60 * 1000;
-      /* Overlappende afspraken naast elkaar in plaats van over elkaar: een
-         Helvaro-afspraak en dezelfde afspraak uit Google stonden exact op
-         elkaar, en dan zie je er maar één. Per afspraak een baan (lane);
-         de breedte deelt het aantal banen dat op dat moment tegelijk loopt. */
-      const banen = [];
-      const baanVan = new Map();
-      dayEvents.slice().sort((a, b) => new Date(a.startTime) - new Date(b.startTime)).forEach(ev => {
-        const s = new Date(ev.startTime).getTime();
-        let i = banen.findIndex(eind => eind <= s);
-        if (i === -1) { i = banen.length; banen.push(0); }
-        banen[i] = new Date(ev.endTime).getTime() || s + 30 * 60000;
-        baanVan.set(ev, i);
-      });
-      const aantalBanen = Math.max(1, banen.length);
-      const evHtml = dayEvents.map(ev => {
-        const evIdx    = events.indexOf(ev);
-        const start    = new Date(ev.startTime);
-        const end      = new Date(ev.endTime);
-        const startMin = (start.getHours() - CAL_START_HOUR) * 60 + start.getMinutes();
-        const durMin   = Math.round((end - start) / 60000) || 30;
-        const top      = Math.round((startMin / 60) * CAL_ROW_H);
-        const height   = Math.max(Math.round((durMin / 60) * CAL_ROW_H) - 3, 28);
-        const color    = eventColors[(ev.name || '').charCodeAt(0) % eventColors.length];
-        const hh       = String(start.getHours()).padStart(2,'0');
-        const mm       = String(start.getMinutes()).padStart(2,'0');
-        const endHH    = String(end.getHours()).padStart(2,'0');
-        const endMM    = String(end.getMinutes()).padStart(2,'0');
-        const fullName = escHtml(ev.name || tr('cal.afspraak'));
-        const eventTypeTxt = escHtml(ev.eventType || '');
-        // Duration label
-        const durH   = Math.floor(durMin / 60);
-        const durM   = durMin % 60;
-        const durLbl = durH > 0
-          ? (durM > 0 ? \`\${durH}h \${durM}min\` : \`\${durH}h\`)
-          : \`\${durMin}min\`;
-        // Orange dot: past event where matched lead has no attendance marked
-        let attDot = '';
-        if (start.getTime() < fiveHoursAgo) {
-          const ml = matchLeadToEvent(ev.name);
-          if (ml) {
-            const nd = parseNotities(ml);
-            const v  = nd.afspraak ? nd.afspraak.verschenen : undefined;
-            if (v !== true && v !== false) attDot = '<div class="cal-event-needs-att"></div>';
-          }
-        }
-        // Adaptive body based on available height
-        let bodyHtml;
-        if (height < 30) {
-          // Tiny: just start time
-          bodyHtml = \`<div class="cal-event-time">\${hh}:\${mm}</div>\`;
-        } else if (height < 50) {
-          // Small: time + name
-          bodyHtml = \`<div class="cal-event-time">\${hh}:\${mm}. \${endHH}:\${endMM}</div><div class="cal-event-name">\${fullName}</div>\`;
-        } else if (height < 72) {
-          // Medium: time range + name + duration
-          bodyHtml = \`<div class="cal-event-time">\${hh}:\${mm}. \${endHH}:\${endMM}</div><div class="cal-event-name">\${fullName}</div><div class="cal-event-dur">⏱ \${durLbl}</div>\`;
-        } else {
-          // Tall: full info
-          bodyHtml = \`<div class="cal-event-time">\${hh}:\${mm}. \${endHH}:\${endMM}</div><div class="cal-event-name">\${fullName}</div>\${eventTypeTxt ? \`<div class="cal-event-type">\${eventTypeTxt}</div>\` : ''}<div class="cal-event-dur">⏱ \${durLbl}</div>\`;
-        }
-        // Google entries are read-only context, not Helvaro appointments:
-        // muted, hatched, no click handler. Making them look like bookings
-        // would be worse than not showing them at all.
-        const baan = baanVan.get(ev) || 0;
-        const plek = aantalBanen > 1 ? \`left:calc(\${(baan * 100 / aantalBanen).toFixed(3)}% + 2px);right:auto;width:calc(\${(100 / aantalBanen).toFixed(3)}% - 4px);\` : '';
-        if (ev.external) {
-          return \`<div class="cal-event cal-event-external" style="top:\${top}px;height:\${height}px;\${plek}" title="\${fullName} · \${hh}:\${mm}–\${endHH}:\${endMM} (\${escHtml(tr('cal.uitGoogle'))})">\${bodyHtml}</div>\`;
-        }
-        return \`<div class="cal-event" data-ev-idx="\${evIdx}" style="top:\${top}px;height:\${height}px;\${plek}background:linear-gradient(135deg,\${color},\${color}cc);cursor:pointer;" title="\${fullName} · \${hh}:\${mm}–\${endHH}:\${endMM} (\${durLbl})" onclick="openCalEvent(\${evIdx})">\${bodyHtml}\${attDot}</div>\`;
-      }).join('');
-
-      const colClass = \`cal-day-col\${isToday ? ' cal-today-col' : ''}\${isWeekend ? ' cal-weekend-col' : ''}\`;
-      return \`<div class="\${colClass}">\${rows}\${nowLine}\${evHtml}</div>\`;
-    }).join('');
-
-    // Scroll to current hour on first load (1 hour context above, clamped to 0)
-    const scrollEl = document.getElementById('cal-scroll-area');
-    if (scrollEl && scrollEl.dataset.scrolled !== '1') {
-      scrollEl.dataset.scrolled = '1';
-      const curHour = new Date().getHours();
-      if (curHour >= CAL_START_HOUR && curHour < CAL_START_HOUR + CAL_HOURS) {
-        scrollEl.scrollTop = Math.max(0, (curHour - CAL_START_HOUR - 1) * CAL_ROW_H);
-      } else {
-        scrollEl.scrollTop = 0;
-      }
-    }
-  };
-
-  // Draw skeleton first
-  renderCols([]);
-
-  // Fetch real events from Calendly API
-  const weekKey = lokaleDatum(ws);
-  if (calState.cache[weekKey]) return renderCols(calState.cache[weekKey]);
-
-  try {
-    const minISO = days[0].toISOString();
-    const end    = new Date(days[6]); end.setHours(23, 59, 59, 999);
-    const maxISO = end.toISOString();
-    // Lees uit nieuwe custom Appointments tabel (Calendly is verwijderd).
-    // Convert Airtable records naar het formaat dat renderCols() verwacht.
-    const resp = await fetch(\`\${API_BASE}/leads\`, {
-      method:  'POST',
-      headers: { 'Content-Type': 'application/json', 'x-api-key': state.apiKey },
-      body:    JSON.stringify({ mode: 'appointments-list', from: minISO, to: maxISO })
-    });
-    if (resp.ok) {
-      const data = await resp.json();
-      const events = (data.appointments || []).map(r => {
-        const f = r.fields || {};
-        const start = new Date(f['Start Time']);
-        const durMin = parseInt(f['Duration']) || 30;
-        const end = new Date(start.getTime() + durMin*60*1000);
-        const status = f['Status'] || 'booked';
-        const source = f['Source'] || 'manual';
-        // FIELD NAMES MOETEN MATCH met renderCols (gebruikt startTime/endTime).
-        // Plus 'eventType' tag (status/source) zodat user ziet "Door je assistent geboekt" of "Geannuleerd".
-        const sourceLabel = source === 'ai_chat' ? 'Door je assistent geboekt' : (source === 'manual' ? 'Handmatig' : 'Import');
-        const eventType   = status === 'cancelled' ? 'Geannuleerd' : (status === 'no_show' ? 'No-show' : sourceLabel);
-        return {
-          id:        r.id,
-          name:      f['Lead Name'] || 'Afspraak',
-          phone:     f['Lead Phone'] || '',
-          startTime: start.toISOString(),
-          endTime:   end.toISOString(),
-          eventType,
-          status,
-          source,
-          notes:     f['Notes'] || ''
-        };
-      });
-      // Merge the client's real Google Calendar entries in alongside
-      // Helvaro's own bookings. Before this the week looked emptier than it
-      // was, and nothing stopped a client booking straight over their own
-      // meetings. Tagged 'Google agenda' and marked external so the two are
-      // never confused — these are read-only and not Helvaro appointments.
-      const external = (data.externalEvents || []).map(function (e) {
-        const st = new Date(e.start);
-        const en = e.end ? new Date(e.end) : new Date(st.getTime() + 30 * 60 * 1000);
-        return {
-          id:        'g_' + (e.id || Math.random().toString(36).slice(2)),
-          name:      e.title || 'Bezet',
-          phone:     '',
-          startTime: st.toISOString(),
-          endTime:   en.toISOString(),
-          eventType: 'Google agenda',
-          status:    'external',
-          source:    'google',
-          external:  true,
-          allDay:    !!e.allDay,
-          notes:     ''
-        };
-      // All-day entries would otherwise paint over the entire column and
-      // bury the actual appointments underneath them.
-      }).filter(function (e) { return !e.allDay; });
-
-      const merged = events.concat(external)
-        .sort(function (a, b) { return new Date(a.startTime) - new Date(b.startTime); });
-
-      calState.cache[weekKey] = merged;
-      renderCols(merged);
-    }
-  } catch (e) { /* stay with empty */ }
 }
 
 /* ── Profile page ── */
@@ -18071,6 +17846,22 @@ async function loadAiPersona(force) {
   }
 }
 
+/* De assistentpagina in vier secties. Alle velden blijven in de DOM (opslaan
+   leest ze allemaal), alleen de zichtbare sectie wisselt. */
+function apSectie(naam) {
+  ['gesprek', 'melding', 'bedrijf', 'formulier'].forEach(function (n) {
+    var k = document.getElementById('ap-sec-' + n), p = document.getElementById('ap-sectie-' + n);
+    if (k) k.setAttribute('aria-selected', n === naam ? 'true' : 'false');
+    if (p) p.hidden = n !== naam;
+  });
+  try { sessionStorage.setItem('hv-ap-sectie', naam); } catch (e) { /* bijzaak */ }
+}
+document.addEventListener('DOMContentLoaded', function () {
+  var naam = '';
+  try { naam = sessionStorage.getItem('hv-ap-sectie') || ''; } catch (e) { naam = ''; }
+  if (naam) apSectie(naam);
+});
+
 // Show the welcome banner when this is the first-time setup path
 function showFirstTimeBannerIfNeeded() {
   const banner = document.getElementById('ap-welcome-banner');
@@ -18090,9 +17881,9 @@ function updateWelcomeBannerChecks() {
   const web  = document.getElementById('ap-website').value.trim();
   const instr= document.getElementById('ap-instructions').value.trim();
   const items = [
-    { k: 'Naam van je assistent',          done: !!name },
-    { k: 'Welkomstbericht',  done: !!tpl },
-    { k: 'Website OF instructies', done: !!web || !!instr }
+    { k: tr('ap.name'),          done: !!name },
+    { k: tr('ap.welcome'),  done: !!tpl },
+    { k: tr('ap.chk.webOfInstr'), done: !!web || !!instr }
   ];
   checks.innerHTML = items.map(it =>
     '<span class="ap-welcome-chk' + (it.done ? ' done' : '') + '">' +
@@ -18471,41 +18262,41 @@ async function setupLaad() {
 }
 
 function setupRenderKaarten() {
-  var el = document.getElementById('su-kaarten');
-  if (!el) return;
   var w = setupState.widget, m = setupState.mail, g = setupState.gcal, v = voorraadState.data;
   var maand = (document.getElementById('fm-stat-month') || {}).textContent || '0';
-  var kaart = function (tab, titel, toestand, regel) {
-    return '<button type="button" class="su-kaart" onclick="setupTab(\\'' + tab + '\\')" aria-controls="su-p-' + tab + '">'
-      + '<span class="su-kaart-kop"><span class="su-dot su-dot--' + toestand + '" aria-hidden="true"></span>' + escHtml(titel) + '</span>'
-      + '<span class="su-kaart-regel">' + escHtml(regel) + '</span>'
-      + '<span class="su-kaart-actie">' + escHtml(tr(toestand === 'ok' ? 'su.bekijk' : 'su.instellen')) + '</span></button>';
+  var zet = function (tab, toestand, regel) {
+    var dot = document.getElementById('su-dot-' + tab);
+    var rg = document.getElementById('su-regel-' + tab);
+    var act = document.getElementById('su-actie-' + tab);
+    if (dot) dot.className = 'su-dot su-dot--' + toestand;
+    if (rg) rg.textContent = regel;
+    /* "Instellen" alleen waar er echt iets te doen is; een kaart die werkt
+       zegt verder niets, die is zelf al de knop naar zijn paneel. */
+    if (act) act.hidden = (toestand === 'ok' || toestand === 'laden');
   };
-  var html = '';
-  if (w === null) html += kaart('chatbot', tr('su.chatbot'), 'laden', tr('laden'));
-  else if (w && w.aan && (w.domeinen || []).length) html += kaart('chatbot', tr('su.chatbot'), 'ok', tr('su.k.chatbot.aan', { n: w.domeinen.length }));
-  else if (w && w.aan) html += kaart('chatbot', tr('su.chatbot'), 'let', tr('su.k.chatbot.geenDomein'));
-  else html += kaart('chatbot', tr('su.chatbot'), 'uit', tr('su.k.chatbot.uit'));
-  html += kaart('formulier', tr('su.formulier'), getFormUrl() ? 'ok' : 'uit', tr('su.k.formulier', { n: String(maand).replace(/[^0-9]/g, '') || '0' }));
+  if (w === null) zet('chatbot', 'laden', tr('laden'));
+  else if (w && w.aan && (w.domeinen || []).length) zet('chatbot', 'ok', tr('su.k.chatbot.aan', { n: w.domeinen.length }));
+  else if (w && w.aan) zet('chatbot', 'let', tr('su.k.chatbot.geenDomein'));
+  else zet('chatbot', 'uit', tr('su.k.chatbot.uit'));
+  zet('formulier', getFormUrl() ? 'ok' : 'uit', tr('su.k.formulier', { n: String(maand).replace(/[^0-9]/g, '') || '0' }));
   if (isDealer()) {
-    if (!v) html += kaart('voorraad', tr('su.voorraad'), 'laden', tr('laden'));
+    if (!v) zet('voorraad', 'laden', tr('laden'));
     else {
       var r = voorraadRegels(v);
       var n = (v.telling && v.telling.actief != null) ? v.telling.actief : (v.count || 0);
       var toe = r.st === 'HEALTHY' ? 'ok' : (r.st === 'FAILED' ? 'fout' : (r.st === 'UNKNOWN' ? 'uit' : 'let'));
       var soort = v.bron !== 'feed' ? 'native' : (v.feed && v.feed.provider === 'autoscout24' ? 'as24' : 'feed');
       if (soort === 'native') toe = 'ok';
-      html += kaart('voorraad', tr('su.voorraad'), toe, tr('su.k.voorraad.' + soort, { n: n, status: r.label }));
+      zet('voorraad', toe, tr('su.k.voorraad.' + soort, { n: n, status: r.label }));
     }
   }
-  if (g === null) html += kaart('agenda', tr('su.agenda'), 'laden', tr('laden'));
-  else if (g && g.connected && g.needsReauth) html += kaart('agenda', tr('su.agenda'), 'let', tr('su.k.agenda.let'));
-  else if (g && g.connected) html += kaart('agenda', tr('su.agenda'), 'ok', tr('su.k.agenda.aan'));
-  else html += kaart('agenda', tr('su.agenda'), 'uit', tr('su.k.agenda.uit'));
-  if (m === null) html += kaart('email', tr('su.email'), 'laden', tr('laden'));
-  else if (m && m.verbonden) html += kaart('email', tr('su.email'), m.foutCode === 'reauth_required' ? 'let' : 'ok', tr('su.k.email.aan', { adres: m.adres || '' }));
-  else html += kaart('email', tr('su.email'), 'uit', tr('su.k.email.uit'));
-  el.innerHTML = html;
+  if (g === null) zet('agenda', 'laden', tr('laden'));
+  else if (g && g.connected && g.needsReauth) zet('agenda', 'let', tr('su.k.agenda.let'));
+  else if (g && g.connected) zet('agenda', 'ok', tr('su.k.agenda.aan'));
+  else zet('agenda', 'uit', tr('su.k.agenda.uit'));
+  if (m === null) zet('email', 'laden', tr('laden'));
+  else if (m && m.verbonden) zet('email', m.foutCode === 'reauth_required' ? 'let' : 'ok', tr('su.k.email.aan', { adres: m.adres || '' }));
+  else zet('email', 'uit', tr('su.k.email.uit'));
 }
 
 async function setupVoorraadLaad() {
