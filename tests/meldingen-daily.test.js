@@ -189,7 +189,9 @@ console.log('\n  dedupe: al gemeld vandaag -> geen tweede mail');
   reset();
   clients = [{ id: 'recC3', fields: { [F_PROJECT]: 'MISLUKT2', [F_EMAIL]: 'eigenaar2@voorbeeld.be', [F_LANG]: 'nl' } }];
   const nu = new Date().toISOString();
-  const dagSleutel = new Date().toISOString().slice(0, 10);
+  /* Dezelfde Belgische dag als cron-followup.js (brusselsDag). Met de UTC-datum
+     faalde deze test elke nacht tussen 00:00 en 02:00 Belgische tijd. */
+  const dagSleutel = new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Brussels', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date());
   activiteitRecords = [
     { id: 'recA5', fields: { 'Project Code': 'MISLUKT2', 'Type': 'crm_sync_failed', 'Details': '{}', 'Created At': nu } },
     // Al eerder vandaag gemeld -- exact dezelfde referentie die checkDailyIntegrity zelf zou bouwen.

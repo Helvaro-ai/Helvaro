@@ -719,7 +719,14 @@ async function sync(projectCode, { door = 'systeem', trigger = 'handmatig', beve
   try { await schrijf(rec.id, { [F_STATE]: JSON.stringify(nieuw) }); }
   catch (e) { console.error('[voorraad] toestand niet weggeschreven voor', tenant, e.message); }
 
+  /* Een geslaagde controle waarbij niets veranderde is geen gebeurtenis: elke
+     paginalading deed er een, en de activiteitenpagina stond vol "Voorraad
+     gecontroleerd". Wel loggen als er iets veranderde, bij een fout, of als de
+     dealer er zelf op drukte. */
+  const stilleControle = !fout && trigger !== 'handmatig'
+    && !(run.changed || run.removed || run.failed || run.aangemaakt || run.verkocht || run.daling);
   try {
+    if (stilleControle) throw new Error('stil');
     const _activiteit = require('./_activiteit');
     _activiteit.log(tenant, fout ? 'inventory_sync_failed' : 'inventory_synced', {
       details: { bron: bron.type, trigger, count: run.count, changed: run.changed, removed: run.removed, failed: run.failed, aangemaakt: run.aangemaakt, verkocht: run.verkocht, daling: run.daling, code: run.code, ms: run.ms },
