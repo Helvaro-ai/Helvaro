@@ -20,4 +20,5 @@ ck('instellingen: leesbare maximale breedte', /\.settings-wrap \{[^}]*max-width:
 ck('activiteit: leesbare maximale breedte', /max-width:\s*960px/.test(regel('.activity-feed-wrap')));
 ck('identieke servergebeurtenissen worden één regel met teller', /const gegroepeerd = \[\]/.test(dash) && /activity-aantal/.test(dash) && /laatste\.type === ev\.type/.test(dash));
 ck('de voetnoot bij resultaten verdwijnt zonder cijfers', /#resultaten-grid:has\(\.empty-state\) ~ \.res-voetnoot \{ display: none; \}/.test(css) && dash.includes('class="res-voetnoot"'));
+ck('de doelkaart verschijnt pas als er iets te meten valt', /kaart\.hidden = !\(current > 0/.test(dash) && /\.revenue-goal-card\[hidden\] \{ display: none; \}/.test(css));
 console.log(`\n  ${pass} ok, ${fail} fout\n`); process.exit(fail ? 1 : 0);

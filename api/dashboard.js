@@ -14522,6 +14522,11 @@ function renderRevenueGoal() {
   const pct = goal > 0 ? Math.min(100, Math.round(current / goal * 100)) : 0;
   const fmt = v => '€' + new Intl.NumberFormat(LOCALE).format(Math.round(v));
 
+  /* Zonder pipelinewaarde en zonder eigen doel was dit een brede kaart met
+     "€0 / €0" en "0%": niets te zeggen. Pas tonen als er iets te meten valt. */
+  const kaart = document.getElementById('revenue-goal-card');
+  if (kaart) kaart.hidden = !(current > 0 || (Number.isFinite(stored) && stored > 0));
+
   const el = document.getElementById('revenue-goal-current');
   const tgt = document.getElementById('revenue-goal-target');
   const bar = document.getElementById('revenue-goal-bar');

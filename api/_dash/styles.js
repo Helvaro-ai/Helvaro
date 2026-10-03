@@ -8476,6 +8476,7 @@ summary.ap-tpl-header:focus-visible { outline: 2px solid var(--accent); outline-
 }
 /* De voetnoot over de pipelinewaarde hoort bij de cijfers; zonder cijfers hing hij los in de lege ruimte. */
 #resultaten-grid:has(.empty-state) ~ .res-voetnoot { display: none; }
+.revenue-goal-card[hidden] { display: none; }
 .activity-aantal { font-size: 0.7333rem; font-weight: 700; margin-left: 6px; padding: 1px 7px; border-radius: var(--r-lg); background: rgba(var(--accent-rgb), 0.14); color: var(--accent-ink); }
 .activity-feed-header {
   font-size: 0.8rem;
