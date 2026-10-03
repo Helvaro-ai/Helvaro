@@ -26,6 +26,7 @@ const _crm       = require('./_crm');          // de enige deur naar de CRM's va
 const _crmConfig = require('./_crm/config');  // hun sleutels, versleuteld in de klantrij
 const _waes      = require('./_waes');         // eigen WhatsApp-nummer per klant (Embedded Signup)
 const _stijl     = require('./_form-stijl');   // vormgeving van het leadformulier per klant (Form Style)
+const _waEigenTpl = require('./_wa-eigen-templates'); // sjablonen op het eigen nummer van een klant
 const _waSend    = require('./_wa-send');      // de enige deur naar WhatsApp
 const _voertuigslot  = require('./_voertuigslot');   // afspraakbescherming per voertuig (Fase 2b)
 const _dealerBoeking = require('./_dealer-boeking'); // DE boekingspoort voor dealership (Fase 2b/3)
@@ -910,6 +911,12 @@ module.exports = _errors.vangAf(async function handler(req, res) {
         }
         try { setCachedClient(projectCode, { ...rec, fields: { ...rec.fields, ...velden } }); } catch (e) {}
         _waToken.onthoud(nummerId, uit.token);
+        /* Helvaro's sjablonen meteen op de WABA van de klant zetten: zonder
+           kan dit nummer buiten het 24u-venster niets versturen. Een fout hier
+           maakt de koppeling niet ongedaan; de eerste mislukte verzending
+           probeert het opnieuw. */
+        try { await _waEigenTpl.zorgVoorSjablonen({ wabaId, token: uit.token }); }
+        catch (e) { console.error('[wa-sjablonen] indienen na koppelen mislukt voor', projectCode, '-', e && e.message); }
 
         console.log('[wa-es] eigen nummer gekoppeld voor', projectCode, uit.systeemgebruiker && uit.systeemgebruiker.ok ? '(systeemgebruiker ook op de WABA)' : '(alleen eigen token)');
         const { token: _t, ...zonderToken } = uit;
@@ -3769,6 +3776,23 @@ module.exports = _errors.vangAf(async function handler(req, res) {
           phoneNumberId: PHONE_NUMBER_ID, token: WHATSAPP_TOKEN,
         });
         if (!tplR.ok) {
+          /* Eigen nummer (Embedded Signup) en het sjabloon bestaat niet: dan
+             staat Helvaro's set nog niet op de WABA van de klant. Die dienen we
+             nu in (eens per zes uur), en de gebruiker hoort wat er gebeurt in
+             plaats van een Meta-foutcode. Zie api/_wa-eigen-templates.js. */
+          if (tplR.code === 'template_not_found' && clientPnid) {
+            try {
+              const wabaId = await getClientWabaId(projectCode);
+              const eigenToken = await _waToken.voorNummer(clientPnid);
+              if (wabaId && eigenToken) await _waEigenTpl.zorgVoorSjablonen({ wabaId, token: eigenToken });
+            } catch (e) {
+              console.error('[wa-sjablonen] indienen mislukt voor', projectCode, '-', e && e.message);
+            }
+            return res.status(409).json({
+              error: 'Je WhatsApp-nummer heeft zijn berichtsjablonen nog niet goedgekeurd bij Meta. We hebben ze nu ingediend; dat duurt meestal een paar uur. Tot dan kun je alleen antwoorden binnen 24 uur na het laatste bericht van de lead.',
+              code: 'templates_pending',
+            });
+          }
           return res.status(tplR.ownerAction ? 503 : 502).json({
             error: tplR.reason, code: tplR.code, metaCode: tplR.metaCode, ownerAction: tplR.ownerAction,
           });
@@ -4110,6 +4134,24 @@ function buildLeadSearchFormula(escapedTerm) {
 const F_WA_PHONE_NUMBER_ID = 'fldbrhlSrsmlJwcYr';
 const _waPnidCache = new Map();
 const WA_PNID_TTL  = 5 * 60 * 1000;
+// WABA-id van het eigen nummer (Client Config, gezet door wa-es-complete).
+async function getClientWabaId(projectCode) {
+  if (!projectCode) return '';
+  try {
+    const formula = encodeURIComponent(`{fldN4dL0bGgfBOXwM}="${escapeFormula(projectCode)}"`);
+    const r = await atFetch(
+      `https://api.airtable.com/v0/${process.env.BASE_AIRTABLE}/tblPidTrwGRzRt4LZ?filterByFormula=${formula}&maxRecords=1&returnFieldsByFieldId=true`,
+      { headers: { Authorization: `Bearer ${process.env.API_AIRTABLE}` } }
+    );
+    if (!r.ok) return '';
+    const rec = ((await r.json()).records || [])[0];
+    return String((rec && rec.fields && rec.fields.fldCEqMp5zs1Wos3T) || '').trim();
+  } catch (e) {
+    console.error('[wa-sjablonen] WABA-id opzoeken mislukt:', e && e.message);
+    return '';
+  }
+}
+
 async function getClientWaPhoneNumberId(projectCode, airtableToken, baseId, clientsTable) {
   if (!projectCode) return '';
   const cached = _waPnidCache.get(projectCode);

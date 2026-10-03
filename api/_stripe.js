@@ -151,6 +151,32 @@ async function post(pad, body, opties) {
   return data;
 }
 
+/* ── Managed Payments ───────────────────────────────────────────────────────
+   Stripe zette op 2026-10 "Managed Payments" standaard aan voor dit account.
+   Dan eist Stripe een product-taxcode op elke regel, en zonder die code
+   weigerde hij ELKE betaalpagina ("the product tax code is missing"): geen
+   enkele klant kon nog credits kopen of een abonnement starten.
+
+   Helvaro rekent zijn prijzen zelf, inclusief 21% btw, en toont dat bedrag
+   in het dashboard. Daarom: Managed Payments per sessie uit, zodat Stripe er
+   niets bovenop zet. En toch een taxcode (SaaS, zakelijk gebruik) met
+   tax_behavior 'inclusive' op elke regel: weigert Stripe de parameter
+   managed_payments op deze API-versie, dan proberen we zonder, en blijft het
+   totaal wat de klant zag. */
+const TAX_CODE_SAAS = 'txcd_10103001';
+
+async function maakSessie(body) {
+  try {
+    return await post('/checkout/sessions', Object.assign({}, body, { managed_payments: { enabled: false } }));
+  } catch (e) {
+    if (e instanceof StripeError && /managed_payments/i.test(e.message || '')) {
+      console.warn('[stripe] managed_payments niet aanvaard, opnieuw zonder:', e.message);
+      return post('/checkout/sessions', body);
+    }
+    throw e;
+  }
+}
+
 /**
  * Maak een betaalpagina voor een creditaankoop.
  *
@@ -177,7 +203,7 @@ async function createCheckout({ projectCode, offerte, email, origin } = {}) {
     ? `${offerte.credits} credits (${offerte.basisCredits} + ${offerte.bonusCredits} bonus)`
     : `${offerte.credits} credits`;
 
-  return post('/checkout/sessions', {
+  return maakSessie({
     mode: 'payment',
     success_url: `${basis}/dashboard?betaling=gelukt`,
     cancel_url: `${basis}/dashboard?betaling=geannuleerd`,
@@ -197,7 +223,9 @@ async function createCheckout({ projectCode, offerte, email, origin } = {}) {
       price_data: {
         currency: 'eur',
         unit_amount: centen,
+        tax_behavior: 'inclusive',
         product_data: {
+          tax_code: TAX_CODE_SAAS,
           name: 'Helvaro credits',
           description: `${omschrijving} · ongeveer ${offerte.gesprekken} leadgesprekken`,
         },
@@ -257,7 +285,8 @@ async function createSubscription({ projectCode, plan, email, origin, klantId, o
 
            plan.omschrijving blijft de terugval: een aanroeper die het vergeet
            hoort een zin te krijgen, geen lege regel op een betaalpagina. */
-        product_data: { name: `Helvaro ${plan.naam}`, description: omschrijving || plan.omschrijving || '' },
+        tax_behavior: 'inclusive',
+        product_data: { tax_code: TAX_CODE_SAAS, name: `Helvaro ${plan.naam}`, description: omschrijving || plan.omschrijving || '' },
       },
     }],
   };
@@ -272,7 +301,7 @@ async function createSubscription({ projectCode, plan, email, origin, klantId, o
   if (klantId) body.customer = klantId;
   else if (email) body.customer_email = email;
 
-  return post('/checkout/sessions', body);
+  return maakSessie(body);
 }
 
 /** Een lopend abonnement opzeggen per einde periode. */

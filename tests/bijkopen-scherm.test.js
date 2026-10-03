@@ -94,8 +94,14 @@ for (const slecht of [0, -10, null, undefined, NaN, 'honderd', {}]) {
 console.log('\n— de modus klopt met wat Stripe doet —');
 {
   const stripe = lees('api/_stripe.js');
-  const heeftTax = /automatic_tax|tax_behavior|tax_rates/.test(stripe);
-  ck('Stripe telt er niets bovenop', !heeftTax, 'automatic_tax/tax_behavior gevonden');
+  /* tax_behavior 'inclusive' telt niets op: het zegt Stripe dat de btw al in
+     het bedrag zit (nodig sinds Managed Payments een taxcode eist). Alles wat
+     er WEL iets bovenop zet blijft verboden. */
+  const heeftTax = /automatic_tax|tax_rates|tax_behavior:\s*'exclusive'/.test(stripe);
+  ck('Stripe telt er niets bovenop', !heeftTax, 'automatic_tax/tax_rates/exclusive gevonden');
+  ck('Managed Payments staat per sessie uit', /managed_payments:\s*\{\s*enabled:\s*false\s*\}/.test(stripe), null);
+  ck('elke regel draagt een taxcode, inclusief btw',
+     (stripe.match(/tax_code: TAX_CODE_SAAS/g) || []).length === 2 && (stripe.match(/tax_behavior: 'inclusive'/g) || []).length === 2, null);
   ck("dus de modus is 'inclusief'", plans.BTW_MODUS === 'inclusief', plans.BTW_MODUS);
   /* De koppeling zelf. Als er ooit tax in Stripe komt, moet dit meeveranderen. */
   ck('en die twee spreken elkaar niet tegen',

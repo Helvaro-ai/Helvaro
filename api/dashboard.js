@@ -9931,10 +9931,14 @@ async function sendWhatsAppReply(waar) {
          gebruiker niet op door het nog eens te proberen, dus dat krijgt een
          eigen kop en blijft langer staan. Hier stond één generieke tekst voor
          alles, ook voor een verlopen token. */
+      /* Vertaald per foutcode; de Nederlandse servertekst alleen als er voor
+         die code geen vertaling is. */
+      var foutSleutel = 'wa.fout.' + (d.code || '');
+      var foutTekst = (d.code && T_DICT[foutSleutel] !== undefined) ? tr(foutSleutel) : serverTekst(d, 'conv.mislukt');
       if (d.ownerAction) {
-        toast((d.error || tr('conv.mislukt')), 'error', tr('wa.beheerderNodig'));
+        toast(foutTekst, 'error', tr('wa.beheerderNodig'));
       } else {
-        toast(d.error || d.message || tr('conv.mislukt'), 'error');
+        toast(foutTekst, d.code === 'templates_pending' ? 'info' : 'error');
       }
       return;
     }
@@ -16885,7 +16889,7 @@ async function koopAanvragen() {
     }
 
     // Terugval: geen betaalprovider, dus een aanvraag.
-    btn.textContent = 'Aanvragen...';
+    btn.textContent = tr('koop.aanvragenBezig');
     var r2 = await post('credit-purchase-request');
     var d2 = await r2.json().catch(function () { return {}; });
     if (!r2.ok) {
@@ -16901,7 +16905,7 @@ async function koopAanvragen() {
     fout.style.display = '';
     fout.textContent = tr('tst.ietsMis');
   } finally {
-    btn.disabled = false; btn.textContent = 'Afrekenen';
+    btn.disabled = false; btn.textContent = tr('koop.afrekenen');
   }
 }
 
