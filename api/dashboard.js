@@ -13708,6 +13708,10 @@ function pipeLeadPastFilters(lead) {
   if (pipeFilters.has('inruil') && koop && koop.inruil) return true;
   return false;
 }
+function wisPipeFilters() {
+  pipeFilters.clear();
+  renderPipeline();
+}
 function togglePipeFilter(id) {
   if (pipeFilters.has(id)) pipeFilters.delete(id); else pipeFilters.add(id);
   renderPipeline();
@@ -13773,8 +13777,20 @@ function renderPipeline() {
      Alleen als ALLES leeg is. Zodra er ergens een lead staat zijn de kolommen
      zinvol -- dan betekent een lege kolom iets ("niets in de afspraakfase"), en
      dan hoort die melding er per kolom te blijven staan. */
+  /* Een filter zonder treffers is geen lege pipeline: er staan wel leads, ze
+     passen alleen niet bij de keuze. Dat zeggen, met een knop om de filters te
+     wissen, in plaats van "je pipeline is nog leeg" (2026-10-03). */
+  const gefilterdLeeg = !leads.length && state.leads.length > 0 && pipeFilters.size > 0;
+  if (gefilterdLeeg) {
+    board.innerHTML = '<div class="empty-state">'
+      + '<div class="empty-title">' + escHtml(tr('pipe.fgeen.titel')) + '</div>'
+      + '<div class="empty-desc">' + escHtml(tr('pipe.fgeen.tekst', { n: state.leads.length })) + '</div>'
+      + '<button type="button" class="btn-icon btn-primary-sm" style="margin-top:12px" onclick="wisPipeFilters()">' + escHtml(tr('pipe.fgeen.wis')) + '</button>'
+      + '</div>';
+    return;
+  }
   if (!leads.length) {
-    board.innerHTML = '<div class="empty-state" style="grid-column:1/-1">'
+    board.innerHTML = '<div class="empty-state">'
       + '<div class="empty-state-illustration" style="width:88px;height:88px">'
       +   '<svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="var(--accent-ink)" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">'
       +   '<rect x="3" y="4" width="5" height="16" rx="1"/><rect x="10" y="4" width="5" height="10" rx="1"/><rect x="17" y="4" width="4" height="6" rx="1"/></svg>'

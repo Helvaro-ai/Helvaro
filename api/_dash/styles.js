@@ -6685,6 +6685,8 @@ body.panel-open .main-content { transform: scale(0.985); }
   min-height: calc(100vh - 180px);
   align-items: flex-start;
 }
+/* Een leeg bord: de melding over de hele breedte, in het midden, niet in de linkerhoek. */
+.pipeline-board > .empty-state { flex: 1 1 100%; min-width: 0; padding-top: 96px; }
 .pipeline-board::-webkit-scrollbar { height: 6px; }
 .pipeline-board::-webkit-scrollbar-thumb { background: rgba(var(--accent-rgb),0.35); border-radius: var(--r-xs); }
 .pipeline-col {

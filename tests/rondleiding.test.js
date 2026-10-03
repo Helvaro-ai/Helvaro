@@ -164,7 +164,7 @@ console.log('\n  de lege pipeline zegt EEN ding, niet vijf keer niets');
   const dash = fs.readFileSync(BASE + 'api/dashboard.js', 'utf8')
                + require(BASE + 'api/_dash/styles.js').css();
   const i = dash.indexOf('function renderPipeline');
-  const blok = dash.slice(i, i + 3000);
+  const blok = dash.slice(i, i + 5000);
   ck('er is een tak voor een volledig lege pipeline', /if \(!leads\.length\)/.test(blok));
   ck('en hij komt VOOR de kolommen', blok.indexOf('if (!leads.length)') < blok.indexOf('board.innerHTML = cols.map'));
   ck('met een vertaalde tekst, niet hardgecodeerd', /tr\('pipe\.leeg\.titel'\)/.test(blok));
