@@ -131,8 +131,10 @@ console.log('\n  het vlak vult zijn bak');
   const kolom = /\.laad-kolom \{([^}]*)\}/.exec(code);
   const echt  = /\.pipeline-col \{([^}]*)\}/.exec(code);
   ck('.laad-kolom bestaat', !!kolom);
-  const breedtePlaatshouder = kolom && /flex:\s*0 0 (\d+)px/.exec(kolom[1]);
-  const breedteEcht         = echt  && /flex:\s*0 0 (\d+)px/.exec(echt[1]);
+  /* Sinds 2026-10-03 vullen de kolommen de breedte (flex: 1 1 210px) in plaats
+     van vast 260px; de plaatshouder moet dezelfde basisbreedte houden. */
+  const breedtePlaatshouder = kolom && /flex:\s*(?:0 0|1 1) (\d+)px/.exec(kolom[1]);
+  const breedteEcht         = echt  && /flex:\s*(?:0 0|1 1) (\d+)px/.exec(echt[1]);
   ck('en is even breed als een echte kolom',
     breedtePlaatshouder && breedteEcht && breedtePlaatshouder[1] === breedteEcht[1],
     { plaatshouder: breedtePlaatshouder && breedtePlaatshouder[1], echt: breedteEcht && breedteEcht[1] });

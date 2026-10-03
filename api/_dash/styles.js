@@ -4971,7 +4971,7 @@ tr:hover .td-arrow { color: var(--accent-ink); }
    daarna kolommen van 260px verschijnen die het bord horizontaal laten
    scrollen. Dan belooft de plaatshouder een andere indeling dan wat er komt,
    en dat is precies wat een plaatshouder-op-vorm hoort te voorkomen. */
-.laad-kolom { flex: 0 0 260px; max-width: 100%; min-width: 0; display: flex; flex-direction: column; gap: 10px; }
+.laad-kolom { flex: 1 1 210px; max-width: 100%; min-width: 210px; display: flex; flex-direction: column; gap: 10px; }
 .laad-kaart { height: 54px; border-radius: var(--r-sm); }
 /* Wat er staat als het wachten voorbij is en er niets kwam. Bewust rustig:
    de banner bovenaan zegt al wat er mis is en waarom -- dit is alleen de plek
@@ -6690,7 +6690,8 @@ body.panel-open .main-content { transform: scale(0.985); }
 .pipeline-board::-webkit-scrollbar { height: 6px; }
 .pipeline-board::-webkit-scrollbar-thumb { background: rgba(var(--accent-rgb),0.35); border-radius: var(--r-xs); }
 .pipeline-col {
-  flex: 0 0 260px;
+  flex: 1 1 210px;
+  min-width: 210px;
   background: var(--bg-card);
   border: 1px solid var(--border);
   border-radius: var(--r-md);
@@ -8293,7 +8294,7 @@ summary.ap-tpl-header:focus-visible { outline: 2px solid var(--accent); outline-
 }
 .pi-result-actions { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 10px; }
 
-.settings-wrap { width: 100%; display: flex; flex-direction: column; gap: 20px; }
+.settings-wrap { width: 100%; max-width: 1040px; display: flex; flex-direction: column; gap: 20px; }
 .settings-section {
   background: var(--bg-card);
   border: 1px solid var(--border);
@@ -8471,7 +8472,11 @@ summary.ap-tpl-header:focus-visible { outline: 2px solid var(--accent); outline-
   border-radius: var(--r-md);
   padding: 20px 24px;
   width: 100%;
+  max-width: 960px;
 }
+/* De voetnoot over de pipelinewaarde hoort bij de cijfers; zonder cijfers hing hij los in de lege ruimte. */
+#resultaten-grid:has(.empty-state) ~ .res-voetnoot { display: none; }
+.activity-aantal { font-size: 0.7333rem; font-weight: 700; margin-left: 6px; padding: 1px 7px; border-radius: var(--r-lg); background: rgba(var(--accent-rgb), 0.14); color: var(--accent-ink); }
 .activity-feed-header {
   font-size: 0.8rem;
   font-weight: 700;

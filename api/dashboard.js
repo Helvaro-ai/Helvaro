@@ -1141,7 +1141,7 @@ ${faro.navCta}
         <div class="stat-card" aria-busy="true"><div class="stat-label"><span class="skeleton" style="width:58%;height:10px"></span></div><div class="stat-value"><div class="skeleton" style="width:60%;height:28px"></div></div><span class="alleen-voorlezen">${T('dash.loading')}</span></div>
       </div>
 
-      <p style="color:var(--text-muted);font-size:12px;margin-top:16px;max-width:640px;line-height:1.6">
+      <p class="res-voetnoot" style="color:var(--text-muted);font-size:12px;margin-top:16px;max-width:640px;line-height:1.6">
         ${T('goal.disclaimer')}
       </p>
 
@@ -19428,17 +19428,32 @@ function renderActiviteit() {
     aandacht:       { dotCls: 'activity-dot-won',       title: l => tr('faro.act.aandacht',       { naam: naamVan(l) }), sub: l => l.samenvatting ? escHtml(l.samenvatting) : '' }
   };
 
-  feed.innerHTML = recent.map(ev => {
+  /* Dezelfde servergebeurtenis meerdere keren achter elkaar (een sync die 33
+     wagens aanmaakt logt er 33) wordt één regel met een teller. Anders staat
+     de hele pagina vol identieke regels. */
+  const gegroepeerd = [];
+  recent.forEach(ev => {
+    const laatste = gegroepeerd[gegroepeerd.length - 1];
+    if (laatste && typeof ev.type === 'string' && ev.type.indexOf('server:') === 0 && laatste.type === ev.type) {
+      laatste.aantal++; laatste.namen.push([ev.naam, ev.voertuigCode].filter(Boolean).join(' · '));
+    } else {
+      gegroepeerd.push(Object.assign({}, ev, { aantal: 1, namen: [[ev.naam, ev.voertuigCode].filter(Boolean).join(' · ')] }));
+    }
+  });
+
+  feed.innerHTML = gegroepeerd.map(ev => {
     /* Server-gebeurtenis (echt gelogd door de automatisering): eigen tak,
        want die hebben geen lead-object maar een naam + voertuigcode. */
     if (typeof ev.type === 'string' && ev.type.indexOf('server:') === 0) {
       const soort = ev.type.slice('server:'.length);
       const titel = (T_DICT['act.' + soort] !== undefined) ? tr('act.' + soort) : String(soort).replace(/_/g, ' ').replace(/^./, function (c) { return c.toUpperCase(); });   // een nieuw type zonder tekst toont leesbaar Engels, nooit een kale sleutel
-      const details = [ev.naam, ev.voertuigCode].filter(Boolean).map(escHtml).join(' · ');
+      const details = ev.aantal > 1
+        ? ev.namen.filter(Boolean).slice(0, 3).map(escHtml).join(', ') + (ev.namen.length > 3 ? ' …' : '')
+        : [ev.naam, ev.voertuigCode].filter(Boolean).map(escHtml).join(' · ');
       return \`<div class="activity-item">
         <div class="activity-dot activity-dot-dealer"></div>
         <div class="activity-content">
-          <div class="activity-title">\${escHtml(titel)}</div>
+          <div class="activity-title">\${escHtml(titel)}\${ev.aantal > 1 ? ' <span class="activity-aantal">\u00d7' + ev.aantal + '</span>' : ''}</div>
           \${details ? \`<div class="activity-sub">\${details}</div>\` : ''}
         </div>
         <div class="activity-time">\${relTime(ev.date)}</div>
