@@ -13275,6 +13275,14 @@ function openSearch() {
   if (!overlay) return;
   _searchActiveIndex = -1;
   overlay.classList.add('open');
+  /* Dealers: ook de voorraad doorzoeken. Die laadt normaal pas op de
+     Voertuigen-pagina; hier op de achtergrond, en dan de zoekopdracht herhalen. */
+  if (isDealer() && !pandState.geladen && typeof loadPanden === 'function') {
+    Promise.resolve(loadPanden(false)).then(function () {
+      var inv = document.getElementById('search-modal-input');
+      if (inv && inv.value) inv.dispatchEvent(new Event('input'));
+    }).catch(function () { /* zoeken werkt dan op leads */ });
+  }
   document.getElementById('search-footer')?.style && (document.getElementById('search-footer').style.display = 'none');
   /* De val houdt Tab binnen en regelt Escape. De pijltjes en Enter blijven in
      de eigen handler hieronder: die verplaatsen een VIRTUELE selectie in de
@@ -13339,15 +13347,22 @@ function runGlobalSearch() {
     (l.status || '').toLowerCase().includes(ql)
   ).slice(0, 12);
 
-  if (matches.length === 0) {
-    resultsEl.innerHTML = \`<div class="search-no-results"><div class="search-no-results-icon"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/><line x1="8" y1="11" x2="14" y2="11"/></svg></div><div>Geen leads gevonden voor "<strong>\${escHtml(q)}</strong>"</div></div>\`;
+  /* Voertuigen (dealers): dezelfde zoekopdracht over merk, model, uitvoering,
+     code, kleur en brandstof. De lijst staat er alleen als de voorraad al
+     geladen is; openen van de zoekbalk start dat laden op de achtergrond. */
+  const autoMatches = (isDealer() && pandState.geladen ? (pandState.panden || []) : []).filter(v =>
+    [v.merk, v.model, v.uitvoering, v.code, v.kleur, v.brandstof, v.carrosserie].some(x => String(x || '').toLowerCase().includes(ql))
+  ).slice(0, 8);
+
+  if (matches.length === 0 && autoMatches.length === 0) {
+    resultsEl.innerHTML = \`<div class="search-no-results"><div class="search-no-results-icon"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/><line x1="8" y1="11" x2="14" y2="11"/></svg></div><div>\${escHtml(tr('sr.geen', { q: q })).replace(escHtml(q), '<strong>' + escHtml(q) + '</strong>')}</div></div>\`;
     if (footer) footer.style.display = 'none';
     return;
   }
 
-  const html = [\`<div class="search-section-label">Leads (\${matches.length})</div>\`];
+  const html = matches.length ? [\`<div class="search-section-label">Leads (\${matches.length})</div>\`] : [];
   matches.forEach((l, i) => {
-    const name = l.naam || 'Onbekend';
+    const name = l.naam || tr('sr.onbekend');
     const initials = name.split(' ').filter(Boolean).map(w=>w[0]).join('').slice(0,2).toUpperCase() || 'HV';
     const score = l.leadScore !== null && l.leadScore !== undefined ? l.leadScore : '';
     const phonePart = l.telefoon ? \`\${l.telefoon}\` : '';
@@ -13372,10 +13387,26 @@ function runGlobalSearch() {
     </div>\`);
   });
 
+  if (autoMatches.length) {
+    html.push(\`<div class="search-section-label">\${escHtml(tr('sr.voertuigen'))} (\${autoMatches.length})</div>\`);
+    autoMatches.forEach(v => {
+      const titel = [v.merk, v.model, v.uitvoering].filter(Boolean).join(' ') || v.code;
+      const meta = [v.code, v.prijs ? '\u20ac ' + new Intl.NumberFormat(LOCALE).format(v.prijs) : '', v.km ? new Intl.NumberFormat(LOCALE).format(v.km) + ' km' : ''].filter(Boolean).join(' \u00b7 ');
+      html.push(\`<div class="search-result-item" onclick="closeSearch();navigateTo('panden')">
+        <div class="search-result-avatar">\${escHtml(String(v.merk || 'V').slice(0, 2).toUpperCase())}</div>
+        <div class="search-result-body">
+          <div class="search-result-name">\${_highlightMatch(titel, q)}</div>
+          <div class="search-result-meta">\${escHtml(meta)}</div>
+        </div>
+      </div>\`);
+    });
+  }
+
   resultsEl.innerHTML = html.join('');
   if (footer) {
     footer.style.display = 'flex';
-    if (countEl) countEl.textContent = matches.length + ' resultaat' + (matches.length !== 1 ? 'en' : '');
+    const aantal = matches.length + autoMatches.length;
+    if (countEl) countEl.textContent = tr(aantal === 1 ? 'sr.n1' : 'sr.nN', { n: aantal });
   }
 }
 
