@@ -58,6 +58,15 @@ for (const taal of ['nl', 'fr', 'en', 'de']) {
   const mist = nodig.filter((k) => !w[k]);
   ck(taal + ': alle agendalabels bestaan', mist.length === 0, mist);
 }
+/* De eerste weergave opent op vandaag, niet op de maandag van deze week. */
+{
+  const ctx2 = Object.assign({}, ctx);
+  vm.createContext(ctx2);
+  vm.runInContext(bron + '\n;this.__a = calAnchor; this.__s = calState;', ctx2);
+  ctx2.__s.weekStart = new Date(2026, 8, 28);   // de maandag; mag het anker niet bepalen
+  const nu = new Date(); nu.setHours(0, 0, 0, 0);
+  ck('de agenda opent op vandaag, ook als weekStart een maandag is', ctx2.__a().getTime() === nu.getTime(), String(ctx2.__a()));
+}
 const dash = fs.readFileSync(path.join(__dirname, '..', 'api', 'dashboard.js'), 'utf8');
 ck('dashboard laadt de module en heeft de vier weergaveknoppen',
   /\$\{_agenda\.js\(\)\}/.test(dash) && ['day', 'week', 'month', 'list'].every((v) => dash.includes('id="cal-view-' + v + '"')) && dash.includes('id="cal-alt-view"'));

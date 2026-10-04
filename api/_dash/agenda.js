@@ -46,8 +46,10 @@ function calGetMonday(d) {
 
 function calAnchor() {
   if (!calState.anchor) {
-    /* Wie de agenda via de oude weg opende (calState.weekStart gezet) houdt die week. */
-    calState.anchor = calState.weekStart ? new Date(calState.weekStart) : new Date();
+    /* Altijd vandaag. Dit nam eerst calState.weekStart (de MAANDAG van deze
+       week) over, dus de dagweergave opende op een dag in het verleden:
+       zondag 4 oktober toonde "maandag 28 september" (live gevonden). */
+    calState.anchor = new Date();
     calState.anchor.setHours(0, 0, 0, 0);
   }
   return calState.anchor;
