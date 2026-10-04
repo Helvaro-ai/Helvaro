@@ -941,9 +941,26 @@ module.exports = _errors.vangAf(async function handler(req, res) {
 
         /* ververs:true haalt de index vers bij Meta op (management-call),
            voor de knop op de instellingenpagina; anders de cache van 5 min. */
-        const staat = await _waTpl.klaarVoor(_waTpl.taalVanKlant(rec.fields), { forceer: body.ververs === true });
-        const eigenNummer = Boolean(await getClientWaPhoneNumberId(projectCode, AIRTABLE_TOKEN, BASE_ID, CLIENTS_TABLE));
+        let staat = await _waTpl.klaarVoor(_waTpl.taalVanKlant(rec.fields), { forceer: body.ververs === true });
+        const eigenPnid = await getClientWaPhoneNumberId(projectCode, AIRTABLE_TOKEN, BASE_ID, CLIENTS_TABLE);
+        const eigenNummer = Boolean(eigenPnid);
+        /* Een klant met een eigen nummer zendt vanaf ZIJN WABA. De toestand van
+           Helvaro's WABA zegt hem niets: lees die van hemzelf, en dien wat
+           ontbreekt meteen in. */
+        let eigenStaat = null;
+        if (eigenNummer) {
+          try {
+            const wabaId = await getClientWabaId(projectCode);
+            const eigenToken = await _waToken.voorNummer(eigenPnid);
+            if (wabaId && eigenToken) {
+              eigenStaat = await _waEigenTpl.toestand({ wabaId, token: eigenToken, taal: _waTpl.taalVanKlant(rec.fields) });
+              staat = eigenStaat;
+            }
+          } catch (e) { console.error('[wa-readiness] eigen WABA:', e && e.message); }
+        }
         return res.status(200).json({
+          eigenToestand: eigenStaat ? { onbekend: eigenStaat.onbekend === true, ingediend: eigenStaat.ingediend || 0 } : undefined,
+
           eigenNummer,
           taal: staat.taal,
           gevraagd: staat.gevraagd,

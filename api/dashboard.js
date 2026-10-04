@@ -18982,6 +18982,10 @@ async function laadWhatsAppInstellingen(ververs) {
     });
     samen.textContent = tr(d.klaar ? 'set.wa.alles' : 'set.wa.wacht');
     samen.style.color = d.klaar ? 'var(--green-ink)' : '';
+    /* Een eigen nummer: zeg wat er zojuist voor hem gebeurde, en wat er mis is
+       als zijn koppeling de sjablonenlijst niet laat lezen. */
+    if (d.eigenToestand && d.eigenToestand.onbekend) { samen.textContent = tr('set.wa.eigenOnbekend'); samen.style.color = 'var(--warning-ink, #b45309)'; }
+    else if (d.eigenToestand && d.eigenToestand.ingediend > 0) { samen.textContent = tr('set.wa.zojuistIngediend', { n: d.eigenToestand.ingediend }); }
   } catch (e) {
     sub.textContent = tr('set.wa.fout');
   } finally {

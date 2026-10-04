@@ -45,4 +45,45 @@ async function zorgVoorSjablonen({ wabaId, token }) {
   return telling;
 }
 
-module.exports = { zorgVoorSjablonen };
+/* ── De toestand op de WABA van de klant zelf ─────────────────────────────
+   De instellingenpagina las tot 2026-10-04 de toestand van HELVARO's WABA, en
+   meldde bij een klant met een eigen nummer dus "klaar" terwijl er op zijn eigen
+   WABA geen enkel sjabloon stond. Dit leest de echte lijst van zijn WABA, en
+   dient wat ontbreekt meteen in (hooguit eens per zes uur). Zo hoeft er niet
+   eerst een antwoord te mislukken voordat er iets gebeurt. */
+const _tpl = require('./_wa-templates');
+
+/**
+ * @param {{ wabaId: string, token: string, taal: string }} o
+ * @returns {Promise<object>} dezelfde vorm als _wa-templates.bekijk(), plus
+ *          ingediend (aantal zojuist ingediend) en fout bij een onleesbare lijst.
+ */
+async function toestand({ wabaId, token, taal }) {
+  const waba = String(wabaId || '').trim();
+  let lijst;
+  try {
+    lijst = await _teksten.listTemplates(waba, token);
+  } catch (e) {
+    console.warn('[wa-sjablonen] lijst op eigen WABA mislukt:', waba, e && e.message);
+    return { ..._tpl.bekijk(taal, { templates: {}, bron: 'eigen-onbekend' }), klaar: false, onbekend: true, fout: String(e && e.message || e).slice(0, 200), ingediend: 0 };
+  }
+  const maakIndex = (items) => {
+    const templates = {};
+    for (const t of items) if (t && t.name && t.language) templates[`${t.name}::${t.language}`] = String(t.status || '').toUpperCase();
+    return { templates, bron: 'eigen' };
+  };
+  let staat = _tpl.bekijk(taal, maakIndex(lijst));
+  let ingediend = 0;
+  if (staat.ondersteund && staat.ontbreekt.length) {
+    try {
+      const r = await zorgVoorSjablonen({ wabaId: waba, token });
+      ingediend = r.ingediend || 0;
+      if (ingediend) staat = _tpl.bekijk(taal, maakIndex(await _teksten.listTemplates(waba, token)));
+    } catch (e) {
+      console.warn('[wa-sjablonen] indienen vanuit de instellingen mislukt:', e && e.message);
+    }
+  }
+  return { ...staat, ingediend };
+}
+
+module.exports = { zorgVoorSjablonen, toestand };

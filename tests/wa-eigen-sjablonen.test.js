@@ -37,11 +37,33 @@ const lees = (f) => fs.readFileSync(path.join(__dirname, '..', f), 'utf8');
      /tplR\.code === 'template_not_found' && clientPnid[\s\S]{0,900}code: 'templates_pending'/.test(leads), null);
 
   const i18n = require('../api/_i18n.js');
+  const i18n2 = i18n;
   for (const taal of ['nl', 'fr', 'en', 'de']) {
     const w = i18n.woordenboek(taal);
     ck(taal + ': uitleg voor templates_pending en template_not_found', !!w['wa.fout.templates_pending'] && !!w['wa.fout.template_not_found'], null);
   }
   ck('dashboard vertaalt per foutcode', /'wa\.fout\.' \+ \(d\.code \|\| ''\)/.test(lees('api/dashboard.js')), null);
 
+  /* De instellingen lezen de WABA van de klant zelf en dienen proactief in. */
+  {
+    let lijstCalls = 0, ingediendNa = false;
+    teksten.listTemplates = async () => { lijstCalls++; return lijstCalls === 1 ? [] : [{ name: 'followup_24h', language: 'nl_BE', status: 'PENDING' }]; };
+    teksten.dienIn = async () => { ingediendNa = true; return { bestaand: 0, resultaten: [{ action: 'created' }, { action: 'created' }] }; };
+    let vrij2 = true; lock.eenmalig = async () => { const v = vrij2; vrij2 = false; return v; };
+    delete require.cache[require.resolve('../api/_wa-eigen-templates')];
+    const mod2 = require('../api/_wa-eigen-templates');
+    const st = await mod2.toestand({ wabaId: '123456789', token: 'tok', taal: 'nl_BE' });
+    ck('eigen WABA leeg: er wordt ingediend', ingediendNa === true && st.ingediend === 2, st.ingediend);
+    ck('en de toestand daarna komt van de eigen WABA (onderweg, niet klaar)', st.bron === 'eigen' && st.klaar === false && st.regels.some((r) => r.toestand === 'onderweg'), st.regels && st.regels.map((r) => r.toestand));
+    teksten.listTemplates = async () => { throw new Error('list failed (HTTP 403): permission'); };
+    const kapot = await mod2.toestand({ wabaId: '123456789', token: 'tok', taal: 'nl_BE' });
+    ck('een onleesbare lijst: onbekend en nooit "klaar"', kapot.onbekend === true && kapot.klaar === false, kapot);
+    teksten.dienIn = echtDienIn; lock.eenmalig = echtEenmalig;
+    const l2 = fs.readFileSync(path.join(__dirname, '..', 'api', 'leads.js'), 'utf8');
+    ck('wa-readiness gebruikt de eigen WABA bij een eigen nummer', /eigenStaat = await _waEigenTpl\.toestand/.test(l2) && /staat = eigenStaat;/.test(l2));
+    const d2 = fs.readFileSync(path.join(__dirname, '..', 'api', 'dashboard.js'), 'utf8');
+    ck('de instellingen tonen "zojuist ingediend" en "onbekend"', /set\.wa\.zojuistIngediend/.test(d2) && /set\.wa\.eigenOnbekend/.test(d2));
+    for (const taal of ['nl', 'fr', 'en', 'de']) { const w = i18n2.woordenboek(taal); ck(taal + ': beide meldingen vertaald', !!w['set.wa.zojuistIngediend'] && !!w['set.wa.eigenOnbekend']); }
+  }
   console.log(`\n  ${pass} ok, ${fail} fout\n`); process.exit(fail ? 1 : 0);
 })();
