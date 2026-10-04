@@ -9314,6 +9314,17 @@ summary.ap-tpl-header:focus-visible { outline: 2px solid var(--accent); outline-
   transition: var(--transition);
 }
 .pd-mini:hover { background: var(--bg-card-alt); color: var(--text-primary); }
+.pd-filter { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; margin-bottom: 14px; }
+.pd-filter[hidden] { display: none; }
+.pd-zoek { flex: 0 1 320px; min-width: 200px; padding: 9px 12px; border: 1px solid var(--border); border-radius: var(--r-sm); background: var(--bg-card); color: var(--text-primary); font: inherit; font-size: 0.8667rem; }
+.pd-zoek:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.pd-chips { display: flex; gap: 6px; flex-wrap: wrap; }
+.pd-chip { padding: 7px 12px; border: 1px solid var(--border); border-radius: var(--r-lg); background: var(--bg-card); color: var(--text-secondary); font: inherit; font-size: 0.8rem; font-weight: 600; cursor: pointer; }
+.pd-chip:hover { color: var(--text-primary); border-color: rgba(var(--accent-rgb), 0.45); }
+.pd-chip.actief { background: var(--accent); border-color: var(--accent); color: var(--on-accent); }
+.pd-chip:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.pd-chip-n { font-weight: 700; opacity: 0.75; margin-left: 2px; }
+.pd-meer, .pd-geen-treffers { grid-column: 1 / -1; display: flex; justify-content: center; align-items: center; gap: 12px; padding: 18px; color: var(--text-secondary); }
 .pd-mini--gevaar { color: var(--red-ink); border-color: rgba(var(--error-rgb), 0.35); }
 .pd-mini--gevaar:hover { background: rgba(var(--error-rgb), 0.10); color: var(--red-ink); }
 .pd-leads { font-size: 0.8rem; color: var(--text-muted); }

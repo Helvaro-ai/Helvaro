@@ -2275,6 +2275,13 @@ ${faro.navCta}
           <button class="btn-icon btn-primary-sm" onclick="openPandModal()">${T('prop.add')}</button>
         </div>
 
+        <!-- Zoeken, filteren en bladeren (2026-10-04): met 150 wagens stond alles in
+             een muur van kaarten, zonder zoekveld. Alleen zichtbaar vanaf een
+             dozijn voertuigen; daaronder is een filter ruis. -->
+        <div class="pd-filter" id="pd-filter" hidden>
+          <input type="search" class="pd-zoek" id="pd-zoek" aria-label="${T('pd.zoek')}" placeholder="${T('pd.zoek')}" oninput="pdZoek(this.value)" autocomplete="off">
+          <div class="pd-chips" id="pd-chips" role="group" aria-label="${T('pd.filter')}"></div>
+        </div>
         <div class="pd-grid" id="pd-grid"></div>
       </div>
     </main>
@@ -17260,7 +17267,14 @@ function renderPanden() {
     return 'beschikbaar';
   }
 
-  grid.innerHTML = pandState.panden.map(function (p) {
+  var _zicht = pdFiltered();
+  var _toon = pandState.toon || 36;
+  pdRenderFilter(_zicht.length);
+  if (!_zicht.length) {
+    grid.innerHTML = '<div class="pd-geen-treffers">' + escHtml(tr('pd.geenTreffers')) + ' <button type="button" class="btn-icon" onclick="pdWisFilter()">' + escHtml(tr('pd.wisFilter')) + '</button></div>';
+    return;
+  }
+  grid.innerHTML = _zicht.slice(0, _toon).map(function (p) {
     /* De statuskleur. Beide markten hebben drie standen die hetzelfde
        BETEKENEN -- vrij, bezet-maar-mogelijk, weg -- dus dezelfde drie klassen.
        Een vierde klasse zou drie CSS-regels vragen voor iets dat niets nieuws
@@ -17355,8 +17369,52 @@ function renderPanden() {
       +     (isDealer() ? '<button class="pd-mini pd-mini--gevaar" onclick="deletePand(&quot;' + pandEsc(p.code) + '&quot;)">' + escHtml(tr('btn.verwijderen')) + '</button>' : '')
       +   '</div>'
       + '</div></div>';
+  }).join('') + (_zicht.length > _toon
+    ? '<div class="pd-meer"><button type="button" class="btn-icon" onclick="pdToonMeer()">' + escHtml(tr('pd.toonMeer', { n: Math.min(36, _zicht.length - _toon), rest: _zicht.length - _toon })) + '</button></div>'
+    : '');
+}
+
+/* Zoeken, filteren en bladeren op de voorraadpagina. Alles client-side: de lijst
+   staat al in pandState.panden, en een zoekopdracht hoeft geen server te raken. */
+function pdMatchStatus(p, f) {
+  if (f === 'alle') return !p.gearchiveerd;
+  if (f === 'archief') return !!p.gearchiveerd;
+  if (p.gearchiveerd) return false;
+  if (f === 'beschikbaar') return p.status === 'beschikbaar';
+  if (f === 'gereserveerd') return p.status === 'gereserveerd' || p.status === 'onder bod';
+  if (f === 'verkocht') return p.status === 'verkocht' || p.status === 'verhuurd' || p.status === 'uit aanbod';
+  return true;
+}
+function pdFiltered() {
+  var q = String(pandState.zoek || '').trim().toLowerCase();
+  var f = pandState.filter || 'alle';
+  return (pandState.panden || []).filter(function (p) {
+    if (!pdMatchStatus(p, f)) return false;
+    if (!q) return true;
+    return [p.merk, p.model, p.uitvoering, p.code, p.kleur, p.brandstof, p.carrosserie, p.adres, p.plaats, p.postcode]
+      .some(function (x) { return String(x || '').toLowerCase().indexOf(q) !== -1; });
+  });
+}
+function pdRenderFilter(aantalZichtbaar) {
+  var balk = document.getElementById('pd-filter');
+  var chips = document.getElementById('pd-chips');
+  if (!balk || !chips) return;
+  var alle = pandState.panden || [];
+  balk.hidden = alle.length < 12;
+  if (balk.hidden) return;
+  var tel = function (f) { return alle.filter(function (p) { return pdMatchStatus(p, f); }).length; };
+  var defs = ['alle', 'beschikbaar', 'gereserveerd', 'verkocht', 'archief'];
+  chips.innerHTML = defs.map(function (f) {
+    var n = tel(f);
+    if (f === 'archief' && !n) return '';
+    return '<button type="button" class="pd-chip' + ((pandState.filter || 'alle') === f ? ' actief' : '') + '" aria-pressed="' + ((pandState.filter || 'alle') === f) + '" onclick="pdZetFilter(\\'' + f + '\\')">'
+      + escHtml(tr('pd.f.' + f)) + ' <span class="pd-chip-n">' + n + '</span></button>';
   }).join('');
 }
+function pdZoek(w) { pandState.zoek = w; pandState.toon = 36; renderPanden(); }
+function pdZetFilter(f) { pandState.filter = f; pandState.toon = 36; renderPanden(); }
+function pdWisFilter() { pandState.zoek = ''; pandState.filter = 'alle'; pandState.toon = 36; var z = document.getElementById('pd-zoek'); if (z) z.value = ''; renderPanden(); }
+function pdToonMeer() { pandState.toon = (pandState.toon || 36) + 36; renderPanden(); }
 
 function copyPandLink(code) {
   var link = pandLink(code);
@@ -18935,6 +18993,7 @@ async function waesKoppelen() {
 }
 
 var _waInstellingenBezig = false;
+var _waRondes = 0;
 async function laadWhatsAppInstellingen(ververs) {
   var nummer = document.getElementById('set-wa-nummer');
   var sub    = document.getElementById('set-wa-tpl-sub');
@@ -18986,6 +19045,12 @@ async function laadWhatsAppInstellingen(ververs) {
        als zijn koppeling de sjablonenlijst niet laat lezen. */
     if (d.eigenToestand && d.eigenToestand.onbekend) { samen.textContent = tr('set.wa.eigenOnbekend'); samen.style.color = 'var(--warning-ink, #b45309)'; }
     else if (d.eigenToestand && d.eigenToestand.ingediend > 0) { samen.textContent = tr('set.wa.zojuistIngediend', { n: d.eigenToestand.ingediend }); }
+    /* Het indienen gaat in rondes (60-secondengrens van de server): is er nog wat
+       over, dan vragen we zelf de volgende ronde, hooguit tien keer. */
+    if (d.eigenToestand && d.eigenToestand.bezig && (_waRondes || 0) < 10) {
+      _waRondes = (_waRondes || 0) + 1;
+      setTimeout(function () { laadWhatsAppInstellingen(false); }, 2500);
+    } else { _waRondes = 0; }
   } catch (e) {
     sub.textContent = tr('set.wa.fout');
   } finally {

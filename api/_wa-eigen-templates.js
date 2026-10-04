@@ -9,14 +9,18 @@
 
    Dit dient de hele set in op de WABA van de klant, met het token van de
    klant. Idempotent (dienIn slaat over wat al bestaat, in welke status ook)
-   en hooguit eens per zes uur per WABA, zodat een reeks mislukte verzendingen
-   Meta niet blijft bestoken. Meta keurt utility-sjablonen meestal binnen
+   en in rondes van ~25 seconden die elk verdergaan waar de vorige stopte. Meta keurt utility-sjablonen meestal binnen
    minuten tot een paar uur goed. */
 
 const _teksten = require('./_wa-template-teksten');
 const _lock = require('./_lock');
 
-const ZES_UUR_MS = 6 * 60 * 60 * 1000;
+/* Een korte vergrendeling: alleen om te voorkomen dat twee tegelijk lopende
+   verzoeken dezelfde WABA dubbel bestoken. Eerst stond hier zes uur, en een
+   ronde die door de 60-secondengrens werd afgebroken kon daardoor pas na zes uur
+   verder. Nu gaat elke ronde door waar de vorige ophield. */
+const SLOT_MS = 30 * 1000;
+const RONDE_BUDGET_MS = 25 * 1000;
 
 /**
  * @param {{ wabaId: string, token: string }} o
@@ -27,15 +31,16 @@ async function zorgVoorSjablonen({ wabaId, token }) {
   if (!/^[0-9]{5,25}$/.test(waba) || !token) {
     return { ingediend: 0, bestond: 0, mislukt: 0, overgeslagen: true };
   }
-  const eerste = await _lock.eenmalig(`wa-sjablonen:${waba}`, ZES_UUR_MS);
+  const eerste = await _lock.eenmalig(`wa-sjablonen:${waba}`, SLOT_MS);
   if (!eerste) return { ingediend: 0, bestond: 0, mislukt: 0, overgeslagen: true };
 
-  const uit = await _teksten.dienIn({ wabaId: waba, token, commit: true });
+  const uit = await _teksten.dienIn({ wabaId: waba, token, commit: true, budgetMs: RONDE_BUDGET_MS });
   const r = uit.resultaten || [];
   const telling = {
     ingediend: r.filter((x) => x.action === 'created').length,
     bestond: r.filter((x) => x.action === 'skipped').length,
     mislukt: r.filter((x) => x.action === 'failed').length,
+    uitgesteld: r.filter((x) => x.action === 'deferred').length,
   };
   console.log('[wa-sjablonen] WABA', waba, '-', JSON.stringify(telling));
   if (telling.mislukt) {
@@ -83,7 +88,10 @@ async function toestand({ wabaId, token, taal }) {
       console.warn('[wa-sjablonen] indienen vanuit de instellingen mislukt:', e && e.message);
     }
   }
-  return { ...staat, ingediend };
+  /* bezig = er is zojuist iets ingediend en er ontbreekt nog wat: het scherm
+     vraagt dan zelf nog een ronde. Zonder nieuwe indiening (alles mislukt, of
+     een vergrendeling) nooit "bezig", anders blijft het scherm eindeloos draaien. */
+  return { ...staat, ingediend, bezig: ingediend > 0 && staat.ontbreekt.length > 0 };
 }
 
 module.exports = { zorgVoorSjablonen, toestand };

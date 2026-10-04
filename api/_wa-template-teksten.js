@@ -302,7 +302,8 @@ async function createTemplate(wabaId, token, tpl) {
  * @param {object} o  { wabaId, token, alleen?: string[] (namen), commit: boolean }
  * @returns {Promise<{bestaand:number, resultaten:Array}>}
  */
-async function dienIn({ wabaId, token, alleen, commit }) {
+async function dienIn({ wabaId, token, alleen, commit, budgetMs }) {
+  const begin = Date.now();
   if (!wabaId || !token) throw new Error('WABA_ID of token ontbreekt.');
   const bestaand = await listTemplates(wabaId, token);
   const opNaam = new Map(bestaand.map((t) => [`${t.name}::${t.language}`, t]));
@@ -311,6 +312,10 @@ async function dienIn({ wabaId, token, alleen, commit }) {
   for (const tpl of TEMPLATES) {
     if (filter && !filter.has(tpl.name)) continue;
     const key = `${tpl.name}::${tpl.language}`;
+    /* Een serverloze functie leeft 60 seconden; 24 sjablonen indienen past daar
+       niet altijd in. Binnen het budget stoppen we netjes, en de volgende ronde
+       gaat verder waar deze ophield (wat al bestaat wordt overgeslagen). */
+    if (budgetMs && commit && !opNaam.has(key) && Date.now() - begin > budgetMs) { resultaten.push({ name: tpl.name, language: tpl.language, action: 'deferred' }); continue; }
     if (opNaam.has(key)) {
       resultaten.push({ name: tpl.name, language: tpl.language, action: 'skipped', status: opNaam.get(key).status });
       continue;
@@ -322,7 +327,7 @@ async function dienIn({ wabaId, token, alleen, commit }) {
     } catch (e) {
       resultaten.push({ name: tpl.name, language: tpl.language, action: 'failed', error: String(e && e.message || e).slice(0, 300) });
     }
-    await new Promise((r) => setTimeout(r, 400));
+    await new Promise((r) => setTimeout(r, 250));
   }
   return { bestaand: bestaand.length, resultaten };
 }

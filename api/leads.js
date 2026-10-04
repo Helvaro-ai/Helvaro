@@ -959,7 +959,7 @@ module.exports = _errors.vangAf(async function handler(req, res) {
           } catch (e) { console.error('[wa-readiness] eigen WABA:', e && e.message); }
         }
         return res.status(200).json({
-          eigenToestand: eigenStaat ? { onbekend: eigenStaat.onbekend === true, ingediend: eigenStaat.ingediend || 0 } : undefined,
+          eigenToestand: eigenStaat ? { onbekend: eigenStaat.onbekend === true, ingediend: eigenStaat.ingediend || 0, bezig: eigenStaat.bezig === true } : undefined,
 
           eigenNummer,
           taal: staat.taal,
