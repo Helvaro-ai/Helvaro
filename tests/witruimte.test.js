@@ -21,4 +21,9 @@ ck('activiteit: leesbare maximale breedte', /max-width:\s*960px/.test(regel('.ac
 ck('identieke servergebeurtenissen worden één regel met teller', /const gegroepeerd = \[\]/.test(dash) && /activity-aantal/.test(dash) && /laatste\.type === ev\.type/.test(dash));
 ck('de voetnoot bij resultaten verdwijnt zonder cijfers', /#resultaten-grid:has\(\.empty-state\) ~ \.res-voetnoot \{ display: none; \}/.test(css) && dash.includes('class="res-voetnoot"'));
 ck('de doelkaart verschijnt pas als er iets te meten valt', /kaart\.hidden = !\(current > 0/.test(dash) && /\.revenue-goal-card\[hidden\] \{ display: none; \}/.test(css));
+/* Schaal (stresstest 2026-10-04: 145 wagens, 66 leads): zoeken, filteren en bladeren. */
+ck('voertuigen: zoekveld, statusfilters en "toon meer" (36 per keer)', /id="pd-zoek"/.test(dash) && /function pdFiltered\(\)/.test(dash) && /function pdToonMeer\(\)/.test(dash) && /_zicht\.slice\(0, _toon\)/.test(dash));
+ck('de filterbalk verschijnt pas vanaf 12 voertuigen', /balk\.hidden = alle\.length < 12/.test(dash));
+ck('leads: 50 per keer met "toon meer"', /state\.filteredLeads\.slice\(0, _leadsToon\)/.test(dash) && /leads-meer-rij/.test(dash) && /state\.leadsToon = 50;/.test(dash));
+for (const taal of ['nl', 'fr', 'en', 'de']) { const w = require('../api/_i18n.js').woordenboek(taal); ck(taal + ': filter- en pagineringsteksten', ['pd.zoek', 'pd.f.alle', 'pd.f.archief', 'pd.toonMeer', 'pd.wisFilter', 'pd.geenTreffers'].every((k) => w[k])); }
 console.log(`\n  ${pass} ok, ${fail} fout\n`); process.exit(fail ? 1 : 0);

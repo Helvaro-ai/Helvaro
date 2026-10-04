@@ -8601,6 +8601,7 @@ function populateBronFilter() {
 }
 
 function applyFilters() {
+  state.leadsToon = 50;   // een nieuwe filterkeuze begint weer bij de eerste 50
   const q = state.searchQ.toLowerCase();
   const statusF = document.getElementById('filter-status')?.value || '';
   const qualF = document.getElementById('filter-qualified')?.value || '';
@@ -8988,7 +8989,10 @@ function renderTable() {
     return;
   }
 
-  tbody.innerHTML = state.filteredLeads.map((lead, i) => {
+  /* Bladeren: 50 leads per keer. Alle leads tegelijk tekenen werd zwaar vanaf
+     enkele honderden rijen (elke rij heeft knoppen, badges en een balk). */
+  const _leadsToon = state.leadsToon || 50;
+  tbody.innerHTML = state.filteredLeads.slice(0, _leadsToon).map((lead, i) => {
     const delay = i < 10 ? \`style="animation-delay:\${i * 40}ms"\` : '';
     // Age badge for table
     const ageDays = leadAgeDays(lead);
@@ -9031,7 +9035,10 @@ function renderTable() {
         </td>
       </tr>
     \`;
-  }).join('');
+  }).join('') + (state.filteredLeads.length > _leadsToon
+    ? '<tr class="leads-meer-rij"><td colspan="11" style="text-align:center;padding:16px"><button type="button" class="btn-icon" onclick="state.leadsToon = (state.leadsToon || 50) + 50; renderTable();">'
+      + escHtml(tr('pd.toonMeer', { n: Math.min(50, state.filteredLeads.length - _leadsToon), rest: state.filteredLeads.length - _leadsToon })) + '</button></td></tr>'
+    : '');
 }
 
 /* ============================================================
