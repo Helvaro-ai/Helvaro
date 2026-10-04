@@ -9314,6 +9314,19 @@ summary.ap-tpl-header:focus-visible { outline: 2px solid var(--accent); outline-
   transition: var(--transition);
 }
 .pd-mini:hover { background: var(--bg-card-alt); color: var(--text-primary); }
+.mc-overlay { position: fixed; inset: 0; z-index: 1200; display: none; align-items: center; justify-content: center; background: rgba(0,0,0,0.55); padding: 24px; }
+.mc-overlay.open { display: flex; }
+.mc-modal { width: min(640px, 100%); max-height: 90vh; overflow: auto; background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--r-lg); padding: 20px 22px; display: flex; flex-direction: column; gap: 10px; }
+.mc-kop { display: flex; justify-content: space-between; align-items: center; font-weight: 700; font-size: 1.0667rem; color: var(--text-primary); }
+.mc-x { border: 0; background: none; color: var(--text-secondary); font-size: 1.4rem; line-height: 1; cursor: pointer; }
+.mc-rij { display: flex; gap: 12px; font-size: 0.8667rem; }
+.mc-label { font-size: 0.7333rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; color: var(--text-muted); min-width: 56px; }
+.mc-waarde { color: var(--text-primary); word-break: break-all; }
+.mc-veld { width: 100%; padding: 10px 12px; border: 1px solid var(--border); border-radius: var(--r-sm); background: var(--bg-card-alt); color: var(--text-primary); font: inherit; font-size: 0.9333rem; }
+.mc-veld:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.mc-tekst { resize: vertical; min-height: 140px; line-height: 1.5; }
+.mc-noot { font-size: 0.8rem; color: var(--text-secondary); }
+.mc-acties { display: flex; justify-content: flex-end; gap: 10px; margin-top: 4px; }
 .pd-filter { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; margin-bottom: 14px; }
 .pd-filter[hidden] { display: none; }
 .pd-zoek { flex: 0 1 320px; min-width: 200px; padding: 9px 12px; border: 1px solid var(--border); border-radius: var(--r-sm); background: var(--bg-card); color: var(--text-primary); font: inherit; font-size: 0.8667rem; }

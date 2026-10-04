@@ -88,9 +88,12 @@ console.log('\n— geen enkele weg naar ONS support loopt nog via de mailclient 
 
 console.log('\n— maar mail aan een LEAD blijft van de makelaar zelf —');
 {
-  ck('de opvolg- en offertemail blijven een mailto',
-     /mailtoOpvolging = 'mailto:\?subject=Opvolging/.test(html)
-     && /mailtoOfferte = 'mailto:\?subject=Offerte/.test(html), null);
+  /* Sinds 2026-10-04: een composer die vanuit het gekoppelde adres van de makelaar
+     verstuurt (email-send-lead), met mailto als terugval zolang er geen mailbox is
+     gekoppeld. Nog steeds nooit via de supportroute van Helvaro. */
+  ck('de opvolg- en offertemail openen de composer, met mailto als terugval',
+     /function mailLeadOpen\(/.test(html) && /window\.location\.href = 'mailto:'/.test(html)
+     && /mailLeadOpen\('[^']*', 'opvolging'\)/.test(html) && /mailLeadOpen\('[^']*', 'offerte'\)/.test(html), null);
   ck('en lopen niet via onze server',
      !/mode: 'support'[\s\S]{0,400}Opvolging/.test(html), null);
 }

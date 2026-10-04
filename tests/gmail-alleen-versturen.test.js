@@ -99,5 +99,24 @@ process.env.GOOGLE_REDIRECT_URI = 'https://app.example/api/gcal'; process.env.SE
   ck('en de ontvanger moet het adres van die lead zijn', /leadMail !== String\(body\.to/.test(blok) && /ontvanger_klopt_niet/.test(blok));
   ck('en een afgemelde lead (STOP) krijgt niets', /_optout\.isAfgemeld\(lf\)/.test(blok) && /afgemeld/.test(blok));
   ck('afkoppelen trekt ook de gmail-send-toestemming in bij Google', /p\.naam === 'gmail' \|\| p\.naam === 'gmail-send'/.test(fs.readFileSync(path.join(__dirname, '..', 'api', '_email', 'mailbox.js'), 'utf8')));
+  /* ── Het scherm ── */
+  const dash = fs.readFileSync(path.join(__dirname, '..', 'api', 'dashboard.js'), 'utf8');
+  ck('Setup: een tweede koppelknop "alleen versturen" (provider gmail-send)', /mailKoppel\(\\\\'gmail-send\\\\'\)/.test(dash));
+  ck('verbonden met alleen versturen: geen synchroniseerknop en geen automatisch antwoord', /d\.alleenVersturen\s*\?\s*\(gmail && gmail\.beschikbaar/.test(dash) && /d\.alleenVersturen \? '' : '<div class="settings-row"><div><div class="settings-label">' \+ escHtml\(tr\('mail\.auto'\)\)/.test(dash));
+  const lm = dash.slice(dash.indexOf('async function loadMailStatus()'), dash.indexOf('/* ── Instellingen: websiteassistent'));
+  ck('loadMailStatus declareert zelf var gmailSend (een eerdere versie zette hem in de verkeerde functie)', /var gmailSend = /.test(lm) && (dash.match(/var gmailSend = /g) || []).length === 1, (dash.match(/var gmailSend = /g) || []).length);
+  ck('de handtekening blijft ook bij alleen versturen', /mail-handtekening/.test(dash));
+  ck('leadpaneel: Opvolging en Offerte openen de composer (geen mailto met vaste Nederlandse tekst meer)', /mailLeadOpen\('/.test(dash) && !/Hallo ' \+ naamRaw \+ ', bedankt voor uw interesse/.test(dash));
+  ck('de composer stuurt via email-send-lead met een idempotentiesleutel', /mode: 'email-send-lead'[\s\S]{0,200}idempotencyKey: _mailLead\.idem/.test(dash));
+  ck('zonder gekoppelde mailbox of zonder adres valt het terug op mailto, nu met ontvanger', /'mailto:' \+ encodeURIComponent\(lead\.email \|\| ''\)/.test(dash));
+  const i18n = require('../api/_i18n.js');
+  const sleutels = ['mail.koppel.gmailSend', 'mail.koppel.upgrade', 'mail.verbondenSend', 'mail.sendOnly.sub', 'mail.sendOnly.uitleg', 'mail.provider.gmail-send',
+    'ml.opvolging.onderwerp', 'ml.opvolging.tekst', 'ml.offerte.onderwerp', 'ml.offerte.tekst', 'ml.titel', 'ml.van', 'ml.aan', 'ml.onderwerp', 'ml.bericht', 'ml.verstuur', 'ml.verstuurd', 'ml.leeg',
+    'ml.alleenVersturen', 'ml.fout.algemeen', 'ml.fout.niet_verbonden', 'ml.fout.reauth_required', 'ml.fout.afgemeld', 'ml.fout.ontvanger_klopt_niet'];
+  for (const taal of ['nl', 'fr', 'en', 'de']) { const w = i18n.woordenboek(taal); const mist = sleutels.filter((k) => !w[k] || w[k] === k); ck(taal + ': alle teksten bestaan', mist.length === 0, mist); }
+  const en = i18n.woordenboek('en');
+  ck('de Engelse mailtekst is Engels (geen "bedankt")', !/bedankt|interesse/i.test(en['ml.opvolging.tekst'] + en['ml.offerte.tekst']));
+  const priv = fs.readFileSync(path.join(__dirname, '..', 'api', 'privacy.js'), 'utf8');
+  ck('de privacyverklaring beschrijft "alleen versturen" in nl en en', /alleen versturen[\s\S]{0,200}gmail\.send/.test(priv) && /send only[\s\S]{0,200}gmail\.send/.test(priv));
   console.log(`\n  ${pass} ok, ${fail} fout\n`); process.exit(fail ? 1 : 0);
 })();

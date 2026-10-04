@@ -9360,10 +9360,9 @@ function openPanel(lead) {
     const waLink = waPhone
       ? 'https://wa.me/' + waPhone + '?text=Hallo%20' + naam + '%2C%20bedankt%20voor%20uw%20interesse.'
       : '#';
-    const opvolgingBody = encodeURIComponent('Hallo ' + naamRaw + ', bedankt voor uw interesse. Ik wilde even opvolgen over ons gesprek. Wanneer schikt het u voor een korte call?');
-    const offerteBody = encodeURIComponent('Hallo ' + naamRaw + ', zoals besproken stuur ik u hierbij meer informatie over onze diensten. Heeft u nog vragen?');
-    const mailtoOpvolging = 'mailto:?subject=Opvolging%20' + naam + '&body=' + opvolgingBody;
-    const mailtoOfferte = 'mailto:?subject=Offerte%20' + naam + '&body=' + offerteBody;
+    /* De mailknoppen openen de composer (mailLeadOpen): vanuit het gekoppelde
+       adres van de dealer, met de tekst in de taal van het scherm. Dat waren
+       twee mailto-links met vaste Nederlandse tekst en zonder ontvanger. */
     const telLink = lead.telefoon ? 'tel:' + escHtml(lead.telefoon) : '#';
     bodyHTML += \`
       <div class="panel-section">
@@ -9371,8 +9370,8 @@ function openPanel(lead) {
         <div class="panel-quick-actions">
           <a class="panel-quick-btn" href="\${telLink}">\${escHtml(tr('pnl.bellen'))}</a>
           <a class="panel-quick-btn" href="\${waLink}" target="_blank" rel="noopener">WhatsApp</a>
-          <a class="panel-quick-btn email-btn" href="\${mailtoOpvolging}">\${escHtml(tr('pnl.opvolging'))}</a>
-          <a class="panel-quick-btn email-btn" href="\${mailtoOfferte}">\${escHtml(tr('pnl.offerte'))}</a>
+          <button type="button" class="panel-quick-btn email-btn" onclick="mailLeadOpen('\${escJs(String(lead.id))}', 'opvolging')">\${escHtml(tr('pnl.opvolging'))}</button>
+          <button type="button" class="panel-quick-btn email-btn" onclick="mailLeadOpen('\${escJs(String(lead.id))}', 'offerte')">\${escHtml(tr('pnl.offerte'))}</button>
         </div>
       </div>
     \`;
@@ -14210,6 +14209,73 @@ async function verstuurMail() {
 }
 
 /* ── Instellingen: mailbox ──────────────────────────────────────────────── */
+/* ── Een mail aan een lead vanuit het panel ───────────────────────────────
+   Is er een mailbox gekoppeld (volledig of alleen versturen) en kent de lead
+   een e-mailadres, dan opent dit een composer en gaat de mail vanuit het adres
+   van de dealer. Anders valt het terug op mailto, nu wel met de ontvanger en in
+   de taal van het scherm. De ontvanger staat vast op het adres van de lead: de
+   server controleert dat opnieuw (email-send-lead). */
+var _mailLead = null;
+async function mailLeadOpen(leadId, soort) {
+  var lead = (state.leads || []).find(function (l) { return String(l.id) === String(leadId); });
+  if (!lead) return;
+  var naam = lead.naam || '';
+  var onderwerp = tr('ml.' + soort + '.onderwerp', { naam: naam });
+  var tekst = tr('ml.' + soort + '.tekst', { naam: naam });
+  var mailto = function () {
+    window.location.href = 'mailto:' + encodeURIComponent(lead.email || '') + '?subject=' + encodeURIComponent(onderwerp) + '&body=' + encodeURIComponent(tekst);
+  };
+  if (!lead.email) { mailto(); return; }
+  if (!externState.mail) { try { externState.mail = await convVraag({ mode: 'email-status' }); } catch (e) { externState.mail = null; } }
+  if (!externState.mail || !externState.mail.verbonden || externState.mail.foutCode === 'reauth_required') { mailto(); return; }
+  _mailLead = { leadId: String(lead.id), aan: lead.email, idem: 'ml' + Date.now().toString(36) + Math.random().toString(36).slice(2, 8) };
+  var ov = document.getElementById('mail-compose-overlay');
+  if (!ov) {
+    ov = document.createElement('div');
+    ov.id = 'mail-compose-overlay'; ov.className = 'mc-overlay';
+    ov.setAttribute('role', 'dialog'); ov.setAttribute('aria-modal', 'true');
+    ov.addEventListener('click', function (e) { if (e.target === ov) mailLeadSluit(); });
+    document.body.appendChild(ov);
+  }
+  var van = externState.mail.adres || '';
+  ov.innerHTML = '<div class="mc-modal">'
+    + '<div class="mc-kop"><span>' + escHtml(tr('ml.titel')) + '</span><button type="button" class="mc-x" onclick="mailLeadSluit()" aria-label="' + escHtml(tr('btn.sluiten')) + '">&times;</button></div>'
+    + '<div class="mc-rij"><span class="mc-label">' + escHtml(tr('ml.van')) + '</span><span class="mc-waarde">' + escHtml(van) + '</span></div>'
+    + '<div class="mc-rij"><span class="mc-label">' + escHtml(tr('ml.aan')) + '</span><span class="mc-waarde">' + escHtml(lead.email) + '</span></div>'
+    + '<label class="mc-label" for="mc-onderwerp">' + escHtml(tr('ml.onderwerp')) + '</label>'
+    + '<input id="mc-onderwerp" class="mc-veld" type="text" maxlength="200" value="' + escHtml(onderwerp) + '">'
+    + '<label class="mc-label" for="mc-tekst">' + escHtml(tr('ml.bericht')) + '</label>'
+    + '<textarea id="mc-tekst" class="mc-veld mc-tekst" rows="9" maxlength="10000">' + escHtml(tekst) + '</textarea>'
+    + (externState.mail.alleenVersturen ? '<div class="mc-noot">' + escHtml(tr('ml.alleenVersturen')) + '</div>' : '')
+    + '<div class="mc-acties"><button type="button" class="btn-icon" onclick="mailLeadSluit()">' + escHtml(tr('btn.annuleren')) + '</button>'
+    + '<button type="button" class="btn-icon btn-primary-sm" id="mc-verstuur" onclick="mailLeadVerstuur()">' + escHtml(tr('ml.verstuur')) + '</button></div>'
+    + '</div>';
+  ov.classList.add('open');
+  setTimeout(function () { var t = document.getElementById('mc-tekst'); if (t) t.focus(); }, 50);
+}
+function mailLeadSluit() {
+  var ov = document.getElementById('mail-compose-overlay');
+  if (ov) ov.classList.remove('open');
+}
+async function mailLeadVerstuur() {
+  if (!_mailLead) return;
+  var knop = document.getElementById('mc-verstuur');
+  var onderwerp = (document.getElementById('mc-onderwerp') || {}).value || '';
+  var tekst = (document.getElementById('mc-tekst') || {}).value || '';
+  if (!onderwerp.trim() || !tekst.trim()) { toast(tr('ml.leeg'), 'error'); return; }
+  if (knop) { knop.disabled = true; knop.textContent = tr('conv.versturen'); }
+  try {
+    await convVraag({ mode: 'email-send-lead', leadId: _mailLead.leadId, to: _mailLead.aan, subject: onderwerp, text: tekst, idempotencyKey: _mailLead.idem });
+    toast(tr('ml.verstuurd'), 'success');
+    mailLeadSluit();
+    _mailLead = null;
+  } catch (e) {
+    var sleutel = 'ml.fout.' + (e && e.code || '');
+    toast(T_DICT[sleutel] !== undefined ? tr(sleutel) : tr('ml.fout.algemeen'), 'error');
+    if (knop) { knop.disabled = false; knop.textContent = tr('ml.verstuur'); }
+  }
+}
+
 async function loadMailStatus() {
   var el = document.getElementById('mail-instellingen');
   if (!el) return;
@@ -14218,25 +14284,33 @@ async function loadMailStatus() {
   catch (e) { el.innerHTML = '<div class="settings-label-sub">' + escHtml(e.code === 'schema_ontbreekt' || e.code === 'geen_tabel' ? tr('mail.schema') : e.message) + '</div>'; return; }
   externState.mail = d;
   var gmail = (d.providers || []).find(function (p) { return p.naam === 'gmail'; });
+  var gmailSend = (d.providers || []).find(function (p) { return p.naam === 'gmail-send'; });
   var ms = (d.providers || []).find(function (p) { return p.naam === 'microsoft'; });
   var status;
   if (d.verbonden && d.foutCode === 'reauth_required') status = '<span class="mail-staat let">' + escHtml(tr('mail.reauth', { adres: d.adres })) + '</span>';
+  else if (d.verbonden && d.alleenVersturen) status = '<span class="mail-staat ok">' + escHtml(tr('mail.verbondenSend', { adres: d.adres })) + '</span>'
+    + '<span class="settings-label-sub"> · ' + escHtml(tr('mail.sendOnly.sub')) + '</span>';
   else if (d.verbonden) status = '<span class="mail-staat ok">' + escHtml(tr('mail.verbonden', { adres: d.adres })) + '</span>'
     + '<span class="settings-label-sub"> · ' + escHtml(d.realtime ? tr('mail.realtime') : tr('inv.laatst', { t: d.laatsteSync ? timeAgo(new Date(d.laatsteSync)) : tr('inv.nooit') })) + '</span>';
   else status = '<span class="settings-label-sub">' + escHtml(tr('mail.niet')) + '</span>';
   var fout = d.verbonden && d.fout && d.laatsteResultaat === 'failed' ? '<div class="inv-fout">' + escHtml(tr('inv.laatstefout', { fout: d.fout })) + '</div>' : '';
   var knoppen = d.verbonden
-    ? '<button class="btn-icon" onclick="mailSyncNu()">' + escHtml(tr('mail.sync')) + '</button> <button class="btn-icon mail-ontkoppel" onclick="mailOntkoppel()">' + escHtml(tr('set.gcal.disc')) + '</button>'
+    ? (d.alleenVersturen
+        ? (gmail && gmail.beschikbaar ? '<button class="btn-icon mail-koppel" onclick="mailKoppel(\\'gmail\\')">' + escHtml(tr('mail.koppel.upgrade')) + '</button> ' : '')
+        : '<button class="btn-icon" onclick="mailSyncNu()">' + escHtml(tr('mail.sync')) + '</button> ')
+      + '<button class="btn-icon mail-ontkoppel" onclick="mailOntkoppel()">' + escHtml(tr('set.gcal.disc')) + '</button>'
     : ((gmail && gmail.beschikbaar) || (ms && ms.beschikbaar)
       ? ((gmail && gmail.beschikbaar) ? '<button class="btn-icon mail-koppel" onclick="mailKoppel(\\'gmail\\')">' + escHtml(tr('mail.koppel.gmail')) + '</button>' : '')
+        + ((gmailSend && gmailSend.beschikbaar) ? ' <button class="btn-icon mail-koppel" onclick="mailKoppel(\\'gmail-send\\')" title="' + escHtml(tr('mail.sendOnly.uitleg')) + '">' + escHtml(tr('mail.koppel.gmailSend')) + '</button>' : '')
         + ((ms && ms.beschikbaar) ? ' <button class="btn-icon mail-koppel" onclick="mailKoppel(\\'microsoft\\')">' + escHtml(tr('mail.koppel.ms')) + '</button>' : '')
       : '<span class="settings-label-sub">' + escHtml(tr('mail.nietGeconfigureerd')) + '</span>');
   el.innerHTML = '<div class="settings-row"><div><div class="settings-label">' + escHtml(tr('mail.titel')) + '</div><div>' + status + '</div></div><div class="mail-knoppen">' + knoppen + '</div></div>'
     + fout
     + '<div class="mail-provider-lijst">' + (d.providers || []).map(function (p) { return '<span class="conv-kanaal-tag">' + escHtml(tr('mail.provider.' + p.naam)) + ': ' + escHtml(tr(p.beschikbaar ? 'mail.beschikbaar' : 'mail.binnenkort')) + '</span>'; }).join(' ') + '</div>'
     + (d.verbonden ? (
-      '<div class="settings-row"><div><div class="settings-label">' + escHtml(tr('mail.auto')) + '</div><div class="settings-label-sub">' + escHtml(tr('mail.auto.sub')) + '</div></div>'
-      + '<label class="mail-schakel"><input type="checkbox" id="mail-auto" ' + (d.autoAntwoord ? 'checked' : '') + ' onchange="mailInstelling()"><span>' + escHtml(tr(d.autoAntwoord ? 'mail.aan' : 'mail.uit')) + '</span></label></div>'
+      /* Automatisch antwoorden vraagt LEZEN; bij "alleen versturen" bestaat die rij niet. */
+      (d.alleenVersturen ? '' : '<div class="settings-row"><div><div class="settings-label">' + escHtml(tr('mail.auto')) + '</div><div class="settings-label-sub">' + escHtml(tr('mail.auto.sub')) + '</div></div>'
+      + '<label class="mail-schakel"><input type="checkbox" id="mail-auto" ' + (d.autoAntwoord ? 'checked' : '') + ' onchange="mailInstelling()"><span>' + escHtml(tr(d.autoAntwoord ? 'mail.aan' : 'mail.uit')) + '</span></label></div>')
       + '<div class="settings-row mail-handtekening-rij"><div style="flex:1"><div class="settings-label">' + escHtml(tr('mail.handtekening')) + '</div>'
       + '<textarea id="mail-handtekening" class="panel-reply-input" rows="3" maxlength="2000">' + escHtml(d.handtekening || '') + '</textarea>'
       + '<button class="btn-icon" style="margin-top:8px" onclick="mailInstelling()">' + escHtml(tr('btn.opslaan')) + '</button></div></div>'

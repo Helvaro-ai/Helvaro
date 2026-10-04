@@ -268,8 +268,8 @@ function render(lang) {
 /* 2026-10-03: tweede herontwerp van het inlogpodium (formulier gecentreerd,
    kop boven het beeld, diavoorstelling zonder timer of animatie, pauzeknop weg).
    -1.099 bytes. Vorige waarden: 446606 bytes / 11d84a20e8b0a159. */
-const CSS_BYTES = 457654;
-const CSS_SHA   = 'e5ecb44bc3f45a93';
+const CSS_BYTES = 459131;
+const CSS_SHA   = '5fafd384bd127b82';
 
 (async () => {
   console.log('\n  het CSS-blok is precies wat er uit dashboard.js kwam');
