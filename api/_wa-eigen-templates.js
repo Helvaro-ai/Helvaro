@@ -31,7 +31,7 @@ async function zorgVoorSjablonen({ wabaId, token }) {
   if (!/^[0-9]{5,25}$/.test(waba) || !token) {
     return { ingediend: 0, bestond: 0, mislukt: 0, overgeslagen: true };
   }
-  const eerste = await _lock.eenmalig(`wa-sjablonen:${waba}`, SLOT_MS);
+  const eerste = await _lock.eenmalig(`wa-sjablonen-ronde:${waba}`, SLOT_MS);
   if (!eerste) return { ingediend: 0, bestond: 0, mislukt: 0, overgeslagen: true };
 
   const uit = await _teksten.dienIn({ wabaId: waba, token, commit: true, budgetMs: RONDE_BUDGET_MS });
