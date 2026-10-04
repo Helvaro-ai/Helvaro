@@ -34,6 +34,30 @@ class MailFout extends Error {
 
 function isConfigured() { return _gcal.isConfigured(); }
 
+/* Alleen versturen (2026-10-04). Google rekent gmail.readonly tot de "restricted"
+   scopes (een jaarlijkse beveiligingsbeoordeling, CASA, voor elke app die hem
+   gebruikt) en gmail.send tot de "sensitive" scopes (gewone app-verificatie).
+   Wie alleen wil dat Helvaro vanuit zijn eigen adres mailt, hoeft dus niet te
+   wachten op de zware route: dit leest NIETS uit de mailbox. Antwoorden van de
+   lead komen gewoon in zijn eigen Gmail binnen. */
+const SEND_SCOPES = [
+  'openid', 'email',
+  'https://www.googleapis.com/auth/gmail.send',
+].join(' ');
+
+function getAuthUrlMet(scopes, state) {
+  const p = new URLSearchParams({
+    client_id: process.env.GOOGLE_CLIENT_ID,
+    redirect_uri: process.env.GOOGLE_REDIRECT_URI || '',
+    response_type: 'code',
+    scope: scopes,
+    access_type: 'offline',
+    prompt: 'consent',
+    state,
+  });
+  return `https://accounts.google.com/o/oauth2/v2/auth?${p.toString()}`;
+}
+
 function getAuthUrl(state) {
   const p = new URLSearchParams({
     client_id: process.env.GOOGLE_CLIENT_ID,
@@ -270,8 +294,22 @@ async function stopWatch(accessToken) {
 const wisselCode = (code) => _gcal.exchangeCode(code);
 const vernieuwToken = (refreshToken) => _gcal.getAccessToken(refreshToken);
 
-module.exports = {
+const gmail = {
   naam: 'gmail', beschikbaar: true, SCOPES, MailFout, wisselCode, vernieuwToken,
   isConfigured, getAuthUrl, profiel, nieuweBerichten, haal, verstuur, watch, stopWatch, pushTopic, haalBijlage,
   _test: { bijlagenUit, parseBericht, tekstUit, zonderCitaat, decodeerKop, bouwRfc822, kopVeilig, adres, htmlNaarTekst },
 };
+
+/* Dezelfde provider, maar alleen versturen. De leesfuncties bestaan hier
+   bewust niet: wie ze aanroept, krijgt een fout in plaats van een stille lege
+   lijst, en mailbox.js slaat lezen, sync en push voor deze provider over. */
+const nietBeschikbaar = () => { throw new MailFout('Deze koppeling mag alleen versturen, niet lezen.', 'alleen_versturen', 403); };
+gmail.sendOnly = Object.assign({}, gmail, {
+  naam: 'gmail-send',
+  SCOPES: SEND_SCOPES,
+  nietLezen: true,
+  getAuthUrl: (state) => getAuthUrlMet(SEND_SCOPES, state),
+  profiel: nietBeschikbaar, nieuweBerichten: nietBeschikbaar, haal: nietBeschikbaar, haalBijlage: nietBeschikbaar,
+  watch: async () => null, stopWatch: async () => {}, pushTopic: () => '',
+});
+module.exports = gmail;

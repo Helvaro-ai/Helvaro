@@ -4,6 +4,7 @@
  *
  * ── Providers ───────────────────────────────────────────────────────────────
  *   gmail      Gmail en Google Workspace. Echt, via de Google-OAuth-client.
+ *   gmail-send Dezelfde koppeling met ALLEEN het recht om te versturen (geen lezen).
  *   microsoft  Microsoft 365 / Outlook via Graph (api/_email/microsoft.js).
  *              Actief zodra MS_CLIENT_ID/MS_CLIENT_SECRET gezet zijn; tot dan
  *              meldt het dashboard eerlijk "nog niet beschikbaar".
@@ -20,6 +21,8 @@
 
 const PROVIDERS = {
   gmail: require('./gmail'),
+  /* Gmail met alleen "versturen" (geen leesrecht): zie gmail.sendOnly. */
+  'gmail-send': require('./gmail').sendOnly,
   microsoft: require('./microsoft'),
 };
 

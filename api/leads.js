@@ -3157,7 +3157,7 @@ module.exports = _errors.vangAf(async function handler(req, res) {
        Alles tenant-gescoped via projectCode uit de sessie. Een gespreks-id uit
        de body wordt altijd opgezocht MET de projectcode; een id van een andere
        dealer geeft "niet gevonden", nooit zijn gesprek. */
-    const MAIL_MODES = ['email-status', 'email-connect', 'email-disconnect', 'email-settings', 'email-sync', 'email-draft', 'email-send', 'email-attachment',
+    const MAIL_MODES = ['email-status', 'email-connect', 'email-disconnect', 'email-settings', 'email-sync', 'email-draft', 'email-send', 'email-send-lead', 'email-attachment',
       'conversation-list', 'conversation-messages', 'conversation-control'];
     if (MAIL_MODES.indexOf(body.mode) !== -1) {
       if (!projectCode) return res.status(403).json({ error: 'Geen client context' });
@@ -3166,7 +3166,7 @@ module.exports = _errors.vangAf(async function handler(req, res) {
       const foutAntwoord = (err) => {
         const code = err && err.code;
         const status = code === 'not_found' || code === 'geen_klantrecord' ? 404
-          : ['leeg', 'geen_idem', 'geen_instructie', 'bad_provider', 'bad_control', 'bad_channel', 'geen_ontvanger', 'te_groot'].indexOf(code) !== -1 ? 400
+          : ['leeg', 'geen_idem', 'geen_instructie', 'bad_provider', 'bad_control', 'bad_channel', 'geen_ontvanger', 'te_groot', 'geen_onderwerp', 'geen_adres', 'ontvanger_klopt_niet'].indexOf(code) !== -1 ? 400
           : ['niet_verbonden', 'reauth_required', 'scope_geweigerd'].indexOf(code) !== -1 ? 409
           : ['niet_beschikbaar', 'unconfigured', 'schema_ontbreekt', 'geen_tabel'].indexOf(code) !== -1 ? 503
           : code === 'ai_uit' ? 503 : 502;
@@ -3178,7 +3178,7 @@ module.exports = _errors.vangAf(async function handler(req, res) {
           case 'email-status':
             return res.status(200).json(await _mailbox.status(projectCode));
           case 'email-connect':
-            return res.status(200).json({ url: _mailbox.authUrl(String(body.provider || 'gmail'), (body.provider === 'microsoft' ? 'mail.ms.' : 'mail.') + gcalSignState(projectCode)) });
+            return res.status(200).json({ url: _mailbox.authUrl(String(body.provider || 'gmail'), (body.provider === 'microsoft' ? 'mail.ms.' : body.provider === 'gmail-send' ? 'mail.gs.' : 'mail.') + gcalSignState(projectCode)) });
           case 'email-disconnect':
             return res.status(200).json(await _mailbox.ontkoppel(projectCode));
           case 'email-settings':
@@ -3193,6 +3193,27 @@ module.exports = _errors.vangAf(async function handler(req, res) {
           case 'email-send': {
             const uit = await _mailbox.verstuurAntwoord(projectCode, String(body.conversationId || ''), {
               tekst: body.text, onderwerp: body.subject, idem: body.idempotencyKey, door: clientName || 'dashboard', auteur: 'mens',
+            });
+            return res.status(200).json({ ok: true, dubbel: uit.dubbel, message: uit.bericht });
+          }
+          case 'email-send-lead': {
+            /* Een mail aan een lead, vanuit het adres van de dealer. De ontvanger
+               is NIET vrij: het adres moet het e-mailadres zijn dat bij deze lead
+               van deze dealer is opgeslagen. Zo is dit een knop in het leadpaneel
+               en geen algemene mailer. */
+            const leadId = String(body.leadId || '').trim();
+            if (!/^rec[A-Za-z0-9]{14}$/.test(leadId)) return res.status(400).json({ error: 'Ongeldig lead ID', code: 'bad_lead' });
+            const lr = await atFetch(`https://api.airtable.com/v0/${BASE_ID}/${LEADS_TABLE}/${leadId}`, { headers: { Authorization: `Bearer ${AIRTABLE_TOKEN}` } });
+            if (!lr.ok) return res.status(404).json({ error: 'Lead niet gevonden.', code: 'not_found' });
+            const lf = (await lr.json()).fields || {};
+            if ((lf['fldSmczuyUJd26HLe'] || lf['Project Code'] || '') !== projectCode) return res.status(404).json({ error: 'Lead niet gevonden.', code: 'not_found' });
+            const leadMail = String((_leadsRead.mapLead({ id: leadId, fields: lf }) || {}).email || '').trim().toLowerCase();
+            if (!leadMail || leadMail !== String(body.to || '').trim().toLowerCase()) {
+              return res.status(400).json({ error: 'Dit adres hoort niet bij deze lead.', code: 'ontvanger_klopt_niet' });
+            }
+            if (_optout.isAfgemeld(lf)) return res.status(409).json({ error: 'Deze lead heeft zich afgemeld. Er kan geen bericht meer verstuurd worden.', code: 'afgemeld' });
+            const uit = await _mailbox.verstuurNaarLead(projectCode, {
+              leadId, aan: leadMail, onderwerp: body.subject, tekst: body.text, idem: body.idempotencyKey, door: clientName || 'dashboard',
             });
             return res.status(200).json({ ok: true, dubbel: uit.dubbel, message: uit.bericht });
           }
@@ -4449,6 +4470,21 @@ async function handleGcal(req, res) {
        redirect-URI, herkenbaar aan de state-prefix "mail.". De state erachter
        is dezelfde getekende, tijdgebonden state als bij de agenda. */
     const ruweState = String(url.searchParams.get('state') || '');
+    /* Gmail met alleen "versturen": eigen state-prefix "mail.gs." (vóór de
+       gewone "mail." hieronder, die hij anders zou opeten). */
+    if (ruweState.startsWith('mail.gs.')) {
+      if (url.searchParams.get('error')) return gcalRedirect(res, '/dashboard?mail=denied');
+      const gsProject = gcalVerifyState(ruweState.slice(8));
+      const gsCode = url.searchParams.get('code');
+      if (!gsProject || !gsCode) return gcalRedirect(res, '/dashboard?mail=invalid_state');
+      try {
+        await require('./_email/mailbox').verbind(gsProject, gsCode, 'gmail-send');
+        return gcalRedirect(res, '/dashboard?mail=connected');
+      } catch (e) {
+        console.error('[mail callback gmail-send]', e && e.code, e && e.message);
+        return gcalRedirect(res, '/dashboard?mail=' + encodeURIComponent(e && e.code === 'scope_geweigerd' ? 'scope' : e && e.code === 'schema_ontbreekt' ? 'schema' : 'error'));
+      }
+    }
     if (ruweState.startsWith('mail.')) {
       if (url.searchParams.get('error')) return gcalRedirect(res, '/dashboard?mail=denied');
       const mailProject = gcalVerifyState(ruweState.slice(5));

@@ -98,6 +98,7 @@ function weergave(ctx) {
   const s = ctx.staat || {};
   return {
     verbonden: Boolean(ctx.tokenEnc && ctx.provider),
+    alleenVersturen: ctx.provider === 'gmail-send',
     provider: ctx.provider || '', adres: ctx.adres || '',
     autoAntwoord: ctx.autoAntwoord, handtekening: ctx.handtekening,
     laatsteSync: s.lastSyncAt || null, laatstePoging: s.lastAttemptAt || null,
@@ -130,7 +131,7 @@ function prov(naam) {
 async function verbind(projectCode, code, providerNaam = 'gmail') {
   const ctx = await lees(projectCode);
   const p = prov(providerNaam);
-  const { refreshToken, accessToken, scope } = await p.wisselCode(code);
+  const { refreshToken, accessToken, scope, email: googleAdres } = await p.wisselCode(code);
   if (!refreshToken) throw new MailboxFout('De provider gaf geen blijvende toegang terug.', 'geen_refresh');
   /* Google geeft terug welke rechten echt zijn aangevinkt. Ontbreekt een
      mailrecht, dan is dat het vinkje -- en alleen dan zeggen we dat. */
@@ -142,15 +143,24 @@ async function verbind(projectCode, code, providerNaam = 'gmail') {
   }
   let prof;
   try {
+    /* Alleen versturen: er is geen mailbox om te lezen, en Gmail's profiel-aanroep
+       eist een leesrecht. Het adres komt uit de aanmelding zelf (openid + email);
+       er is geen historie om leeg te drinken. */
+    if (p.nietLezen) {
+      const adres = String(googleAdres || '').trim().toLowerCase();
+      if (!/^[^\s@]+@[^\s@]+\.[a-z]{2,}$/.test(adres)) throw new MailboxFout('Google gaf geen e-mailadres terug.', 'geen_adres');
+      prof = { email: adres, historyId: '' };
+    } else
     prof = await p.profiel(accessToken);
     /* Zonder historyId (Microsoft): de huidige inbox "leegdrinken" zodat
        alleen mail van NA het koppelen binnenkomt. */
-    if (!prof.historyId) prof.historyId = (await p.nieuweBerichten(accessToken, '')).historyId;
+    if (!prof.historyId && !p.nietLezen) prof.historyId = (await p.nieuweBerichten(accessToken, '')).historyId;
   } catch (e) {
     /* Rechten WEL aangevinkt maar de mailbox-API weigert toch. Dat is geen
        vinkje: meestal staat de Gmail API niet aan in het Google Cloud-project.
        Vroeger viel dit onder "vink alle rechten aan" en was de echte reden
        onzichtbaar. */
+    if (e && e.code === 'geen_adres') throw e;   // een ontbrekend adres is geen API-storing
     console.error('[mailbox] mailbox-API weigerde na geldige toestemming:', e && e.code, e && e.message);
     throw new MailboxFout('De mailbox kon niet gelezen worden: ' + ((e && e.message) || 'onbekende fout'), 'mailbox_api');
   }
@@ -170,7 +180,7 @@ async function vernieuwWatch(projectCode, accessToken) {
   const ctx = await lees(projectCode);
   if (!ctx.tokenEnc) return null;
   const p = prov(ctx.provider);
-  if (!p.pushTopic()) return null;
+  if (p.nietLezen || !p.pushTopic()) return null;
   const tok = accessToken || await toegang(ctx);
   const w = await p.watch(tok);
   if (!w) return null;
@@ -214,7 +224,7 @@ async function ontkoppel(projectCode) {
       try { await p.stopWatch(await p.vernieuwToken(plain)); } catch (e) { /* watch stopt vanzelf na 7 dagen */ }
       /* Intrekken bestaat alleen bij Google; bij Microsoft verwijdert de
          gebruiker de app zelf in zijn account (het token wissen we hoe dan ook). */
-      if (p.naam === 'gmail') await _gcal.revokeToken(plain);
+      if (p.naam === 'gmail' || p.naam === 'gmail-send') await _gcal.revokeToken(plain);
     } catch (e) { /* lokaal wissen gaat hoe dan ook door */ }
   }
   await schrijf(ctx.rec, { [V.provider]: '', [V.adres]: '', [V.token]: '', [V.staat]: '' });
@@ -366,6 +376,8 @@ async function verwerk(ctx, m, deps) {
 async function sync(projectCode, { door = 'dashboard', trigger = 'handmatig' } = {}) {
   const ctx = await lees(projectCode);
   if (!ctx.tokenEnc) return weergave(ctx);
+  /* Alleen versturen: er valt niets te synchroniseren. */
+  if (prov(ctx.provider).nietLezen) return weergave(ctx);
   const staat = ctx.staat || {};
   const nu = Date.now();
   if (staat.slot && nu - (Date.parse(staat.slot.at) || 0) < SLOT_MS) return Object.assign(weergave(ctx), { bezig: true });
@@ -538,6 +550,63 @@ async function verstuurAntwoord(projectCode, gesprekId, { tekst, onderwerp, idem
   }
 }
 
+/**
+ * Een mail naar een LEAD sturen vanuit het adres van de dealer, zonder dat er al
+ * een gesprek of inkomende mail bestaat. Werkt voor beide koppelingen (lezen en
+ * versturen, of alleen versturen). Het gesprek wordt bewaard zodat de mail in
+ * Helvaro terug te vinden is; bij "alleen versturen" komt het antwoord van de lead
+ * in de eigen Gmail van de dealer.
+ *
+ * De ontvanger wordt NIET door de aanroeper bepaald: de server controleert in
+ * api/leads.js dat het adres bij deze lead van deze dealer hoort. Dit is geen
+ * algemene mailer.
+ */
+async function verstuurNaarLead(projectCode, { leadId, aan, onderwerp, tekst, idem, door = 'dashboard' } = {}) {
+  const body = String(tekst || '').trim();
+  const subject = String(onderwerp || '').replace(/[\r\n]+/g, ' ').trim().slice(0, 200);
+  const ontvanger = String(aan || '').trim().toLowerCase();
+  if (!body) throw new MailboxFout('Lege mail.', 'leeg');
+  if (body.length > 10000) throw new MailboxFout('De mail is te lang.', 'te_groot');
+  if (!subject) throw new MailboxFout('Geef de mail een onderwerp.', 'geen_onderwerp');
+  if (!/^[^\s@,;<>]+@[^\s@,;<>]+\.[a-z]{2,}$/.test(ontvanger)) throw new MailboxFout('Ongeldig e-mailadres.', 'geen_ontvanger');
+  const sleutelIdem = String(idem || '').replace(/[^\w:-]/g, '').slice(0, 80);
+  if (!sleutelIdem) throw new MailboxFout('Ontbrekende idempotentiesleutel.', 'geen_idem');
+
+  const ctx = await lees(projectCode);
+  if (!ctx.tokenEnc || !ctx.provider) throw new MailboxFout('Koppel eerst je mailbox.', 'niet_verbonden');
+  const { gesprek } = await _gesprekken.vindOfMaak(projectCode, { kanaal: 'email', thread: 'uit:' + String(leadId || ontvanger), leadId: String(leadId || ''), onderwerp: subject });
+
+  const sleutel = 'uit:' + sleutelIdem;
+  const bestaand = await _gesprekken.bestaatBericht(projectCode, sleutel);
+  if (bestaand && (bestaand.status === 'verzonden' || bestaand.status === 'verzenden')) return { bericht: bestaand, dubbel: true };
+
+  const volledig = ctx.handtekening ? `${body}\n\n${ctx.handtekening}` : body;
+  const messageId = `<helvaro.${crypto.createHash('sha256').update(projectCode + ':' + sleutel).digest('hex').slice(0, 24)}@helvaro.pro>`;
+  let bericht = bestaand;
+  if (!bericht) {
+    const res = await _gesprekken.voegToe(projectCode, gesprek, {
+      sleutel, richting: 'uit', auteur: 'mens', van: ctx.adres, aan: ontvanger, onderwerp: subject, tekst: volledig,
+      thread: gesprek.thread, rfcId: messageId, status: 'verzenden', idem: sleutelIdem, meta: { door, naarLead: true },
+    });
+    if (res.dubbel) return res;
+    bericht = res.bericht;
+  }
+  try {
+    const toegangsToken = await toegang(ctx);
+    const r = await prov(ctx.provider).verstuur(toegangsToken, {
+      van: ctx.bedrijf ? `"${ctx.bedrijf.replace(/"/g, '')}" <${ctx.adres}>` : ctx.adres,
+      aan: ontvanger, onderwerp: subject, tekst: volledig, messageId,
+    });
+    await _gesprekken.werkBerichtBij(projectCode, bericht, { status: 'verzonden', externId: r.id, verzonden: new Date().toISOString(), fout: '' });
+    log(projectCode, 'email_sent', { gesprekId: gesprek.id, auteur: 'mens', naarLead: true }, leadId);
+    return { bericht: Object.assign(bericht, { status: 'verzonden' }), dubbel: false };
+  } catch (e) {
+    await _gesprekken.werkBerichtBij(projectCode, bericht, { status: 'mislukt', fout: String(e.message || '').slice(0, 300) }).catch(() => {});
+    log(projectCode, 'email_send_failed', { gesprekId: gesprek.id, code: e.code || '' }, leadId);
+    throw e instanceof MailboxFout ? e : new MailboxFout('Versturen mislukt: ' + (e.message || 'onbekende fout'), e.code || 'verzenden_mislukt');
+  }
+}
+
 /* Automatisch antwoorden: alleen aangeroepen als de dealer het aanzette en
    analyseer() het toeliet. Schrijft een concept met de AI en verstuurt het
    als 'ai'. De lusbewaking zit in analyseer(); de idempotentie in de sleutel. */
@@ -566,7 +635,7 @@ async function autoAntwoord(ctx, gesprek, inBericht, accessToken) {
 
 module.exports = {
   V, MailboxFout,
-  status, authUrl, verbind, ontkoppel, instellingen, sync, concept, verstuurAntwoord,
+  status, authUrl, verbind, ontkoppel, instellingen, sync, concept, verstuurAntwoord, verstuurNaarLead,
   vernieuwWatch, watchVerloopt, pushOntvangen, bijlage,
   _test: { weergave, naamUit, antwoordOnderwerp, verwerk },
 };
