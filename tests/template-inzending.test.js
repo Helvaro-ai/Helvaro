@@ -13,7 +13,14 @@ const t = require('../api/_wa-template-teksten');
 
 (async () => {
   console.log('\n— één bron —');
-  ck('24 templates (6 x 4 talen), zonder dubbele naam+taal', t.TEMPLATES.length === 24 && new Set(t.TEMPLATES.map((x) => x.name + '::' + x.language)).size === 24);
+  ck('36 templates (9 x 4 talen), zonder dubbele naam+taal', t.TEMPLATES.length === 36 && new Set(t.TEMPLATES.map((x) => x.name + '::' + x.language)).size === 36);
+  /* Wat de code echt verstuurt moet ook ingediend worden. De intro, de melding en de
+     opvolging ontbraken hier, dus een klant met een eigen nummer kreeg ze nooit
+     (live gevonden 2026-10-04). */
+  const wt = require('../api/_wa-templates');
+  const ingediend = new Set(t.TEMPLATES.map((x) => x.name));
+  const mist = wt.SLEUTELS.map((k) => wt.naamVoor(k)).filter((n) => !ingediend.has(n));
+  ck('elke template die de code verstuurt staat in de inzendset', mist.length === 0, mist);
   ck('elke template heeft evenveel voorbeelden als variabelen', t.TEMPLATES.every((x) => x.examples.length === Math.max(0, ...[...x.body.matchAll(/\{\{(\d+)\}\}/g)].map((m) => Number(m[1])))));
   const script = strip(fs.readFileSync(path.join(__dirname, '..', 'scripts', 'create-wa-templates.js'), 'utf8'));
   ck('het script leest de module en heeft geen eigen TEKSTEN meer', /require\('\.\.\/api\/_wa-template-teksten'\)/.test(script) && !/const TEKSTEN\s*=/.test(script));

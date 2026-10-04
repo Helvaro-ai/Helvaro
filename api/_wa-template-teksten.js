@@ -70,6 +70,69 @@ const TEKSTEN = {
     },
   },
 
+  // ── De drie templates die de code echt verstuurt (api/_wa-templates.js VEREIST)
+  // en die hier tot 2026-10-04 ontbraken. Ze stonden alleen met de hand op
+  // Helvaro's eigen WABA. Een klant met een eigen nummer (Embedded Signup) kreeg
+  // daardoor wel de afspraaktemplates, maar nooit de eerste begroeting, de melding
+  // of de opvolging. Zelfde variabelen, dezelfde volgorde als de verzendcode.
+  helvaro_aanvraag_ontvangen: {
+    category: 'UTILITY',
+    usedBy: 'INTRO_TEMPLATE_NAME (form.js)',
+    params: ['naam', 'ai', 'bedrijf'],
+    body: {
+      nl_BE:
+        'Hoi {{1}}, {{2}} hier van {{3}}. Bedankt voor je aanvraag.\n\n' +
+        'Ik help je graag verder — mag ik je een paar korte vragen stellen zodat we je goed kunnen helpen?',
+      fr_BE:
+        'Bonjour {{1}}, ici {{2}} de {{3}}. Merci pour votre demande.\n\n' +
+        'Je vous aide volontiers — puis-je vous poser quelques questions afin de bien vous orienter ?',
+      en_GB:
+        'Hi {{1}}, this is {{2}} from {{3}}. Thanks for your enquiry.\n\n' +
+        'I\'m happy to help — may I ask a few short questions so we can assist you properly?',
+      de:
+        'Hallo {{1}}, hier ist {{2}} von {{3}}. Vielen Dank für Ihre Anfrage.\n\n' +
+        'Ich helfe Ihnen gerne weiter — darf ich Ihnen ein paar kurze Fragen stellen, damit wir Sie gut beraten können?',
+    },
+  },
+  helvaro_lead_alert: {
+    category: 'UTILITY',
+    usedBy: 'NOTIFY_TEMPLATE_NAME (form.js)',
+    params: ['naam', 'telefoon', 'projectcode'],
+    body: {
+      nl_BE:
+        'Nieuwe lead: {{1}} ({{2}}).\n\n' +
+        'Referentie: {{3}}. De details staan in je Helvaro-dashboard.',
+      fr_BE:
+        'Nouveau lead : {{1}} ({{2}}).\n\n' +
+        'Référence : {{3}}. Les détails sont dans votre tableau de bord Helvaro.',
+      en_GB:
+        'New lead: {{1}} ({{2}}).\n\n' +
+        'Reference: {{3}}. The details are in your Helvaro dashboard.',
+      de:
+        'Neuer Lead: {{1}} ({{2}}).\n\n' +
+        'Referenz: {{3}}. Die Details finden Sie in Ihrem Helvaro-Dashboard.',
+    },
+  },
+  followup_24h: {
+    category: 'UTILITY',
+    usedBy: 'FOLLOWUP_TEMPLATE_NAME (api/cron-followup.js)',
+    params: ['naam'],
+    body: {
+      nl_BE:
+        'Hoi {{1}}, we hebben je aanvraag nog openstaan.\n\n' +
+        'Heb je nog een vraag, of wil je dat we een moment plannen? Antwoord gerust op dit bericht.',
+      fr_BE:
+        'Bonjour {{1}}, votre demande est toujours en cours chez nous.\n\n' +
+        'Avez-vous une question, ou souhaitez-vous fixer un moment ? Répondez simplement à ce message.',
+      en_GB:
+        'Hi {{1}}, your enquiry is still open with us.\n\n' +
+        'Do you have a question, or would you like us to set up a time? Just reply to this message.',
+      de:
+        'Hallo {{1}}, Ihre Anfrage ist bei uns noch offen.\n\n' +
+        'Haben Sie noch eine Frage, oder sollen wir einen Termin vereinbaren? Antworten Sie einfach auf diese Nachricht.',
+    },
+  },
+
   // COST OPTIMISATION (optional). Meta bills per delivered template message and
   // Belgium sits in "Rest of Western Europe", where MARKETING (~EUR0.11/msg) costs
   // roughly 2x UTILITY (~EUR0.05/msg). The existing INTRO template
@@ -193,6 +256,7 @@ const VOORBEELDEN = {
     wanneer: 'dinsdag 12 augustus om 14:30',
     aanbod: 'Nieuw in de verkoop: ruime gezinswoning in Deinze, 3 slaapkamers en tuin — 349.000 euro.',
     voertuig: 'BMW 330e', prijs: '€ 29.500', type: 'proefrit', score: '91/100',
+    telefoon: '+32 470 12 34 56', projectcode: 'KINE_GENT',
   },
   fr_BE: {
     naam: 'Marie',
@@ -201,6 +265,7 @@ const VOORBEELDEN = {
     wanneer: 'mardi 12 août à 14h30',
     aanbod: 'Nouveau à la vente : maison familiale spacieuse à Deinze, 3 chambres et jardin — 349.000 euros.',
     voertuig: 'BMW 330e', prijs: '29.500 €', type: 'essai', score: '91/100',
+    telefoon: '+32 470 12 34 56', projectcode: 'KINE_GENT',
   },
   en_GB: {
     naam: 'Emma',
@@ -209,6 +274,7 @@ const VOORBEELDEN = {
     wanneer: 'Tuesday 12 August at 14:30',
     aanbod: 'New on the market: spacious family home in Deinze, 3 bedrooms and a garden — 349,000 euro.',
     voertuig: 'BMW 330e', prijs: '€29,500', type: 'test drive', score: '91/100',
+    telefoon: '+32 470 12 34 56', projectcode: 'KINE_GENT',
   },
   de: {
     naam: 'Lukas',
@@ -217,6 +283,7 @@ const VOORBEELDEN = {
     wanneer: 'Dienstag, 12. August um 14:30 Uhr',
     aanbod: 'Neu im Angebot: geräumiges Familienhaus in Deinze, 3 Schlafzimmer und Garten — 349.000 Euro.',
     voertuig: 'BMW 330e', prijs: '29.500 €', type: 'Probefahrt', score: '91/100',
+    telefoon: '+32 470 12 34 56', projectcode: 'KINE_GENT',
   },
 };
 
