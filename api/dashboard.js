@@ -14322,7 +14322,9 @@ function faroLeadPaneel(lead) {
     if (waarde !== undefined && waarde !== null && String(waarde).trim()) {
       punten.push('<div class="faro-lead__punt"><span class="faro-lead__label">'
         + escHtml(tr(rij.sleutel)) + '</span><span class="faro-lead__waarde">'
-        + escHtml(String(waarde).trim()) + '</span></div>');
+        /* De bron via dezelfde vertaling als de rest van de app: "Advertentie"
+           stond hier onvertaald op een Engels scherm. */
+        + escHtml(rij.veld === 'bron' ? bronLabel(String(waarde).trim()) : String(waarde).trim()) + '</span></div>');
     }
   }
 

@@ -24,4 +24,10 @@ for (const taal of ['nl', 'fr', 'en', 'de']) {
   }
   ck(taal + ': alle familiesleutels bestaan', mist.length === 0, mist);
 }
+/* De bron in Faro's leadpaneel gaat door bronLabel (Sindi live: "Advertentie" op een Engels scherm). */
+{
+  const dash = require('fs').readFileSync(require('path').join(__dirname, '..', 'api', 'dashboard.js'), 'utf8');
+  ck("het leadpaneel vertaalt de bron via bronLabel", /rij\.veld === 'bron' \? bronLabel\(/.test(dash));
+  for (const taal of ['nl', 'fr', 'en', 'de']) ck(taal + ': bron.advertentie bestaat', !!i18n.woordenboek(taal)['bron.advertentie']);
+}
 console.log(`\n  ${pass} ok, ${fail} fout\n`); process.exit(fail ? 1 : 0);
