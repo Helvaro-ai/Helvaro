@@ -458,6 +458,13 @@ const stand = () => JSON.parse(klanten.DEALERA.fields['Inventory State'] || '{}'
     ck('geen technische foutteksten, wel een sleutel voor een fout', o.providers.every((p) => !('fout' in p) && !('lastError' in p)));
   }
 
+  console.log('\nEen nieuwe advertentietabel wordt ook gevuld als de bron niet veranderde');
+  {
+    const bronTekst = require('fs').readFileSync(BASE + 'api/_inventaris.js', 'utf8');
+    ck('overslaan vraagt een eerder gevulde advertentietabel', /const ongewijzigd = [^\n]*staat\.listingsKlaar === true/.test(bronTekst));
+    ck('een volledige run onthoudt of de tabel gevuld is', /listingsKlaar: lijstAdv\.beschikbaar === true && !partial/.test(bronTekst));
+  }
+
   console.log(`\n${pass} ok, ${fail} fout`);
   process.exit(fail ? 1 : 0);
 })().catch((e) => { console.error('STUK:', e && e.stack); process.exit(1); });

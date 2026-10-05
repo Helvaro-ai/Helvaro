@@ -400,7 +400,10 @@ async function syncBronnen(projectCode, bron, staat, opties = {}) {
   /* Incrementeel: precies dezelfde bronnen als de vorige geslaagde run = niets
      te doen. Behalve als de vorige run een daling tegenhield en de dealer die
      nu bevestigt -- dan moet het plan juist wel opnieuw. */
-  const ongewijzigd = !opties.bevestigDaling && !mislukt.length && geslaagd.every((b) => {
+  /* Ook niet overslaan zolang de advertentietabel nog nooit gevuld werd: een
+     tabel die na de vorige run werd aangemaakt, blijft anders leeg tot de
+     bron toevallig verandert. */
+  const ongewijzigd = !opties.bevestigDaling && !mislukt.length && staat.listingsKlaar === true && geslaagd.every((b) => {
     const v = vorigeVan(staat, b, bron.bronnen.indexOf(b));
     return v.feedHash && v.feedHash === perBron[b.provider].feed.hash && v.lastResult === 'ok';
   });
@@ -493,6 +496,7 @@ async function syncBronnen(projectCode, bron, staat, opties = {}) {
     feedHash: partial ? '' : versie,
     version: versie,
     partial,
+    listingsKlaar: lijstAdv.beschikbaar === true && !partial,
     notitie: notities.join(' · '),
     perBron, geslaagd, mislukt,
   };
@@ -604,6 +608,7 @@ async function sync(projectCode, { door = 'systeem', trigger = 'handmatig', beve
       generation: (Number(staat.generation) || 0) + (resultaat.version !== staat.version ? 1 : 0),
       feedHash: resultaat.feedHash || '',
       vingers: resultaat.vingers || staat.vingers,
+      listingsKlaar: resultaat.ongewijzigd ? staat.listingsKlaar === true : resultaat.listingsKlaar === true,
     });
   }
   try { await schrijf(rec.id, { [F_STATE]: JSON.stringify(nieuw) }); }
