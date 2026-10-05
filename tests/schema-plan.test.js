@@ -19,7 +19,7 @@ const bestaand = [
   { id: 'tblQAPdjEsh0l7lUe', name: 'vehicles', fields: [{ name: 'Vehicle Code' }] },
 ];
 let p = schema.plan(bestaand);
-ck('vier nieuwe tabellen', p.nieuweTabellen.map((t) => t.naam).sort().join() === 'conversations,customers,handoffs,messages', p.nieuweTabellen.map((t) => t.naam));
+ck('vijf nieuwe tabellen', p.nieuweTabellen.map((t) => t.naam).sort().join() === 'conversations,customers,handoffs,messages,vehicle_listings', p.nieuweTabellen.map((t) => t.naam));
 ck('bestaand Leads.Email wordt NIET opnieuw aangemaakt', !p.nieuweVelden.some((v) => v.label === 'Leads' && v.veld.name === 'Email'));
 ck('Leads.Customer ID ontbreekt en komt erbij', p.nieuweVelden.some((v) => v.label === 'Leads' && v.veld.name === 'Customer ID'));
 ck('Client Config krijgt de mailbox- en voorraadvelden', ['Email Token', 'Site Key', 'Inventory State'].every((n) => p.nieuweVelden.some((v) => v.label === 'Client Config' && v.veld.name === n)));
@@ -37,7 +37,7 @@ ck('geen velden', p.nieuweVelden.length === 0, p.nieuweVelden.map((v) => v.label
 
 console.log('\nontbrekende bestaande tabel wordt niet aangemaakt');
 p = schema.plan([]);
-ck('alleen onze vier tabellen, geen Client Config/Leads', p.nieuweTabellen.length === 4 && !p.nieuweVelden.length);
+ck('alleen onze vijf tabellen, geen Client Config/Leads', p.nieuweTabellen.length === 5 && !p.nieuweVelden.length);
 
 console.log('\nveiligheid van de definities');
 const alleVelden = Object.values(schema.TABELLEN).flatMap((d) => d.fields).concat(Object.values(schema.EXTRA_VELDEN).flatMap((d) => d.fields));

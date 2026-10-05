@@ -142,6 +142,17 @@ function lees(tekst) {
 }
 
 /**
+ * Via welk platform en welke advertentie kwam de koper? Dat weten we alleen
+ * als hij een AutoScout24-link stuurde: het platform is dan autoscout24 en het
+ * aanbodnummer is het advertentie-id (api/_listings.js). Bij een herkenning uit
+ * tekst of van de lead zelf weten we het niet, en gokken we niet.
+ */
+function listingVan(gelezen) {
+  if (!gelezen || !gelezen.isAutoscout) return null;
+  return { provider: 'autoscout24', externalId: gelezen.aanbodId || '' };
+}
+
+/**
  * Zoek het voertuig waar dit bericht over gaat.
  *
  * Drie sporen, van zeker naar onzeker, en het stopt bij het eerste dat treft:
@@ -187,7 +198,7 @@ async function herken(vehicles, projectCode, tekst, opties) {
   /* 1. Het aanbodnummer. */
   if (gelezen.aanbodId) {
     const v = await vehicles.getByAutoscout(projectCode, gelezen.aanbodId);
-    if (v) return { voertuig: v, via: 'aanbodnummer', autoscout: gelezen };
+    if (v) return { voertuig: v, via: 'aanbodnummer', autoscout: gelezen, listing: listingVan(gelezen) };
   }
 
   const voorraad = await vehicles.list(projectCode, { alleenPubliek: true });
@@ -203,7 +214,7 @@ async function herken(vehicles, projectCode, tekst, opties) {
     };
     const doel = kaal(gelezen.link);
     const treffer = voorraad.find((v) => v.link && kaal(v.link) === doel);
-    if (treffer) return { voertuig: treffer, via: 'link', autoscout: gelezen };
+    if (treffer) return { voertuig: treffer, via: 'link', autoscout: gelezen, listing: listingVan(gelezen) };
   }
 
   /* 3. Uit de tekst. Kan bewust null geven bij gelijkspel. */
@@ -235,6 +246,7 @@ module.exports = {
   hostVan,
   isAutoscoutLink,
   aanbodIdUit,
+  listingVan,
   lees,
   herken,
 };

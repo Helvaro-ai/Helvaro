@@ -126,6 +126,9 @@ const SCHEMA_TABELLEN = Object.freeze([
   { tabel: 'conversations', naam: 'conversations', veld: 'Project Code', optioneel: true },
   { tabel: 'handoffs',      naam: 'handoffs',      veld: 'Project Code', optioneel: true },
   { tabel: 'customers',     naam: 'customers',     veld: 'Project Code', optioneel: true },
+  /* Welk platform welke wagen toont (api/_listings.js). Geen persoonsgegevens,
+     maar wel van deze dealer: een gewist account laat ze niet achter. */
+  { tabel: 'vehicle_listings', naam: 'vehicle_listings', veld: 'Project Code', optioneel: true },
 ]);
 
 const T_CONVERSATIES = 'tblo3pIgx9RT3A2wY';   // ai_conversations, veld project_code

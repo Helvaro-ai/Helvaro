@@ -697,7 +697,10 @@ async function runVoorraad(now, { budgetS = 180, trigger = 'dagelijks', archiver
       if (_vertical.isDealership(f) || String(f['Inventory Source'] || '').trim()) {
         let bron = {};
         try { bron = JSON.parse(f['Inventory Source'] || '{}') || {}; } catch (_) { bron = {}; }
-        dealers.push({ code, feed: bron && bron.type === 'feed' });
+        /* Via saneerBron: de oude enkele bron en de lijst van bronnen lezen
+           allebei goed, en de bewaartermijn van verkochte wagens is per dealer. */
+        const gesaneerd = _inventaris.saneerBron(bron);
+        dealers.push({ code, feed: gesaneerd.type === 'feed', bewaarDagen: gesaneerd.bewaarDagen });
       }
     }
     if (!d.offset) break;
@@ -714,7 +717,7 @@ async function runVoorraad(now, { budgetS = 180, trigger = 'dagelijks', archiver
       if (st && st.ok) uit.gesynct++; else uit.syncMislukt++;
     }
     if (archiveren) {
-      const ar = await _vsync.archiveerVerkocht(dlr.code)
+      const ar = await _vsync.archiveerVerkocht(dlr.code, { dagen: dlr.bewaarDagen })
         .catch((e) => { console.warn('[cron-followup] archiveren', dlr.code, e && e.message); return null; });
       if (ar) { uit.gearchiveerd += ar.gearchiveerd; uit.klokGestart += ar.klokGestart; }
     }

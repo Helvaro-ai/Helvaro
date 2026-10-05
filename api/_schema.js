@@ -64,6 +64,13 @@ const TABELLEN = Object.freeze({
       tekst('Error'), lang('Meta'), tekst('Created At'), tekst('Sent At'),
     ],
   },
+  vehicle_listings: {
+    description: 'Welk platform welke wagen van welke dealer toont. Listing Key = projectCode|platform|id. Beheerd door api/_listings.js.',
+    fields: [
+      tekst('Listing Key'), tekst('Project Code'), tekst('Vehicle Code'), tekst('Provider'),
+      tekst('External ID'), tekst('URL'), tekst('Status'), tekst('Last Seen At'), tekst('Created At'),
+    ],
+  },
   handoffs: {
     description: 'Kanaalwissel website → WhatsApp/e-mail met context. Token staat alleen gehasht. Beheerd door api/_handoff.js.',
     fields: [
@@ -88,7 +95,9 @@ const EXTRA_VELDEN = Object.freeze({
   },
   tbliukTnDAbEDcZmt: { // Leads
     label: 'Leads',
-    fields: [tekst('Customer ID'), tekst('Email'), tekst('Channels')],
+    /* Listing Provider / Listing ID: via welk platform en welke advertentie de
+       lead bij een wagen kwam, voor zover bekend (api/whatsapp.js). */
+    fields: [tekst('Customer ID'), tekst('Email'), tekst('Channels'), tekst('Listing Provider'), tekst('Listing ID')],
   },
   tblQAPdjEsh0l7lUe: { // vehicles
     label: 'vehicles',
@@ -96,7 +105,7 @@ const EXTRA_VELDEN = Object.freeze({
        bewaartermijn aan -- 14 dagen als VERKOCHT, daarna gearchiveerd (zie
        archiveerVerkocht in api/_inventaris.js). Tekst, ISO-datum, net als
        Synced At en Created At. */
-    fields: [tekst('Source'), tekst('Source Record ID'), tekst('Synced At'), tekst('Sold At')],
+    fields: [tekst('Source'), tekst('Source Record ID'), tekst('Synced At'), tekst('Sold At'), tekst('VIN')],
   },
 });
 

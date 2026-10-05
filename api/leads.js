@@ -3264,8 +3264,12 @@ module.exports = _errors.vangAf(async function handler(req, res) {
        inventory-sync    de knop "Voorraad synchroniseren": altijd een run
                          (tenzij er al een loopt -- die wordt hergebruikt)
        inventory-source  bron-instellingen bewaren (native of feed + drempels)
+       inventory-providers      alle platformen met de stand van deze dealer (alleen lezen)
+       inventory-provider-save  een platform instellen: adres of inloggegevens (versleuteld),
+                                aan/uit, weghalen; of de bewaartermijn van verkochte wagens
        Tenant komt uit de sessie (projectCode), nooit uit de body. */
-    if (body.mode === 'inventory-status' || body.mode === 'inventory-check' || body.mode === 'inventory-sync' || body.mode === 'inventory-source') {
+    if (body.mode === 'inventory-status' || body.mode === 'inventory-check' || body.mode === 'inventory-sync' || body.mode === 'inventory-source'
+      || body.mode === 'inventory-providers' || body.mode === 'inventory-provider-save') {
       if (!projectCode) return res.status(403).json({ error: 'Geen client context' });
       try {
         let uit;
@@ -3275,6 +3279,17 @@ module.exports = _errors.vangAf(async function handler(req, res) {
            feed verdwenen echt verkocht zijn. Alleen hier, bij een handmatige
            sync -- de cron bevestigt nooit zelf (api/_voorraad-sync.js). */
         else if (body.mode === 'inventory-sync') uit = await _inventaris.sync(projectCode, { door: clientName || 'dashboard', trigger: 'handmatig', bevestigDaling: body.bevestigDaling === true, budgetMs: 45000 });
+        else if (body.mode === 'inventory-providers') uit = await _inventaris.providersOverzicht(projectCode);
+        else if (body.mode === 'inventory-provider-save') {
+          uit = await _inventaris.bewaarProvider(projectCode, {
+            provider: body.provider, url: body.url, formaat: body.formaat, verdwenen: body.verdwenen, enabled: body.enabled,
+            credentials: body.credentials, verwijder: body.verwijder, bewaarDagen: body.bewaarDagen,
+          });
+          /* De reden is een kort woord; het scherm vertaalt hem (ig.err.<reden>). */
+          if (uit && uit.ok === false && uit.reden && uit.reden !== 'geen_klantrecord') {
+            return res.status(uit.reden === 'geen_versleuteling' ? 503 : 400).json({ error: 'Deze koppeling kon niet bewaard worden.', code: uit.reden });
+          }
+        }
         else uit = await _inventaris.bewaarBron(projectCode, body.source || {});
         if (uit && uit.reden === 'schema_ontbreekt') {
           try { require('./_schema').ensureLui(); } catch (_) { /* optioneel */ }
@@ -3286,7 +3301,7 @@ module.exports = _errors.vangAf(async function handler(req, res) {
            cijfers hierboven gaan over de laatste run (wat veranderde); dit gaat
            over de etalage. Mislukt het tellen, dan gewoon zonder: de status is
            belangrijker dan de optelsom. */
-        if (uit && body.mode !== 'inventory-source') {
+        if (uit && (body.mode === 'inventory-status' || body.mode === 'inventory-check' || body.mode === 'inventory-sync')) {
           try {
             const alle = await require('./_vehicles').list(projectCode, { inclusiefGearchiveerd: true });
             uit.telling = require('./_voorraad-sync').telling(alle);

@@ -38,7 +38,7 @@ process.env.API_AIRTABLE = 'x'; process.env.BASE_AIRTABLE = 'appTEST0000000000';
   ck('de lijst is begrensd op 1000', inv.saneerBron({ type: 'feed', url: 'https://x.example/f.xml', uitgesloten: Array.from({ length: 1500 }, (_, i) => 'id' + i) }).uitgesloten.length === 1000);
 
   const src = fs.readFileSync(path.join(__dirname, '..', 'api', '_inventaris.js'), 'utf8');
-  ck('de sync slaat uitgesloten wagens over vóór het verzoenen', /uitgesloten\.size \? feed\.voertuigen\.filter\(\(f\) => !uitgesloten\.has\(String\(f\.bronId\)\)\)/.test(src) && src.indexOf('feed.voertuigen.filter((f) => !uitgesloten') < src.indexOf('_sync.verzoen(bestaand, aangeboden'));
+  ck('de sync slaat uitgesloten wagens over vóór het verzoenen', /uitgesloten\.size \? feed\.voertuigen\.filter\(\(f\) => !uitgesloten\.has\(_s\.bronIdVoor\(b\.provider, f\.bronId, legacy\)\)\)/.test(src) && src.indexOf('feed.voertuigen.filter((f) => !uitgesloten') < src.indexOf('_sync.verzoenAlles(bestaand'));
   ck('een nieuwe bronkeuze wist de lijst niet', /huidig\.uitgesloten/.test(src));
 
   const leads = fs.readFileSync(path.join(__dirname, '..', 'api', 'leads.js'), 'utf8');

@@ -29,6 +29,7 @@ const _dashStyles = require('./_dash/styles');   // het CSS-blok, zie daar
 const _help       = require('./_dash/help');     // de helpartikelen, vier talen
 const _persona    = require('./_dash/persona-sjablonen'); // voorbeeldteksten, vier talen
 const _agenda     = require('./_dash/agenda');     // de agenda, client-side
+const _integraties = require('./_dash/integraties'); // Instellingen: integraties (automotive), client-side
 const _vsync      = require('./_voorraad-sync');          // BEWAAR_DAGEN: één bron voor de 14 dagen
 const _faroUI = require('./_faro/ui');
 
@@ -2949,6 +2950,17 @@ ${faro.navCta}
             </div>
           </div>
           <div id="crm-lijst"></div>
+        </div>
+
+        <!-- Integraties: automotive. Alleen voor dealers: laadIntegraties() in
+             api/_dash/integraties.js toont of verbergt dit blok en tekent de kaarten. -->
+        <div class="settings-section" id="set-integraties" style="display:none">
+          <div class="settings-section-title">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
+            ${T('ig.titel')}
+          </div>
+          <div class="settings-info-box">${T('ig.uitleg')}</div>
+          <div id="ig-lijst"><div class="settings-row"><div class="settings-label-sub">${T('ig.laden')}</div></div></div>
         </div>
 
         <!-- Notificaties -->
@@ -6974,6 +6986,9 @@ async function voorraadVraag(mode, extra) {
     err.code = d && d.code;
     throw err;
   }
+  /* De bewaartermijn van verkochte wagens is per dealer (Instellingen, Integraties);
+     de server geeft hem bij elke voorraadstatus mee. De waarde hierboven is de standaard. */
+  if (d && d.bewaarDagen > 0) HV_BEWAAR_DAGEN = d.bewaarDagen;
   return d;
 }
 
@@ -8119,6 +8134,7 @@ async function marktWisselen(gekozen) {
        indruk wekt als de fout hierboven: dat het niet bewaard is. */
     if (kiezer) kiezer.value = gekozen;
     marktSubtekst(gekozen);
+    if (typeof laadIntegraties === 'function') laadIntegraties();
     toast(tr('set.markt.gewisseld'), 'success');
   } catch (e) {
     /* Terugzetten wat er stond. Een keuzelijst die op de nieuwe waarde blijft
@@ -10597,6 +10613,9 @@ function updateCalBadge(events) {
 
 /* De agenda (dag/week/maand/lijst, zoom, sneltoetsen) staat in api/_dash/agenda.js. */
 ${_agenda.js()}
+
+/* Integraties: automotive (Instellingen) staat in api/_dash/integraties.js. */
+${_integraties.js()}
 
 /* ── Custom Calendly booking modal ──────────────────────────── */
 const calBookState = {
@@ -19213,6 +19232,7 @@ function renderInstellingen() {
   loadMailStatus();
   loadWidgetStatus();
   loadCrmStatus();
+  laadIntegraties();
 }
 
 /* ============================================================

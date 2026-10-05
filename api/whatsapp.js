@@ -1150,6 +1150,9 @@ async function processMessage(phone, text, scopedProjectCode, inkomendId) {
   let pandSectie = '';
   let herkendPand = null;
   let herkendVoertuig = null;
+  /* Via welk platform en welke advertentie de koper kwam, als dat uit zijn
+     bericht te lezen was (nu: een AutoScout24-link). Zie api/_autoscout.js. */
+  let herkendeAdvertentie = null;
   let kortingsgrenzen = null;
   /* Fase 2b: boekbaarheid van het herkende voertuig, inclusief een actieve
      afspraak van iemand anders -- niet alleen zijn status. Gevuld verderop,
@@ -1196,6 +1199,7 @@ async function processMessage(phone, text, scopedProjectCode, inkomendId) {
       const bekendProfiel = { wens: _wens.uitNotities(notitiesRaw), koop: _koop.uitNotities(notitiesRaw) };
       const uitkomst = await _autoscout.herken(_vehicles, projectCode, koperTekst, { leadCode });
       herkendVoertuig = uitkomst.voertuig;
+      herkendeAdvertentie = uitkomst.voertuig && uitkomst.listing ? uitkomst.listing : null;
       voorraadVertrouwen = await vertrouwenBelofte;
       if (herkendVoertuig) voertuigMomentopname = _inventaris.momentopname(herkendVoertuig);
 
@@ -1720,6 +1724,11 @@ async function processMessage(phone, text, scopedProjectCode, inkomendId) {
   }
 
   await updateLead(lead.id, updateFields, phone, scopedProjectCode);
+
+  /* Het platform en de advertentie bij de lead bewaren, voor zover bekend. Een
+     eigen schrijfactie en best-effort: op een base zonder deze velden geeft
+     Airtable een 422, en dat mag de gewone leadupdate hierboven niet raken. */
+  if (herkendeAdvertentie) await bewaarAdvertentieOpLead(lead, herkendeAdvertentie);
 
   /* ── Naar het CRM, als deze beurt de kwalificatie opleverde ───────────────
      Alleen bij een AFGEROND en gekwalificeerd gesprek. Elke beurt duwen zou
@@ -3825,6 +3834,29 @@ function mergeAanbodCode(raw, code) {
   if (String(data.property || '').trim().toUpperCase() === nieuw) return null;  // niets veranderd
   data.property = nieuw;
   return JSON.stringify(data);
+}
+
+/* Listing Provider en Listing ID op de lead (zie api/_schema.js). Schrijft alleen
+ * als er iets verandert, en nooit een leeg Listing ID over een bekend id heen. */
+async function bewaarAdvertentieOpLead(lead, advertentie) {
+  try {
+    const provider = String(advertentie.provider || '').trim();
+    const id = String(advertentie.externalId || '').trim();
+    if (!provider || !lead || !lead.id) return;
+    const huidigP = String((lead.fields && lead.fields['Listing Provider']) || '').trim();
+    const huidigId = String((lead.fields && lead.fields['Listing ID']) || '').trim();
+    if (huidigP === provider && (huidigId === id || !id)) return;
+    const fields = { 'Listing Provider': provider };
+    if (id) fields['Listing ID'] = id;
+    const r = await atFetch(`https://api.airtable.com/v0/${AIRTABLE_BASE}/${LEADS_TABLE}/${lead.id}`, {
+      method: 'PATCH',
+      headers: { Authorization: `Bearer ${AIRTABLE_TOKEN}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ fields, typecast: true }),
+    });
+    if (!r.ok) console.warn('[WhatsApp] advertentie op lead niet bewaard (HTTP ' + r.status + ')');
+  } catch (e) {
+    console.warn('[WhatsApp] advertentie op lead niet bewaard:', e && e.message);
+  }
 }
 
 // Remove the 'escalated' marker if present. Returns null when there's

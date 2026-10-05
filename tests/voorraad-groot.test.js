@@ -54,7 +54,7 @@ const vehicles = require('../api/_vehicles.js');
   const inv = fs.readFileSync(path.join(__dirname, '..', 'api', '_inventaris.js'), 'utf8');
   ck('de sync leest met maxPaginas 30', /listMetStatus\(projectCode, \{ inclusiefGearchiveerd: true, maxPaginas: 30 \}\)/.test(inv));
   const i = inv.indexOf('voorraad_te_groot');
-  const j = inv.indexOf('_sync.verzoen(');
+  const j = inv.indexOf('_sync.verzoenAlles(');
   ck('en stopt met voorraad_te_groot VOOR er een plan gemaakt of geschreven wordt', i > 0 && j > i, { i, j });
 
   const i18n = require('../api/_i18n.js');

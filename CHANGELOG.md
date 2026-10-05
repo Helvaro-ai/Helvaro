@@ -14,6 +14,41 @@ enige eerlijke datum voor "uitgerold" is de dag dat `main` deployt.
 
 ## Nog niet uitgerold
 
+### Voorraad uit meerdere platformen (fase 1)
+
+- **Meer dan een voorraadbron per dealer.** Naast je feed of AutoScout24-profiel
+  kan Gocar.be (via een export) erbij. Staat dezelfde wagen op twee platformen,
+  dan blijft het een wagen met twee advertenties: gekoppeld op het AutoScout-
+  nummer, de genormaliseerde advertentielink of het chassisnummer, nooit op
+  merk, model of prijs. Zonder exacte treffer wordt het een nieuwe wagen.
+- **Verkocht alleen als elk platform het bevestigt.** Een wagen op twee
+  platformen gaat pas op verkocht als beide in deze run succesvol gelezen zijn
+  en geen van beide hem nog toont. Een platform dat niet gelezen kon worden is
+  onbekend: er verandert niets aan wat het toonde. De dalingswacht (5 of meer
+  en meer dan de helft ineens weg) werkt nu per platform.
+- **Instellingen, Integraties: automotive** (alleen voor dealers): een kaart per
+  platform met status, laatste synchronisatie, nieuw/bijgewerkt/verwijderd en
+  de laatste fout in gewone woorden (in je taal; de technische tekst blijft in
+  de log). mobile.de en de officiele AutoScout24-API kan je alvast koppelen:
+  de gegevens worden versleuteld bewaard en nooit meer getoond, maar er wordt
+  nog niets gelezen tot Helvaro de toegang geactiveerd heeft. 2dehands,
+  Marktplaats, Vroom.be en Meta staan als "binnenkort", heycar als niet
+  beschikbaar.
+- **Bewaartermijn van verkochte wagens per dealer** (standaard 14 dagen, 1 tot
+  365), in dezelfde sectie.
+- **Een lead onthoudt via welk platform hij kwam** (nu: een AutoScout24-link in
+  zijn WhatsApp-bericht), voor zover bekend.
+- **Let op bij het AutoScout24-profiel:** de eerstvolgende synchronisatie vult
+  eenmalig het AutoScout-nummer aan op je wagens en maakt de advertenties aan.
+  Dat zijn eenmalig extra schrijfacties; er verandert niets zichtbaars.
+- **Actie:** het schema moet bijgewerkt worden: de tabel `vehicle_listings`, de
+  velden `Listing Provider` en `Listing ID` op Leads en `VIN` op vehicles. Dat
+  gebeurt vanzelf (de dagelijkse cron en de eerste synchronisatie), mits de
+  Airtable-token schema-rechten heeft; of draai de admin-actie `ops-schema` met
+  `commit:true`. Zonder de tabel werkt de synchronisatie zoals voorheen.
+- Voor ontwikkelaars: `docs/integrations/` (per platform wat kan, wat niet en
+  wat nog onbevestigd is) en `api/_voorraad-providers/`.
+
 ### Boeken vanop de website, en e-mail in realtime
 
 - **Outlook / Microsoft 365 als mailbox**, naast Gmail: zelfde werking

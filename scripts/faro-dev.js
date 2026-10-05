@@ -557,6 +557,49 @@ const server = http.createServer(async (req, res) => {
           }
           return res.status(200).json(Object.assign({ ok: true, gesynct: moetSyncen }, _inv.weergave(_devVoorraad.staat, _devVoorraad.bron)));
         }
+        /* Integraties (api/_inventaris.js providersOverzicht/bewaarProvider) op een
+           bron in het geheugen. De inloggegevens worden hier NIET versleuteld maar
+           vervangen door een vaste plaatsvervanger: lokaal bestaat geen
+           sleutel, en het scherm hoort toch nooit meer dan "ingesteld" te zien. */
+        case 'inventory-providers':
+        case 'inventory-provider-save': {
+          const _inv = require('../api/_inventaris');
+          const _reg = require('../api/_voorraad-providers');
+          const kaarten = () => _reg.lijst().map((p) => _inv._test.providerKaart(p, _devVoorraad.bron.bronnen.find((x) => x.provider === p.id) || null, (_devVoorraad.staat.bronnen || {})[p.id]));
+          if (req.body.mode === 'inventory-provider-save') {
+            const b = req.body;
+            let bronnen = _devVoorraad.bron.bronnen.map((x) => Object.assign({}, x));
+            let bewaarDagen = _devVoorraad.bron.bewaarDagen;
+            if (b.bewaarDagen !== undefined) {
+              const n = Number(b.bewaarDagen);
+              if (!Number.isFinite(n) || n < 1 || n > 365) return res.status(400).json({ error: 'ongeldig', code: 'ongeldige_bewaartermijn' });
+              bewaarDagen = Math.round(n);
+            }
+            if (b.provider !== undefined) {
+              const p = _reg.get(String(b.provider));
+              if (!p) return res.status(400).json({ error: 'onbekend', code: 'onbekende_provider' });
+              if (b.verwijder === true) bronnen = bronnen.filter((x) => x.provider !== p.id);
+              else {
+                if (!_reg.kanBewaren(p)) return res.status(400).json({ error: 'niet beschikbaar', code: 'provider_niet_beschikbaar' });
+                const ruw = Object.assign({}, bronnen.find((x) => x.provider === p.id) || {}, { provider: p.id });
+                if (b.url !== undefined) ruw.url = b.url;
+                if (_reg.vraagtCredentials(p) && b.credentials) {
+                  const c = require('../api/_voorraad-providers/credentials').saneer(b.credentials, p.auth);
+                  if (!c) return res.status(400).json({ error: 'ongeldig', code: 'ongeldige_gegevens' });
+                  ruw.credentials = 'v1:AAAA';
+                }
+                const item = _inv._test.saneerBronItem(ruw);
+                if ((p.auth === 'feed_url' || p.auth === 'csv') && !item.url) return res.status(400).json({ error: 'ongeldig', code: 'ongeldig_adres' });
+                if (_reg.vraagtCredentials(p) && !item.credentials) return res.status(400).json({ error: 'ongeldig', code: 'geen_gegevens' });
+                const plek = bronnen.findIndex((x) => x.provider === p.id);
+                if (plek >= 0) bronnen[plek] = item; else bronnen.push(item);
+              }
+            }
+            _devVoorraad.bron = _inv.saneerBron({ bronnen, bewaarDagen });
+            return res.status(200).json(Object.assign({ ok: true, providers: kaarten() }, _inv.weergave(_devVoorraad.staat, _devVoorraad.bron)));
+          }
+          return res.status(200).json({ ok: true, bewaarDagen: _devVoorraad.bron.bewaarDagen, providers: kaarten() });
+        }
         case 'vehicle-save':
         case 'vehicle-archive':
         case 'listing-save':

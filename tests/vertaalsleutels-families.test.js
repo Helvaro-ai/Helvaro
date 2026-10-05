@@ -14,6 +14,10 @@ const FAMILIES = {
   'mail.klasse.': ['lead', 'klant', 'overig', 'nieuwsbrief', 'factuur', 'automatisch', 'eigen'],
   'pd.opstatus.': ['beschikbaar', 'interesse', 'afspraak', 'gereserveerd', 'verkocht', 'onbekend', 'uit_aanbod'],
 };
+/* Integraties: automotive (2026-10-05). Statussen van het register en de genormaliseerde bronfouten. */
+FAMILIES['ig.status.'] = ['ACTIVE', 'BETA', 'COMING_SOON', 'FEED_REQUIRED', 'MANUAL', 'DISABLED'];
+FAMILIES['ig.fout.'] = ['AUTH_ERROR', 'RATE_LIMIT', 'PROVIDER_DOWN', 'INVALID_DATA', 'MISSING_FIELD', 'DUPLICATE_VEHICLE', 'PERMISSION_DENIED', 'SYNC_TIMEOUT', 'UNKNOWN_ERROR', 'ACTIVATIE', 'NIET_BESCHIKBAAR'];
+FAMILIES['ig.err.'] = ['onbekende_provider', 'provider_niet_beschikbaar', 'ongeldig_adres', 'ongeldige_gegevens', 'geen_gegevens', 'geen_versleuteling', 'ongeldige_bewaartermijn', 'algemeen'];
 for (const id of ['dealership', 'real_estate', 'construction', 'kitchen', 'renovation', 'other']) FAMILIES['markt.' + id + '.'] = ['t', 's'];
 console.log('\nDynamische vertaalsleutelfamilies');
 for (const taal of ['nl', 'fr', 'en', 'de']) {

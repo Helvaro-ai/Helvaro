@@ -76,6 +76,11 @@ const F = Object.freeze({
      gewist als hij terug in de verkoop gaat -- nooit uit de lucht gegrepen,
      altijd een echte statuswijziging. Zie verkochtOvergang() hieronder. */
   verkochtOp:  'Sold At',
+  /* Chassisnummer (VIN). Alleen gezet als een bron een geldig nummer van 17
+     tekens levert; het is een van de drie EXACTE sleutels waarmee wagens van
+     verschillende platformen aan elkaar gekoppeld worden (api/_voorraad-sync.js).
+     Optioneel veld: zie onbekendOptioneelVeld(). */
+  vin:         'VIN',
 });
 
 class VehicleError extends Error {
@@ -441,6 +446,7 @@ function vanRecord(rec) {
     bronId:      String(f[F.bronId] || '').trim(),
     gesynct:     String(f[F.gesynct] || '').trim(),
     verkochtOp:  String(f[F.verkochtOp] || '').trim(),
+    vin:         String(f[F.vin] || '').trim().toUpperCase(),
   };
 }
 
@@ -697,6 +703,9 @@ function naarVelden(invoer, projectCode) {
   /* Alleen als de aanroeper het EXPLICIET meegeeft ('' = wissen). Zelfde reden
      als hierboven: een base zonder het veld mag een gewone save niet breken. */
   if (v.verkochtOp !== undefined) velden[F.verkochtOp] = v.verkochtOp ? tekst(v.verkochtOp, 40) : '';
+  /* Alleen een geldig chassisnummer, en alleen als de aanroeper er een meegeeft
+     (een base zonder het veld mag een gewone save niet breken). */
+  if (v.vin && /^[A-HJ-NPR-Z0-9]{17}$/i.test(String(v.vin).trim())) velden[F.vin] = String(v.vin).trim().toUpperCase();
 
   return velden;
 }
@@ -726,6 +735,15 @@ function verkochtOvergang(oudeStatus, nieuweStatus, oudVerkochtOp, nu) {
    gewone save daar niet op stuklopen. Eén keer opnieuw zonder dat veld. */
 function onbekendVerkochtVeld(status, tekstAntwoord) {
   return status === 422 && /UNKNOWN_FIELD_NAME/.test(tekstAntwoord) && /Sold At/.test(tekstAntwoord);
+}
+
+/* Hetzelfde voor elk optioneel veld dat de schema-migratie moet aanmaken:
+   welke velden noemt een 422 UNKNOWN_FIELD_NAME? Geeft de veldnamen terug die
+   we mogen weglaten en opnieuw proberen (nu: Sold At en VIN). */
+const OPTIONELE_VELDEN = Object.freeze([F.verkochtOp, F.vin]);
+function onbekendOptioneelVeld(status, tekstAntwoord) {
+  if (status !== 422 || !/UNKNOWN_FIELD_NAME/.test(tekstAntwoord)) return [];
+  return OPTIONELE_VELDEN.filter((naam) => tekstAntwoord.indexOf(naam) !== -1);
 }
 
 async function save(projectCode, invoer = {}) {
@@ -1007,7 +1025,7 @@ module.exports = {
   /* Voor de voorraadsync (api/_inventaris.js): batch-schrijven zonder per
      voertuig list() te herhalen. Niet voor andere aanroepers. */
   verkochtOvergang,
-  _intern: { atFetch: (...a) => atFetch(...a), TABEL, F, naarVelden, vanRecord, volgendeCode, onbekendVerkochtVeld },
+  _intern: { atFetch: (...a) => atFetch(...a), TABEL, F, naarVelden, vanRecord, volgendeCode, onbekendVerkochtVeld, onbekendOptioneelVeld },
   TABEL,
   F,
   VehicleError,

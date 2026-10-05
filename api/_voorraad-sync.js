@@ -28,6 +28,18 @@
  *   5. Verkocht is niet actief, en verkocht wordt pas na 14 dagen gearchiveerd.
  *      Nooit verwijderd: aan een wagen hangen leads, gesprekken en afspraken.
  *
+ * ── Meerdere bronnen (2026-10-05) ───────────────────────────────────────────
+ * verzoenAlles() doet dit voor alle bronnen van een dealer tegelijk; verzoen()
+ * is de enkele-bron-vorm en roept hem aan. Wat erbij kwam, in volgorde van
+ * hoe erg het is als het breekt:
+ *   6. Verkocht = elke bron die de wagen toonde slaagde in deze run en toont
+ *      hem niet meer. Een mislukte bron is ONBEKEND, nooit "leeg".
+ *   7. Dezelfde wagen op twee platformen koppelt alleen op een EXACTE sleutel
+ *      (AutoScout-nummer, genormaliseerde link, chassisnummer). Nooit op
+ *      merk, model of prijs.
+ *   8. Een advertentie (api/_listings.js) die ouder is dan de wagen waar hij
+ *      naar wijst, hoort bij een eerdere wagen met dezelfde code en telt niet.
+ *
  * ── SOLD en ARCHIVED, in dit datamodel ─────────────────────────────────────
  *   SOLD      Status = 'verkocht', Archived = false, Sold At gezet.
  *             Telt niet als voorraad, boekt geen proefrit, mag op de website
@@ -43,6 +55,7 @@ const vehicles = require('./_vehicles');
 
 const BEWAAR_DAGEN = 14;
 const DAG_MS = 24 * 60 * 60 * 1000;
+const GEZIEN_VERS_MS = DAG_MS;     // Last Seen At van een advertentie: hoogstens dagelijks verversen
 
 /* Dalingswacht. Pas ingrijpen als er ZOWEL veel wagens tegelijk verdwijnen als
    het een groot deel is van wat er uit de bron actief stond. Alleen het tweede
@@ -107,14 +120,6 @@ function isActief(v) {
 
 /* ── verzoen(): het plan, zonder netwerk ─────────────────────────────────── */
 
-/**
- * @param {object[]} bestaand  alle voertuigen van deze dealer, INCLUSIEF gearchiveerde
- * @param {object[]} bron      genormaliseerde bronregels (zie _inventaris.mapRegel)
- * @param {object}   opties    { nu, verdwenen: 'verkocht'|'uit_aanbod'|'negeren', bevestigDaling }
- * @returns {{nieuw:object[], bijwerken:object[], weg:object[], ongewijzigd:number,
- *            geadopteerd:number, verdwenenAantal:number, dalingGeblokkeerd:boolean,
- *            gebeurtenissen:object[]}}
- */
 /* Een voorraadnummer is hetzelfde nummer, ook als de feed er morgen
    hoofdletters van maakt ("ab-123" -> "AB-123"). Hoofdlettergevoelig
    vergelijken maakte daar een nieuwe wagen van en markeerde de oude als
@@ -122,115 +127,338 @@ function isActief(v) {
    ongevoelig. */
 function bronSleutel(id) { return String(id == null ? '' : id).trim().toLowerCase(); }
 
-function verzoen(bestaand, bron, opties = {}) {
-  const nu = opties.nu || new Date().toISOString();
-  const modus = MODI.indexOf(opties.verdwenen) !== -1 ? opties.verdwenen : 'verkocht';
+/* ── Bron-ID's: wiens id is dit? ─────────────────────────────────────────────
+ * Een wagen onthoudt in Source Record ID uit welke bron hij kwam. Dat veld
+ * bestond al voor er meerdere bronnen waren en bevat voor elke bestaande
+ * dealer het kale id van de ENE bron ("de oude bron", legacyProvider). Een
+ * tweede platform krijgt het voorvoegsel "<provider>:" -- zodat twee platformen
+ * die allebei voorraadnummer 1234 gebruiken nooit dezelfde wagen lijken.
+ * Dit is de terugval als de advertentietabel (api/_listings.js) er niet is of
+ * een schrijfactie mislukte: de identiteit staat dan nog op de wagen zelf. */
+function bronIdVoor(provider, externalId, legacyProvider) {
+  const id = String(externalId == null ? '' : externalId).trim();
+  return provider === legacyProvider ? id : provider + ':' + id;
+}
 
-  /* Twee soorten bestaande wagens:
-       - van DEZE bron (bron='feed' + bronId): die zijn van de sync
-       - al het andere (met de hand, of via een advertentielink ingevoerd): die
-         raakt de sync alleen aan als hij er zeker van is dat het dezelfde wagen
-         is -- dan wordt hij overgenomen, en nooit verwijderd omdat hij niet in
-         de feed staat. */
-  const vanBron = new Map();
-  const perAutoscout = new Map();
-  const perLink = new Map();
-  for (const v of bestaand) {
-    if (v.bron === 'feed' && v.bronId) { vanBron.set(bronSleutel(v.bronId), v); continue; }
-    const as = autoscoutUit(v);
-    if (as && !perAutoscout.has(as)) perAutoscout.set(as, v);
-    const lk = linkSleutel(v.link);
-    if (lk && !perLink.has(lk)) perLink.set(lk, v);
+function splitsBronId(bronId, legacyProvider, bekend) {
+  const s = String(bronId == null ? '' : bronId).trim();
+  const ids = (bekend || []).slice().sort((a, b) => b.length - a.length);
+  for (const p of ids) {
+    if (p !== legacyProvider && s.toLowerCase().indexOf(p + ':') === 0) return { provider: p, externalId: s.slice(p.length + 1) };
+  }
+  return { provider: legacyProvider, externalId: s };
+}
+
+const lkSleutel = (provider, id) => provider + '|' + bronSleutel(id);
+
+/* Een chassisnummer als sleutel; ongeldig of leeg telt nooit mee. */
+function vinSleutel(x) {
+  const v = String(x == null ? '' : x).trim().toUpperCase();
+  return /^[A-HJ-NPR-Z0-9]{17}$/.test(v) ? v : '';
+}
+
+/**
+ * Het plan voor ALLE bronnen van een dealer tegelijk. Pure functie: geen
+ * netwerk, geen klok (opties.nu).
+ *
+ * @param {object[]} bestaand  alle voertuigen van deze dealer, INCLUSIEF gearchiveerde
+ * @param {object[]} listings  bestaande advertenties (api/_listings.js vanRecord); mag leeg
+ * @param {object[]} bronnen   per bron, in volgorde van belang:
+ *     { provider, verdwenen:'verkocht'|'uit_aanbod'|'negeren', kentReservering,
+ *       voertuigen: object[] | null }   null = deze bron is niet geslaagd of
+ *                                       niet gedraaid: ONBEKEND, nooit "leeg"
+ * @param {object} opties
+ *     nu, bevestigDaling,
+ *     legacyProvider      wiens id een kaal Source Record ID is (standaard: de eerste bron)
+ *     geconfigureerd      alle providers die de dealer nog heeft; advertenties van
+ *                         een provider die er niet meer tussen staat tellen niet mee
+ *     codesToewijzen      geef nieuwe wagens meteen hun Helvaro-code (nodig om er
+ *                         advertenties aan te hangen); zonder dit doet pasToe het
+ * @returns {{nieuw, bijwerken, weg, ongewijzigd, geadopteerd, verdwenenAantal,
+ *            dalingGeblokkeerd, gebeurtenissen, listings, perBron, dubbelGemeld}}
+ *
+ * ── De regels (zie ook de kop van dit bestand) ──────────────────────────────
+ *   - Welke wagen is dit? Eerst de advertentie zelf (platform + id), dan de
+ *     oude Source Record ID, dan EXACT: AutoScout-nummer, genormaliseerde link,
+ *     chassisnummer. Nooit op merk, model of prijs. Geen treffer = nieuwe wagen.
+ *   - De eerste bron (in volgorde) die een wagen toont bepaalt zijn velden. De
+ *     andere koppelen alleen hun advertentie eraan.
+ *   - Verkocht wordt een wagen alleen als ELKE bron die hem toonde geslaagd is
+ *     in deze run en hem niet meer toont. Een mislukte bron is onbekend: geen
+ *     statuswijziging, nooit.
+ */
+function verzoenAlles(bestaand, listings, bronnen, opties = {}) {
+  const nu = opties.nu || new Date().toISOString();
+  const legacy = opties.legacyProvider || (bronnen[0] && bronnen[0].provider) || 'feed';
+  const bekend = Array.from(new Set((opties.geconfigureerd || bronnen.map((b) => b.provider)).concat([legacy])));
+  const geconfigureerd = new Set(opties.geconfigureerd || bronnen.map((b) => b.provider));
+  /* Kopieen: het plan beschrijft wat er moet gebeuren, en raakt de lijst van de aanroeper niet aan. */
+  const werk = (bestaand || []).map((v) => Object.assign({}, v));
+  const codes = werk.map((v) => v.code);
+
+  /* ── Wat al bekend is ──────────────────────────────────────────────────── */
+  const lk = new Map();                 // provider|id -> advertentie
+  for (const l of listings || []) {
+    if (l && l.provider && l.externalId) lk.set(lkSleutel(l.provider, l.externalId), Object.assign({}, l));
+  }
+  const byCode = new Map(werk.map((v) => [v.code, v]));
+  /* Een advertentie die ouder is dan de wagen waar hij naar wijst, hoort bij
+     een EERDERE wagen met dezelfde code (verwijderd, of nooit aangemaakt omdat
+     een schrijfactie mislukte; een code wordt hergebruikt). Zo'n rij mag nooit
+     een andere wagen aanwijzen. Hij wordt niet vertrouwd en bij de volgende
+     schrijfactie opnieuw gekoppeld. */
+  const staleRijen = new Map();
+  for (const [k, l] of Array.from(lk.entries())) {
+    const v = byCode.get(l.vehicleCode);
+    const tl = Date.parse(l.aangemaakt || ''), tv = Date.parse((v && v.aangemaakt) || '');
+    if (v && Number.isFinite(tl) && Number.isFinite(tv) && tl < tv) { staleRijen.set(k, l); lk.delete(k); }
+  }
+  for (const v of werk) {
+    if (v.bron !== 'feed' || !v.bronId) continue;
+    const s = splitsBronId(v.bronId, legacy, bekend);
+    const k = lkSleutel(s.provider, s.externalId);
+    /* Een wagen die zijn bron onthoudt maar nog geen advertentierij heeft
+       (van voor deze tabel, of een mislukte schrijfactie): een voorlopige. */
+    if (!lk.has(k)) lk.set(k, { provider: s.provider, externalId: s.externalId, vehicleCode: v.code, status: 'ACTIVE', url: v.link || '', gezien: '', voorlopig: true });
   }
 
+  const houdersVan = (code) => Array.from(lk.values()).filter((l) => l.vehicleCode === code && l.status !== 'REMOVED');
+  const heeftActief = (code, provider) => houdersVan(code).some((l) => l.provider === provider);
+
+  const perAutoscout = new Map(), perLink = new Map(), perVin = new Map();
+  const indexeer = (v) => {
+    const as = autoscoutUit(v);
+    if (as && !perAutoscout.has(as)) perAutoscout.set(as, v);
+    const lnk = linkSleutel(v.link);
+    if (lnk && !perLink.has(lnk)) perLink.set(lnk, v);
+    const vin = vinSleutel(v.vin);
+    if (vin) { if (!perVin.has(vin)) perVin.set(vin, []); perVin.get(vin).push(v); }
+  };
+  for (const v of werk) indexeer(v);
+  /* Een bron die een AutoScout-nummer of chassisnummer levert dat de wagen nog
+     niet had: onthoud het voor de volgende bron in DEZE run, anders herkent het
+     tweede platform de wagen pas bij de run daarna. */
+  const verrijk = (v, f) => {
+    let nieuw = false;
+    if (f.autoscout && !v.autoscout) { v.autoscout = String(f.autoscout).trim().toLowerCase(); nieuw = true; }
+    const vin = vinSleutel(f.vin);
+    if (vin && !v.vin) { v.vin = vin; nieuw = true; }
+    if (nieuw) indexeer(v);
+  };
   const plan = {
     nieuw: [], bijwerken: [], weg: [],
     ongewijzigd: 0, geadopteerd: 0,
     verdwenenAantal: 0, dalingGeblokkeerd: false,
-    gebeurtenissen: [],
+    gebeurtenissen: [], listings: [], perBron: {}, dubbelGemeld: 0,
   };
   const gebeurtenis = (soort, v, extra) => {
     plan.gebeurtenissen.push(Object.assign({ soort, code: v && v.code, bronId: v && v.bronId,
       titel: [v && v.merk, v && v.model].filter(Boolean).join(' ') }, extra || {}));
   };
 
-  const geraakt = new Set();
+  const schrijven = new Map();          // advertenties die weggeschreven moeten worden
+  const gezien = {};                    // provider -> Set(voertuigcode)
+  const aangeraakt = new Set();         // wagens waarvan een eerdere bron de velden al deed
+  const nieuweCodes = new Set();
 
-  for (const f of bron) {
-    if (!f || !f.bronId) continue;
-    const invoer = Object.assign({}, f, { bron: 'feed', gesynct: nu });
+  /* herbind: de rij hoort bij een wagen die in DEZE run is aangemaakt of
+     overgenomen (of de oude rij was niet te vertrouwen): hij krijgt een nieuw
+     Created At, zodat hij niet ouder is dan zijn wagen. */
+  const zetAdvertentie = (provider, f, code, herbind) => {
+    const k = lkSleutel(provider, f.bronId);
+    const was = lk.get(k) || staleRijen.get(k);
+    const url = f.link || '';
+    const verouderd = !was || !was.gezien || (Date.parse(nu) - Date.parse(was.gezien)) > GEZIEN_VERS_MS;
+    const rij = Object.assign({}, was || {}, { provider, externalId: String(f.bronId).trim(), vehicleCode: code, status: 'ACTIVE', url: url || (was && was.url) || '' });
+    const nodig = !was || was.voorlopig || herbind || !lk.has(k) || was.vehicleCode !== code || was.status === 'REMOVED' || (url && was.url !== url) || verouderd;
+    if (nodig) rij.gezien = nu;
+    if (herbind || !was || was.voorlopig || !lk.has(k)) rij.aangemaakt = nu;
+    delete rij.voorlopig;
+    if (nodig) { lk.set(k, rij); schrijven.set(k, rij); }
+  };
 
-    let oud = vanBron.get(bronSleutel(f.bronId)) || null;
-    let adoptie = false;
-    if (!oud) {
-      const kandidaat = perAutoscout.get(autoscoutUit(f)) || perLink.get(linkSleutel(f.link)) || null;
-      if (kandidaat && !geraakt.has(kandidaat.id)) { oud = kandidaat; adoptie = true; }
+  /* ── Per bron: wie is welke wagen? ─────────────────────────────────────── */
+  for (const S of bronnen) {
+    if (!S.voertuigen) continue;
+    const P = S.provider;
+    const st = plan.perBron[P] = { nieuw: 0, bijgewerkt: 0, ongewijzigd: 0, geadopteerd: 0, gekoppeld: 0, verdwenen: 0, verwijderd: 0, dalingGeblokkeerd: false, gezien: 0 };
+    gezien[P] = new Set();
+
+    const kandidaat = (f) => {
+      const goed = (v) => v && !gezien[P].has(v.code) && !heeftActief(v.code, P);
+      const as = autoscoutUit(f);
+      const a = as ? perAutoscout.get(as) : null;
+      if (goed(a)) return a;
+      const l = perLink.get(linkSleutel(f.link));
+      if (goed(l)) return l;
+      const vin = vinSleutel(f.vin);
+      if (vin) {
+        const eigen = (perVin.get(vin) || []).filter(goed);
+        if (eigen.length === 1) return eigen[0];
+        if (eigen.length > 1) { plan.dubbelGemeld++; gebeurtenis('listing_ambiguous', { merk: f.merk, model: f.model, bronId: f.bronId }, { via: 'vin', provider: P }); }
+      }
+      return null;
+    };
+
+    for (const f of S.voertuigen) {
+      if (!f || !f.bronId) continue;
+      const invoer = Object.assign({}, f, { bron: 'feed', bronId: bronIdVoor(P, f.bronId, legacy), gesynct: nu });
+
+      const eigen = lk.get(lkSleutel(P, f.bronId));
+      let oud = eigen ? (byCode.get(eigen.vehicleCode) || null) : null;
+      let adoptie = false;
+      if (!oud) {
+        const k = kandidaat(f);
+        if (k) { oud = k; adoptie = true; }
+      }
+
+      if (!oud) {
+        if (vehicles.normStatus(f.status) === 'verkocht') invoer.verkochtOp = nu;
+        if (opties.codesToewijzen) {
+          invoer.code = vehicles._intern.volgendeCode(codes);
+          codes.push(invoer.code);
+          nieuweCodes.add(invoer.code);
+          /* Meteen zichtbaar voor de volgende bron en het volgende item: anders
+             maakt het tweede platform dezelfde wagen nog een keer aan. */
+          const vl = { id: 'nieuw:' + invoer.code, code: invoer.code, merk: f.merk, model: f.model, prijs: f.prijs, link: f.link || '',
+            autoscout: autoscoutUit(f), vin: vinSleutel(f.vin), status: vehicles.normStatus(f.status), gearchiveerd: false,
+            bron: 'feed', bronId: invoer.bronId, verkochtOp: invoer.verkochtOp || '' };
+          werk.push(vl); byCode.set(vl.code, vl); indexeer(vl);
+          zetAdvertentie(P, f, vl.code, true);
+          gezien[P].add(vl.code);
+        }
+        plan.nieuw.push(invoer);
+        st.nieuw++;
+        gebeurtenis('vehicle_created', f, { prijs: f.prijs });
+        continue;
+      }
+
+      gezien[P].add(oud.code);
+      zetAdvertentie(P, f, oud.code, adoptie);
+
+      /* Een eerdere bron (of een net aangemaakte wagen) bepaalt de velden. */
+      if (aangeraakt.has(oud.code) || nieuweCodes.has(oud.code)) { verrijk(oud, f); st.gekoppeld++; continue; }
+      aangeraakt.add(oud.code);
+
+      let wijzigingen = VERGELIJK.filter((k) => f[k] !== undefined && !gelijk(f[k], oud[k]));
+      let nieuweStatus = vehicles.normStatus(f.status);
+      const oudeStatus = vehicles.normStatus(oud.status);
+      /* Een bron die geen reserveringen kent (AutoScout24 toont alleen "te
+         koop") mag een reservering die de dealer in Helvaro zette niet elk uur
+         terugdraaien naar beschikbaar. */
+      if (S.kentReservering === false && oudeStatus === 'gereserveerd' && nieuweStatus === 'beschikbaar') {
+        wijzigingen = wijzigingen.filter((k) => k !== 'status');
+        invoer.status = oud.status;
+        nieuweStatus = oudeStatus;
+      }
+      /* Een chassisnummer of AutoScout-nummer dat de wagen nog niet had, wordt
+         aangevuld; een ander nummer overschrijft nooit het bestaande. */
+      const aanvullen = ['vin', 'autoscout'].filter((k) => invoer[k] && !oud[k]);
+      if (oud.vin) delete invoer.vin;
+      if (oud.autoscout) delete invoer.autoscout;
+      verrijk(oud, f);
+
+      /* Een gearchiveerde wagen die opnieuw in de bron staat als NIET verkocht
+         komt terug. Staat hij er nog steeds als verkocht, dan blijft hij in het
+         archief -- dat is gewoon een export die oude verkopen meestuurt. */
+      const herleef = oud.gearchiveerd === true && nieuweStatus !== 'verkocht';
+      const vo = vehicles.verkochtOvergang(oudeStatus, nieuweStatus, oud.verkochtOp, nu);
+
+      if (!wijzigingen.length && !adoptie && !herleef && vo === undefined && !aanvullen.length) {
+        plan.ongewijzigd++; st.ongewijzigd++;
+        continue;
+      }
+      if (herleef) invoer.gearchiveerd = false;
+      if (vo !== undefined) invoer.verkochtOp = vo;
+      /* De herkomst van een wagen die al een andere bron heeft blijft die. */
+      if (oud.bron && (oud.bron !== 'feed' || bronSleutel(oud.bronId) !== bronSleutel(invoer.bronId))) { delete invoer.bron; delete invoer.bronId; }
+      plan.bijwerken.push({ id: oud.id, code: oud.code, invoer, wijzigingen, adoptie });
+      st.bijgewerkt++;
+      if (adoptie) { plan.geadopteerd++; st.geadopteerd++; }
+
+      if (wijzigingen.indexOf('prijs') !== -1) gebeurtenis('vehicle_price_changed', oud, { van: oud.prijs, naar: f.prijs });
+      if (nieuweStatus === 'verkocht' && oudeStatus !== 'verkocht') gebeurtenis('vehicle_marked_sold', oud, { via: 'bron' });
+      else if (wijzigingen.length) gebeurtenis('vehicle_updated', oud, { velden: wijzigingen });
     }
-
-    if (!oud) {
-      if (vehicles.normStatus(f.status) === 'verkocht') invoer.verkochtOp = nu;
-      plan.nieuw.push(invoer);
-      gebeurtenis('vehicle_created', f, { prijs: f.prijs });
-      continue;
-    }
-    geraakt.add(oud.id);
-
-    let wijzigingen = VERGELIJK.filter((k) => f[k] !== undefined && !gelijk(f[k], oud[k]));
-    let nieuweStatus = vehicles.normStatus(f.status);
-    const oudeStatus = vehicles.normStatus(oud.status);
-    /* Een bron die geen reserveringen kent (AutoScout24 toont alleen "te
-       koop") mag een reservering die de dealer in Helvaro zette niet elk uur
-       terugdraaien naar beschikbaar. */
-    if (opties.kentReservering === false && oudeStatus === 'gereserveerd' && nieuweStatus === 'beschikbaar') {
-      wijzigingen = wijzigingen.filter((k) => k !== 'status');
-      invoer.status = oud.status;
-      nieuweStatus = oudeStatus;
-    }
-
-    /* Een gearchiveerde wagen die opnieuw in de bron staat als NIET verkocht
-       komt terug. Staat hij er nog steeds als verkocht, dan blijft hij in het
-       archief -- dat is gewoon een export die oude verkopen meestuurt. */
-    const herleef = oud.gearchiveerd === true && nieuweStatus !== 'verkocht';
-    const vo = vehicles.verkochtOvergang(oudeStatus, nieuweStatus, oud.verkochtOp, nu);
-
-    if (!wijzigingen.length && !adoptie && !herleef && vo === undefined) {
-      plan.ongewijzigd++;
-      continue;
-    }
-    if (herleef) invoer.gearchiveerd = false;
-    if (vo !== undefined) invoer.verkochtOp = vo;
-    plan.bijwerken.push({ id: oud.id, code: oud.code, invoer, wijzigingen, adoptie });
-    if (adoptie) plan.geadopteerd++;
-
-    if (wijzigingen.indexOf('prijs') !== -1) gebeurtenis('vehicle_price_changed', oud, { van: oud.prijs, naar: f.prijs });
-    if (nieuweStatus === 'verkocht' && oudeStatus !== 'verkocht') gebeurtenis('vehicle_marked_sold', oud, { via: 'bron' });
-    else if (wijzigingen.length) gebeurtenis('vehicle_updated', oud, { velden: wijzigingen });
   }
 
-  /* Verdwenen: van deze bron, actief, en niet meer in de lijst. Alleen wagens
-     van DEZE bron -- een met de hand ingevoerde wagen staat nooit in de feed
-     en is daarom ook nooit "verdwenen". */
-  const actiefVanBron = Array.from(vanBron.values()).filter(isActief);
-  const verdwenen = actiefVanBron.filter((v) => !geraakt.has(v.id));
-  plan.verdwenenAantal = verdwenen.length;
+  /* ── Verdwenen ─────────────────────────────────────────────────────────────
+     Per geslaagde bron: welke actieve wagens van DIE bron tonen ze niet meer?
+     Een met de hand ingevoerde wagen heeft geen advertentie en is daarom nooit
+     "verdwenen". De dalingswacht geldt per bron. */
+  const weggelaten = {};                // provider -> Set(code): deze bron toont hem niet meer, en dat telt
+  const modusVan = {};
+  for (const S of bronnen) {
+    if (!S.voertuigen) continue;
+    const P = S.provider;
+    const st = plan.perBron[P];
+    const gehouden = new Map();
+    for (const l of lk.values()) {
+      if (l.provider !== P || l.status === 'REMOVED') continue;
+      const v = byCode.get(l.vehicleCode);
+      if (v && isActief(v) && !nieuweCodes.has(v.code)) gehouden.set(v.code, v);
+    }
+    const verdwenen = Array.from(gehouden.values()).filter((v) => !gezien[P].has(v.code));
+    plan.verdwenenAantal += verdwenen.length;
+    st.verdwenen = verdwenen.length;
+    const modus = MODI.indexOf(S.verdwenen) !== -1 ? S.verdwenen : 'verkocht';
+    if (modus === 'negeren' || !verdwenen.length) continue;
+    const verdacht = verdwenen.length >= DALING_MIN && verdwenen.length > gehouden.size * DALING_AANDEEL;
+    if (verdacht && !opties.bevestigDaling) { plan.dalingGeblokkeerd = true; st.dalingGeblokkeerd = true; continue; }
+    weggelaten[P] = new Set(verdwenen.map((v) => v.code));
+    modusVan[P] = modus;
+    st.verwijderd = verdwenen.length;
+  }
 
-  if (modus !== 'negeren' && verdwenen.length) {
-    const verdacht = verdwenen.length >= DALING_MIN && verdwenen.length > actiefVanBron.length * DALING_AANDEEL;
-    if (verdacht && !opties.bevestigDaling) {
-      plan.dalingGeblokkeerd = true;
-    } else {
-      for (const v of verdwenen) {
-        const status = modus === 'verkocht' ? 'verkocht' : 'uit aanbod';
-        const invoer = { status, gesynct: nu };
-        if (status === 'verkocht') invoer.verkochtOp = v.verkochtOp || nu;
-        plan.weg.push({ id: v.id, code: v.code, invoer });
-        gebeurtenis(status === 'verkocht' ? 'vehicle_marked_sold' : 'vehicle_updated', v,
-          status === 'verkocht' ? { via: 'verdwenen_uit_bron' } : { velden: ['status'] });
+  /* Verkocht: alleen als ELKE bron die hem toonde hem nu laat vallen. */
+  const kandidaten = new Set();
+  for (const set of Object.values(weggelaten)) for (const c of set) kandidaten.add(c);
+  for (const code of kandidaten) {
+    const v = byCode.get(code);
+    const houders = houdersVan(code).filter((l) => geconfigureerd.has(l.provider));
+    if (!v || !houders.length) continue;
+    if (!houders.every((l) => weggelaten[l.provider] && weggelaten[l.provider].has(code))) continue;
+    const modi = Array.from(new Set(houders.map((l) => modusVan[l.provider])));
+    const status = modi.indexOf('verkocht') !== -1 ? 'verkocht' : 'uit aanbod';
+    const invoer = { status, gesynct: nu };
+    if (status === 'verkocht') invoer.verkochtOp = v.verkochtOp || nu;
+    plan.weg.push({ id: v.id, code: v.code, invoer });
+    gebeurtenis(status === 'verkocht' ? 'vehicle_marked_sold' : 'vehicle_updated', v,
+      status === 'verkocht' ? { via: 'verdwenen_uit_bron' } : { velden: ['status'] });
+  }
+
+  /* De advertenties die niet meer getoond worden, als verwijderd bijhouden --
+     ook als de wagen zelf blijft staan omdat een ander platform hem nog toont. */
+  for (const [P, set] of Object.entries(weggelaten)) {
+    for (const code of set) {
+      for (const [k, l] of lk.entries()) {
+        if (l.provider !== P || l.vehicleCode !== code || l.status === 'REMOVED') continue;
+        const rij = Object.assign({}, l, { status: 'REMOVED' });
+        delete rij.voorlopig;
+        lk.set(k, rij);
+        schrijven.set(k, rij);
       }
     }
   }
+  plan.listings = Array.from(schrijven.values());
+  for (const [P, set] of Object.entries(gezien)) plan.perBron[P].gezien = set.size;
 
   return plan;
+}
+
+/**
+ * Een bronlijst naast de voorraad leggen: de enkele-bron-vorm van verzoenAlles.
+ * Dit is wat er was voor er meerdere bronnen waren, en wat de tests van die tijd
+ * nog steeds aanroepen. Het is een dunne laag: de regels staan in verzoenAlles.
+ *
+ * @param {object[]} bestaand  alle voertuigen van deze dealer, INCLUSIEF gearchiveerde
+ * @param {object[]} bron      genormaliseerde bronregels (zie _inventaris.mapRegel)
+ * @param {object}   opties    { nu, verdwenen: 'verkocht'|'uit_aanbod'|'negeren', bevestigDaling, kentReservering }
+ */
+function verzoen(bestaand, bron, opties = {}) {
+  return verzoenAlles(bestaand, [], [{
+    provider: 'feed', verdwenen: opties.verdwenen, kentReservering: opties.kentReservering, voertuigen: bron,
+  }], { nu: opties.nu, bevestigDaling: opties.bevestigDaling, legacyProvider: 'feed' });
 }
 
 /* ── planArchief(): welke verkochte wagens zijn aan het archief toe ──────── */
@@ -285,12 +513,16 @@ function maakSchrijver(opties = {}) {
   const I = vehicles._intern;
   const max = Number.isFinite(opties.max) ? opties.max : 400;
   const pauze = Number.isFinite(opties.pauze) ? opties.pauze : 220;
-  const staat = { geschreven: 0, failed: 0, zonderVerkochtVeld: false, afgekapt: false };
+  const staat = { geschreven: 0, failed: 0, zonderVerkochtVeld: false, afgekapt: false, zonderVelden: new Set() };
+  /* Optionele velden (Sold At, VIN) die op deze base nog niet bestaan: een 422
+     erover laat de run opnieuw proberen zonder die velden, en de rest van de
+     run ook. De schemamigratie maakt ze aan; tot dan werkt de sync gewoon. */
   const strip = (rec) => {
-    if (!staat.zonderVerkochtVeld || !(I.F.verkochtOp in rec.fields)) return rec;
+    if (!staat.zonderVelden.size) return rec;
     const velden = Object.assign({}, rec.fields);
-    delete velden[I.F.verkochtOp];
-    return Object.assign({}, rec, { fields: velden });
+    let geraakt = false;
+    for (const naam of staat.zonderVelden) if (naam in velden) { delete velden[naam]; geraakt = true; }
+    return geraakt ? Object.assign({}, rec, { fields: velden }) : rec;
   };
   async function batch(method, records) {
     for (let i = 0; i < records.length; i += 10) {
@@ -300,8 +532,10 @@ function maakSchrijver(opties = {}) {
       let r = await stuur();
       if (!r.ok) {
         const t = await r.text().catch(() => '');
-        if (!staat.zonderVerkochtVeld && I.onbekendVerkochtVeld(r.status, t)) {
-          staat.zonderVerkochtVeld = true;
+        const mist = I.onbekendOptioneelVeld(r.status, t).filter((n) => !staat.zonderVelden.has(n));
+        if (mist.length) {
+          for (const n of mist) staat.zonderVelden.add(n);
+          staat.zonderVerkochtVeld = staat.zonderVelden.has(I.F.verkochtOp);
           deel = deel.map(strip);
           r = await stuur();
         }
@@ -329,7 +563,9 @@ async function pasToe(projectCode, plan, opties = {}) {
 
   const nieuweRecords = plan.nieuw.map((inv) => {
     const velden = I.naarVelden(inv, projectCode);
-    const code = I.volgendeCode(codes);
+    /* Al een code (verzoenAlles met codesToewijzen): die hoort bij de
+       advertenties die er al aan hangen. Anders de eerstvolgende vrije. */
+    const code = inv.code || I.volgendeCode(codes);
     codes.push(code);
     velden[I.F.code] = code;
     velden[I.F.aangemaakt] = nu;
@@ -400,6 +636,6 @@ function logGebeurtenissen(projectCode, lijst) {
 
 module.exports = {
   BEWAAR_DAGEN, DALING_MIN, DALING_AANDEEL, MAX_GEBEURTENISSEN, VERGELIJK,
-  verzoen, planArchief, telling, pasToe, archiveerVerkocht, logGebeurtenissen,
+  verzoen, verzoenAlles, bronIdVoor, splitsBronId, planArchief, telling, pasToe, archiveerVerkocht, logGebeurtenissen,
   _test: { gelijk, linkSleutel, autoscoutUit, isActief, maakSchrijver },
 };

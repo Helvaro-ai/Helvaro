@@ -38,6 +38,21 @@
  * voor het versturen. Veranderde status, prijs of kilometerstand tussen het
  * schrijven en het versturen = het antwoord gaat niet ongewijzigd weg.
  *
+ * ── Meerdere bronnen (2026-10-05) ───────────────────────────────────────────
+ * Een dealer kan voorraad uit meer dan één plek halen: zijn website-feed, zijn
+ * AutoScout24-profiel, later mobile.de. 'Inventory Source' is dan
+ * { bronnen: [ ... ], bewaarDagen, legacyProvider }. De oude vorm (een enkel
+ * object met type/provider/url) blijft leesbaar: dat is een lijst van een.
+ * saneerBron() levert de eerste synchroniseerbare bron nog steeds als de
+ * oude platte velden (type, provider, url, ...), zodat alles wat daar al op
+ * leunt (dashboard, cron, tests) ongewijzigd werkt.
+ *
+ * Welke platformen er bestaan en wat ze kunnen staat in api/_voorraad-providers/.
+ * Dit bestand kent GEEN platform: het vraagt het register. Het weet alleen hoe
+ * je er meerdere achter elkaar draait (syncBronnen), wat er bij een mislukte
+ * bron gebeurt (die is onbekend: niets verandert voor wagens die alleen daar
+ * stonden) en hoe de toestand per bron bijgehouden wordt.
+ *
  * ── Opslag ──────────────────────────────────────────────────────────────────
  * Client Config: 'Inventory Source' (JSON, instellingen) en 'Inventory State'
  * (JSON, toestand + laatste runs). Geen eigen tabel: één rij per dealer is
@@ -45,10 +60,14 @@
  */
 
 const crypto = require('crypto');
-const dns = require('dns').promises;
-const net = require('net');
 const vehicles = require('./_vehicles');
-const { urlToegestaan, hostIsExtern, isInternIp } = require('./_lib/fetch-website');
+const registry = require('./_voorraad-providers');
+const credentials = require('./_voorraad-providers/credentials');
+const fouten = require('./_voorraad-providers/fouten');
+const _listings = require('./_listings');
+const feedModule = require('./_voorraad-providers/feed');
+const autoscoutModule = require('./_voorraad-providers/autoscout24');
+const { isInternIp } = require('./_lib/fetch-website');
 
 const CLIENTS_TABLE = 'tblPidTrwGRzRt4LZ';
 const F_PROJECT = 'fldN4dL0bGgfBOXwM';
@@ -66,7 +85,6 @@ const STANDAARD = Object.freeze({
 });
 
 const SLOT_MS = 2 * 60 * 1000;          // een sync die langer duurt geldt als dood
-const MAX_FEED_BYTES = 5 * 1024 * 1024; // 5 MB
 const MAX_SCHRIJF_PER_RUN = 400;         // rest volgt in de volgende run (DEGRADED 'gedeeltelijk')
 const GESCHIEDENIS = 10;
 
@@ -103,13 +121,70 @@ function leesJson(v, standaard) {
   try { const o = JSON.parse(v); return o && typeof o === 'object' ? o : standaard; } catch { return standaard; }
 }
 
+const MAX_BRONNEN = 10;
+const STANDAARD_BEWAAR_DAGEN = 14;
+const MAX_LISTING_SCHRIJF = 600;        // advertentierijen per run
+
+function getal(x, d, min, max) { const n = Number(x); return Number.isFinite(n) ? Math.min(max, Math.max(min, Math.round(n))) : d; }
+function maskeerUrl(u) { return u ? String(u).replace(/([?&](?:key|token|apikey|api_key|secret)=)[^&]+/gi, '$1***') : ''; }
+
+/* De oude enkele bron als een element van de lijst. De provider volgt uit wat de
+   dealer koos; een adres dat een provider herkent (een AutoScout24-verkopers-
+   profiel) wint, ook als het formulier de provider niet meestuurde. */
+function legacyNaarItem(o) {
+  const url = String(o.url || '').trim().slice(0, 1000);
+  const https = /^https:\/\/\S+$/i.test(url) ? url : '';
+  const herkend = registry.lijst().find((p) => typeof p.herkent === 'function' && p.herkent(https));
+  const gevraagd = registry.get(String(o.provider || o.type || ''));
+  const provider = herkend ? herkend.id
+    : (gevraagd && registry.kanSyncen(gevraagd) ? gevraagd.id : 'feed');
+  return { provider, url, formaat: o.formaat, verdwenen: o.verdwenen, enabled: true };
+}
+
+/** Een bron uit de lijst, gesaneerd door zijn provider. null = onbekende provider. */
+function saneerBronItem(o) {
+  const r = o && typeof o === 'object' ? o : {};
+  const p = registry.get(String(r.provider || '').trim());
+  if (!p) return null;
+  /* Verdwijnt een voertuig uit een GESLAAGDE bron: standaard 'verkocht' (met
+     Sold At, dus 14 dagen VERKOCHT en daarna het archief in). Nooit
+     verwijderen -- leads en afspraken hangen eraan. De oude standaard
+     'uit aanbod' (met spatie) staat in elke opgeslagen bron omdat bewaarBron()
+     de gesaneerde waarde wegschreef; geen dealer koos hem ooit. Daarom leest
+     hij als de nieuwe standaard. Wie echt 'uit aanbod' wil, schrijft 'uit_aanbod'. */
+  const item = {
+    id: p.id,
+    provider: p.id,
+    enabled: r.enabled !== false,
+    verdwenen: r.verdwenen === 'negeren' ? 'negeren' : r.verdwenen === 'uit_aanbod' ? 'uit_aanbod' : 'verkocht',
+  };
+  Object.assign(item, p.saneer(r));
+  /* Inloggegevens bestaan alleen als sluitend versleutelde waarde; platte tekst
+     of iets anders wordt hier nooit overgenomen. */
+  if (registry.vraagtCredentials(p)) item.credentials = credentials.isVersleuteld(r.credentials) ? r.credentials : '';
+  return item;
+}
+
 /** Bron-instellingen, gesaneerd. Onbekende waarden vallen terug op native. */
 function saneerBron(ruw) {
   const o = ruw && typeof ruw === 'object' ? ruw : {};
-  /* 'autoscout24' is een feed met een andere provider (zie PROVIDERS). */
-  const type = (o.type === 'feed' || o.type === 'autoscout24') ? 'feed' : 'native';
+  const ruwe = Array.isArray(o.bronnen) ? o.bronnen
+    : (o.type === 'feed' || registry.kanSyncen(registry.get(String(o.type || '')))) ? [legacyNaarItem(o)]
+    : [];
+  const bronnen = [];
+  for (const r of ruwe) {
+    const b = saneerBronItem(r);
+    /* Een bron per platform: de advertentiesleutel is platform + id. */
+    if (b && !bronnen.some((x) => x.provider === b.provider)) bronnen.push(b);
+    if (bronnen.length >= MAX_BRONNEN) break;
+  }
+  const actief = bronnen.filter((b) => b.enabled && registry.kanSyncen(registry.get(b.provider)));
+  /* 'feed' = de voorraad staat (ook) in een ander systeem en kan dus achterlopen.
+     Een bron die alleen inloggegevens bewaart en nog niet kan lezen telt niet:
+     dan zou de assistent stoppen met bevestigen voor een dealer die gewoon in
+     Helvaro werkt. */
+  const type = actief.length ? 'feed' : 'native';
   const std = STANDAARD[type];
-  const getal = (x, d, min, max) => { const n = Number(x); return Number.isFinite(n) ? Math.min(max, Math.max(min, Math.round(n))) : d; };
   const bron = {
     type,
     drempels: {
@@ -117,39 +192,35 @@ function saneerBron(ruw) {
       waarschuwMin: getal(o.drempels && o.drempels.waarschuwMin, std.waarschuwMin, 1, 14 * 24 * 60),
       hardMin: getal(o.drempels && o.drempels.hardMin, std.hardMin, 5, 30 * 24 * 60),
     },
+    bewaarDagen: getal(o.bewaarDagen, STANDAARD_BEWAAR_DAGEN, 1, 365),
+    bronnen,
+    legacyProvider: registry.get(String(o.legacyProvider || '')) ? String(o.legacyProvider) : (bronnen[0] ? bronnen[0].provider : 'feed'),
+    /* Wagens die de dealer zelf verwijderde: de sync maakt ze niet opnieuw aan.
+       Altijd bewaard, ook als er nu geen bron actief is: dezelfde bron kan
+       morgen weer aan. */
+    uitgeslotenAlle: Array.isArray(o.uitgesloten)
+      ? Array.from(new Set(o.uitgesloten.map((x) => String(x || '').trim().slice(0, 140)).filter(Boolean))).slice(-1000)
+      : [],
   };
   if (bron.drempels.waarschuwMin < bron.drempels.versMin) bron.drempels.waarschuwMin = bron.drempels.versMin;
   if (bron.drempels.hardMin < bron.drempels.waarschuwMin) bron.drempels.hardMin = bron.drempels.waarschuwMin;
   if (type === 'feed') {
-    const url = String(o.url || '').trim().slice(0, 1000);
-    bron.url = /^https:\/\/\S+$/i.test(url) ? url : '';
-    bron.formaat = ['csv', 'json', 'xml'].includes(o.formaat) ? o.formaat : 'auto';
-    /* Verdwijnt een voertuig uit een GESLAAGDE feed: standaard 'verkocht' (met
-       Sold At, dus 14 dagen VERKOCHT en daarna het archief in). Nooit
-       verwijderen -- leads en afspraken hangen eraan.
-
-       De oude standaard was 'uit aanbod', en die staat in elke opgeslagen
-       bron omdat bewaarBron() de GESANEERDE waarde wegschrijft. Geen dealer
-       koos hem ooit: het dashboardformulier stuurt dit veld niet mee. Daarom
-       leest de oude spelling-met-spatie hier als de nieuwe standaard. Wie echt
-       'uit aanbod' wil, schrijft 'uit_aanbod'. */
-    /* Wagens die de dealer zelf verwijderde: de sync maakt ze niet opnieuw aan. */
-    bron.uitgesloten = Array.isArray(o.uitgesloten)
-      ? Array.from(new Set(o.uitgesloten.map((x) => String(x || '').trim().slice(0, 120)).filter(Boolean))).slice(-1000)
-      : [];
-    bron.verdwenen = o.verdwenen === 'negeren' ? 'negeren'
-      : o.verdwenen === 'uit_aanbod' ? 'uit_aanbod'
-      : 'verkocht';
-    /* Welke provider; zie PROVIDERS. Een AutoScout24-verkopersprofiel wordt
-       herkend aan het adres, ook als het formulier de provider niet meestuurt. */
-    bron.provider = (o.provider === 'autoscout24' || o.type === 'autoscout24' || autoscoutDealerUrl(bron.url)) ? 'autoscout24' : 'feed';
-    if (bron.provider === 'autoscout24') {
-      const d = autoscoutDealerUrl(url);
-      bron.url = d ? d.url : '';
-      bron.formaat = 'auto';
-    }
+    /* De oude platte velden: de eerste actieve bron. */
+    const p = actief[0];
+    bron.url = p.url || '';
+    bron.formaat = p.formaat || 'auto';
+    bron.verdwenen = p.verdwenen;
+    bron.provider = p.provider;
+    bron.uitgesloten = bron.uitgeslotenAlle;
   }
   return bron;
+}
+
+/** Wat in 'Inventory Source' terechtkomt: de nieuwe lijst, plus de oude platte velden zodat terugdraaien veilig is. */
+function naarOpslag(bron) {
+  const uit = { type: bron.type, bronnen: bron.bronnen, bewaarDagen: bron.bewaarDagen, legacyProvider: bron.legacyProvider, drempels: bron.drempels, uitgesloten: bron.uitgeslotenAlle };
+  if (bron.type === 'feed') Object.assign(uit, { provider: bron.provider, url: bron.url, formaat: bron.formaat, verdwenen: bron.verdwenen });
+  return uit;
 }
 
 async function lees(projectCode) {
@@ -241,7 +312,7 @@ async function neemSlot(rec, staat, door) {
   return token;
 }
 
-/* ── Providers ─────────────────────────────────────────────────────────── */
+/* ── Native ────────────────────────────────────────────────────────────── */
 
 /** native: controleer de tabel, tel, hash, vergelijk met de vorige run. */
 async function probeNative(projectCode, vorige) {
@@ -275,368 +346,141 @@ async function probeNative(projectCode, vorige) {
   };
 }
 
-/* Feed ophalen: https, geen interne adressen (ook niet na DNS), max 5 MB,
-   hoogstens twee omleidingen die elk opnieuw gecontroleerd worden. */
-async function haalFeed(url) {
-  let huidige = url;
-  for (let hop = 0; hop <= 2; hop++) {
-    const parsed = urlToegestaan(huidige, '[voorraadfeed]');
-    if (!parsed || parsed.protocol !== 'https:') { const e = new Error('feed-adres niet toegestaan (alleen https, geen interne adressen)'); e.code = 'url_geweigerd'; throw e; }
-    if (!(await hostIsExtern(parsed.hostname))) { const e = new Error('feed-adres wijst naar een intern netwerk'); e.code = 'url_geweigerd'; throw e; }
-    const res = await fetch(parsed.toString(), { redirect: 'manual', headers: { 'User-Agent': 'HelvaroInventory/1.0', Accept: 'text/csv,application/json,application/xml,text/xml,*/*' }, signal: AbortSignal.timeout(20000) });
-    if (res.status >= 300 && res.status < 400) { huidige = new URL(res.headers.get('location') || '', parsed).toString(); continue; }
-    if (!res.ok) { const e = new Error('feed antwoordde HTTP ' + res.status); e.code = 'feed_http'; throw e; }
-    const lengte = Number(res.headers.get('content-length') || 0);
-    if (lengte > MAX_FEED_BYTES) { const e = new Error('feed groter dan 5 MB'); e.code = 'feed_te_groot'; throw e; }
-    const tekst = await res.text();
-    if (tekst.length > MAX_FEED_BYTES) { const e = new Error('feed groter dan 5 MB'); e.code = 'feed_te_groot'; throw e; }
-    return { tekst, type: String(res.headers.get('content-type') || '') };
-  }
-  const e = new Error('te veel omleidingen'); e.code = 'feed_omleiding'; throw e;
+/* ── Meerdere bronnen: ophalen, verzoenen, schrijven ─────────────────────── */
+
+/* De toestand van een bron uit de vorige run. Een dealer van voor de
+   meerbronnenvorm heeft alleen de platte velden; die horen bij zijn ENE bron
+   (de eerste in de lijst). */
+function vorigeVan(staat, bron, index) {
+  const s = staat || {};
+  if (s.bronnen && s.bronnen[bron.provider]) return s.bronnen[bron.provider];
+  if (!s.bronnen && index === 0) return s;
+  return {};
 }
 
-/* Kolomnamen die feeds in de praktijk gebruiken, per Helvaro-veld. */
-const ALIASSEN = Object.freeze({
-  bronId:      ['id', 'vehicleid', 'vehicle_id', 'stocknumber', 'stock_number', 'stock', 'stocknr', 'voorraadnummer', 'referentie', 'reference', 'ref', 'vin', 'guid', 'listingid'],
-  merk:        ['make', 'merk', 'brand', 'marque', 'marke', 'manufacturer'],
-  model:       ['model', 'modele', 'modell'],
-  uitvoering:  ['variant', 'version', 'uitvoering', 'trim', 'type', 'modelversion'],
-  prijs:       ['price', 'prijs', 'prix', 'preis', 'saleprice', 'sale_price', 'amount'],
-  km:          ['mileage', 'km', 'kilometerstand', 'kilometrage', 'odometer', 'kilometer'],
-  inschrijving:['registration', 'firstregistration', 'first_registration', 'year', 'bouwjaar', 'inschrijving', 'erstzulassung', 'annee'],
-  brandstof:   ['fuel', 'brandstof', 'carburant', 'kraftstoff', 'fueltype', 'fuel_type'],
-  transmissie: ['transmission', 'gearbox', 'transmissie', 'versnellingsbak', 'boite', 'getriebe'],
-  kw:          ['powerkw', 'power_kw', 'kw', 'vermogen', 'puissance'],
-  carrosserie: ['body', 'bodytype', 'body_type', 'carrosserie', 'karosserie'],
-  kleur:       ['color', 'colour', 'kleur', 'couleur', 'farbe'],
-  link:        ['url', 'link', 'listingurl', 'listing_url', 'detailurl'],
-  fotos:       ['images', 'photos', 'photourls', 'photo_urls', 'image', 'pictures', 'fotos'],
-  status:      ['status', 'availability', 'state', 'beschikbaarheid'],
-  omschrijving:['description', 'omschrijving', 'remarks'],
-});
-
-function normSleutel(k) { return String(k || '').toLowerCase().replace(/[^a-z0-9_]/g, ''); }
-
-/** Eén feedregel (object met willekeurige sleutels) -> Helvaro-velden, of null. */
-function mapRegel(ruw) {
-  const plat = {};
-  for (const [k, v] of Object.entries(ruw || {})) plat[normSleutel(k)] = v;
-  const pak = (veld) => { for (const a of ALIASSEN[veld]) { if (plat[a] !== undefined && plat[a] !== null && String(plat[a]).trim() !== '') return plat[a]; } return undefined; };
-  const bronId = pak('bronId');
-  if (bronId === undefined) return null;
-  const getal = (x) => { if (x === undefined) return undefined; const n = Number(String(x).replace(/[^0-9.,-]/g, '').replace(/\.(?=\d{3}(\D|$))/g, '').replace(',', '.')); return Number.isFinite(n) ? n : undefined; };
-  const fotosRuw = pak('fotos');
-  const fotos = Array.isArray(fotosRuw) ? fotosRuw.map(String) : (fotosRuw ? String(fotosRuw).split(/[\s,;|]+/) : []);
-  const statusRuw = String(pak('status') || '').trim().toLowerCase();
-  const statusMap = { available: 'beschikbaar', beschikbaar: 'beschikbaar', disponible: 'beschikbaar', verfugbar: 'beschikbaar', 'in stock': 'beschikbaar', active: 'beschikbaar',
-    reserved: 'gereserveerd', gereserveerd: 'gereserveerd', reserve: 'gereserveerd', reserviert: 'gereserveerd',
-    sold: 'verkocht', verkocht: 'verkocht', vendu: 'verkocht', verkauft: 'verkocht' };
-  return {
-    bronId: String(bronId).trim().slice(0, 120),
-    merk: pak('merk'), model: pak('model'), uitvoering: pak('uitvoering'),
-    prijs: getal(pak('prijs')), km: getal(pak('km')),
-    inschrijving: pak('inschrijving') !== undefined ? String(pak('inschrijving')).slice(0, 10) : undefined,
-    brandstof: pak('brandstof'), transmissie: pak('transmissie'), kw: getal(pak('kw')),
-    carrosserie: pak('carrosserie'), kleur: pak('kleur'),
-    link: pak('link') && /^https:\/\//i.test(String(pak('link'))) ? String(pak('link')) : undefined,
-    fotos: fotos.filter((u) => /^https:\/\/\S{8,500}$/.test(u)).slice(0, 20),
-    /* Staat er een status in de feed die we niet kennen: 'onbekend', niet
-       'beschikbaar'. Staat er geen status: aanwezig in de feed = te koop. */
-    status: statusRuw ? (statusMap[statusRuw] || 'onbekend') : 'beschikbaar',
-    omschrijving: pak('omschrijving') !== undefined ? String(pak('omschrijving')).slice(0, 4000) : undefined,
-  };
-}
-
-function parseCsv(tekst) {
-  const regels = [];
-  let rij = [], veld = '', inQuote = false;
-  const eersteRegel = tekst.split(/\r?\n/, 1)[0] || '';
-  const sep = [';', '\t', ','].map((c) => [c, eersteRegel.split(c).length]).sort((a, b) => b[1] - a[1])[0][0];
-  for (let i = 0; i < tekst.length; i++) {
-    const ch = tekst[i];
-    if (inQuote) {
-      if (ch === '"') { if (tekst[i + 1] === '"') { veld += '"'; i++; } else inQuote = false; }
-      else veld += ch;
-    } else if (ch === '"') inQuote = true;
-    else if (ch === sep) { rij.push(veld); veld = ''; }
-    else if (ch === '\n' || ch === '\r') {
-      if (ch === '\r' && tekst[i + 1] === '\n') i++;
-      rij.push(veld); veld = '';
-      if (rij.some((x) => x.trim() !== '')) regels.push(rij);
-      rij = [];
-    } else veld += ch;
-  }
-  if (veld !== '' || rij.length) { rij.push(veld); if (rij.some((x) => x.trim() !== '')) regels.push(rij); }
-  if (regels.length < 2) return [];
-  const kop = regels[0].map((k) => k.trim());
-  return regels.slice(1).map((r) => Object.fromEntries(kop.map((k, i) => [k, (r[i] || '').trim()])));
-}
-
-function parseJson(tekst) {
-  const d = JSON.parse(tekst);
-  if (Array.isArray(d)) return d;
-  for (const k of ['vehicles', 'items', 'data', 'listings', 'results', 'cars', 'voertuigen', 'ads']) if (Array.isArray(d && d[k])) return d[k];
-  return [];
-}
-
-/* Bewust simpel: herhaalde elementen met kind-tags. Geen DTD's, geen entiteiten
-   (dus geen XXE), geen attributen -- wat een voorraadfeed nodig heeft. */
-function parseXml(tekst) {
-  const schoon = tekst.replace(/<!\[CDATA\[([\s\S]*?)\]\]>/g, (_, x) => x.replace(/</g, '&lt;')).replace(/<!--[\s\S]*?-->/g, '').replace(/<!DOCTYPE[\s\S]*?>/gi, '');
-  const kandidaten = ['vehicle', 'car', 'item', 'ad', 'listing', 'voertuig', 'auto'];
-  for (const tag of kandidaten) {
-    const re = new RegExp(`<${tag}(?:\\s[^>]*)?>([\\s\\S]*?)</${tag}>`, 'gi');
-    const uit = [];
-    let m;
-    while ((m = re.exec(schoon)) !== null && uit.length < 5000) {
-      const obj = {};
-      const kindRe = /<([a-zA-Z_][\w.-]*)(?:\s[^>]*)?>([\s\S]*?)<\/\1>/g;
-      let k;
-      while ((k = kindRe.exec(m[1])) !== null) {
-        const waarde = k[2].replace(/<[^>]+>/g, ' ').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&amp;/g, '&').replace(/&quot;/g, '"').trim();
-        if (obj[k[1]] === undefined) obj[k[1]] = waarde;
-        else obj[k[1]] = obj[k[1]] + ' ' + waarde;
-      }
-      uit.push(obj);
-    }
-    if (uit.length) return uit;
-  }
-  return [];
-}
-
-function parseFeed(tekst, formaat, contentType) {
-  const f = formaat && formaat !== 'auto' ? formaat
-    : /json/.test(contentType) || /^\s*[[{]/.test(tekst) ? 'json'
-    : /xml/.test(contentType) || /^\s*</.test(tekst) ? 'xml' : 'csv';
-  const rijen = f === 'json' ? parseJson(tekst) : f === 'xml' ? parseXml(tekst) : parseCsv(tekst);
-  const gezien = new Set();
-  const uit = [];
-  let ongeldig = 0;
-  for (const r of rijen) {
-    const m = mapRegel(r);
-    if (!m || !m.merk || gezien.has(m.bronId.toLowerCase())) { ongeldig++; continue; }
-    gezien.add(m.bronId.toLowerCase());
-    uit.push(m);
-  }
-  return { formaat: f, voertuigen: uit, ongeldig, hash: crypto.createHash('sha256').update(tekst).digest('hex').slice(0, 16) };
-}
-
-/* ── Providers ────────────────────────────────────────────────────────────
-   Een provider haalt een voorraad op en geeft hem GENORMALISEERD terug:
-   { voertuigen: [mapRegel-vorm], ongeldig, hash }. Alles daarna -- vergelijken,
-   verkocht, archief -- is voor elke provider hetzelfde (api/_voorraad-sync.js).
-
-   Nu is er één: 'feed' (CSV, JSON of XML op een https-adres). Dat dekt de
-   dealer-export van AutoScout24 en van de gangbare DMS-pakketten. Wat hier
-   bewust NIET staat is het periodiek afschrapen van een AutoScout24-
-   etalagepagina: dat is geen toegestane integratie. Komt er een officiele
-   API-koppeling bij, dan is dat een tweede regel in deze tabel, en verandert
-   er verder niets. */
-/* ── AutoScout24-dealerpagina ──────────────────────────────────────────────
- * De dealer geeft het adres van zijn eigen verkopersprofiel
- * (https://www.autoscout24.be/nl/verkopers/<naam>). De publieke pagina bevat
- * de advertenties als gestructureerde data (__NEXT_DATA__), 20 per pagina, met
- * een stabiel advertentie-id. Dat id is de bronId: nooit merk/model/prijs.
+/**
+ * Alle bronnen van de dealer: elke ophalen (een mislukte bron breekt de rest
+ * niet af), dan EEN verzoening over alles, dan schrijven.
  *
- * Wat dit bewust WEL en NIET doet (beslissing 2026-09-27, zie CHANGELOG):
- *   - alleen een verkopersprofiel op een autoscout24-domein, nooit een
- *     willekeurige zoekpagina of een ander domein
- *   - robots.txt wordt elke run gelezen en gerespecteerd
- *   - eerlijke user-agent, één pagina per seconde, hooguit MAX_AS24_PAGINAS
- *   - een blokkade, captcha of 429 = STOPPEN met een duidelijke fout. Geen
- *     omweg, geen andere user-agent, geen herhaalpoging.
- *   - onvolledig gelezen (minder dan 95% van wat de pagina zelf telt) = de
- *     run faalt. Een half gelezen voorraad mag NOOIT wagens op verkocht zetten.
- * Een officiële feed of export van AutoScout24 of het DMS blijft de betere
- * bron; die gaat via de provider 'feed' hierboven.
+ * Gooit alleen als GEEN enkele bron slaagde -- en dan met e.perBron erbij zodat
+ * de toestand per bron toch bijgewerkt wordt. Slaagt er minstens een, dan is de
+ * run 'partial' en blijft wat de mislukte bron toonde ongemoeid: onbekend is
+ * niet verkocht.
  */
-const AS24_HOST = /^(www\.)?autoscout24\.(be|nl|de|at|fr|it|es|lu|com)$/i;
-const AS24_PAD = /^\/(?:[a-z]{2}\/)?(verkopers|haendler|professional|professionals|professionnel|professionnels|concessionari|concesionarios|dealers|vendeurs)\/([a-z0-9][a-z0-9-]{1,80})\/?$/i;
-const MAX_AS24_PAGINAS = 60;           // 1.200 wagens
-const AS24_PAUZE_MS = 1000;
-const AS24_UA = 'HelvaroInventory/1.0 (+https://helvaro.pro; voorraadsync voor de dealer zelf)';
-
-/** Het verkopersprofiel uit een geplakte link, of null. Query en tracking weg. */
-function autoscoutDealerUrl(ruw) {
-  let u;
-  try { u = new URL(String(ruw || '').trim()); } catch { return null; }
-  if (u.protocol !== 'https:' || !AS24_HOST.test(u.hostname)) return null;
-  const m = AS24_PAD.exec(u.pathname);
-  if (!m) return null;
-  return { origin: 'https://' + u.hostname.toLowerCase(), pad: u.pathname.replace(/\/$/, ''), slug: m[2].toLowerCase(), url: 'https://' + u.hostname.toLowerCase() + u.pathname.replace(/\/$/, '') };
-}
-
-/* robots.txt: de regels voor '*' (en voor onze eigen naam). 404 = alles mag. */
-async function robotsStaatToe(origin, pad, haal = fetch) {
-  let tekst = '';
-  try {
-    const r = await haal(origin + '/robots.txt', { headers: { 'User-Agent': AS24_UA }, redirect: 'follow', signal: AbortSignal.timeout(8000) });
-    if (r.status === 404) return true;
-    if (!r.ok) return false;
-    tekst = await r.text();
-  } catch { return false; }
-  const regels = tekst.split(/\r?\n/).map((l) => l.replace(/#.*/, '').trim());
-  let geldt = false, vorigeWasUa = false;
-  const verboden = [], toegestaan = [];
-  for (const l of regels) {
-    const m = /^([A-Za-z-]+)\s*:\s*(.*)$/.exec(l);
-    if (!m) { continue; }
-    const k = m[1].toLowerCase(), v = m[2].trim();
-    if (k === 'user-agent') {
-      const wij = v === '*' || /helvaroinventory/i.test(v);
-      geldt = vorigeWasUa ? (geldt || wij) : wij;
-      vorigeWasUa = true;
-      continue;
-    }
-    vorigeWasUa = false;
-    if (!geldt) continue;
-    if (k === 'disallow' && v) verboden.push(v);
-    if (k === 'allow' && v) toegestaan.push(v);
-  }
-  const langste = (lijst) => lijst.filter((p) => pad.startsWith(p)).reduce((a, p) => Math.max(a, p.length), -1);
-  return langste(verboden) <= langste(toegestaan) || langste(verboden) === -1;
-}
-
-/** Eén AutoScout24-advertentie -> dezelfde vorm als mapRegel(). */
-function mapAutoscout(l, origin) {
-  if (!l || !l.id || !l.vehicle) return null;
-  const v = l.vehicle;
-  const prijs = l.prices && l.prices.public && Number(l.prices.public.priceRaw);
-  const tekstVan = (x) => (x && x.formatted ? String(x.formatted) : undefined);
-  const fotos = (Array.isArray(l.images) ? l.images : [])
-    .map((u) => String(u).replace(/\/\d{2,4}x\d{2,4}\.webp$/, '/720x540.webp'))
-    .filter((u) => /^https:\/\/prod\.pictures\.autoscout24\.net\/\S{8,400}$/.test(u)).slice(0, 20);
-  const link = l.url && /^\/[\w\-/]+$/.test(String(l.url)) ? origin + l.url : undefined;
-  return {
-    bronId: String(l.id).trim().toLowerCase().slice(0, 120),
-    merk: v.make || undefined, model: v.model || undefined,
-    uitvoering: v.modelVersionInput ? String(v.modelVersionInput).slice(0, 120) : undefined,
-    prijs: Number.isFinite(prijs) && prijs > 0 ? prijs : undefined,
-    km: v.mileageInKm && Number.isFinite(Number(v.mileageInKm.raw)) ? Number(v.mileageInKm.raw) : undefined,
-    inschrijving: tekstVan(v.firstRegistrationDate),
-    brandstof: tekstVan(v.fuelCategory) ? tekstVan(v.fuelCategory).toLowerCase() : undefined,
-    transmissie: tekstVan(v.transmissionType) ? tekstVan(v.transmissionType).toLowerCase() : undefined,
-    kw: v.powerInKw && Number.isFinite(Number(v.powerInKw.raw)) ? Number(v.powerInKw.raw) : undefined,
-    carrosserie: tekstVan(v.bodyType),
-    link, fotos,
-    /* AutoScout24 toont alleen wat te koop staat. Aanwezig = beschikbaar;
-       verkocht = verdwenen (de gewone verdwijnregel, met de dalingsbeveiliging).
-       Een reservering kent AutoScout24 niet: die zet de dealer in Helvaro, en
-       de sync laat hem staan (kentReservering: false). */
-    status: 'beschikbaar',
-  };
-}
-
-/** De data uit één pagina, of een fout die zegt waarom niet. */
-function leesAutoscoutPagina(html) {
-  const m = /<script id="__NEXT_DATA__" type="application\/json"[^>]*>([\s\S]*?)<\/script>/.exec(String(html || ''));
-  if (!m) { const e = new Error('AutoScout24 gaf geen voorraadgegevens terug (blokkade of gewijzigde pagina)'); e.code = 'bron_geblokkeerd'; throw e; }
-  let d;
-  try { d = JSON.parse(m[1]); } catch { const e = new Error('AutoScout24-gegevens onleesbaar'); e.code = 'bron_onleesbaar'; throw e; }
-  const pp = d && d.props && d.props.pageProps;
-  if (!pp || !Array.isArray(pp.listings)) { const e = new Error('geen advertentielijst op deze pagina (is dit een verkopersprofiel?)'); e.code = 'bron_onleesbaar'; throw e; }
-  return { listings: pp.listings, totaal: Number(pp.numberOfResults) || 0 };
-}
-
-async function haalAutoscout(bron, opties = {}) {
-  const dealer = autoscoutDealerUrl(bron.url);
-  if (!dealer) { const e = new Error('dat is geen AutoScout24-verkopersprofiel'); e.code = 'url_geweigerd'; throw e; }
-  const haal = opties.fetch || fetch;
-  const wacht = opties.wacht || ((ms) => new Promise((r) => setTimeout(r, ms)));
-  const budgetTot = Date.now() + (opties.budgetMs || 240000);
-  if (!(await robotsStaatToe(dealer.origin, dealer.pad, haal))) {
-    const e = new Error('robots.txt van AutoScout24 staat het lezen van deze pagina niet toe'); e.code = 'bron_geweigerd'; throw e;
-  }
-  const alle = new Map();
-  let totaal = 0, paginas = 1, ongeldig = 0;
-  for (let p = 1; p <= paginas; p++) {
-    if (p > 1) {
-      if (Date.now() > budgetTot) { const e = new Error(`tijd op na ${p - 1} van ${paginas} pagina's -- niets aangepast`); e.code = 'bron_onvolledig'; throw e; }
-      await wacht(AS24_PAUZE_MS);
-    }
-    const r = await haal(dealer.url + (p > 1 ? '?page=' + p : ''), { redirect: 'manual', headers: { 'User-Agent': AS24_UA, Accept: 'text/html', 'Accept-Language': 'nl-BE,nl;q=0.9,fr;q=0.8,en;q=0.5' }, signal: AbortSignal.timeout(20000) });
-    if (r.status === 403 || r.status === 429 || r.status === 503) { const e = new Error(`AutoScout24 weigerde (HTTP ${r.status}); gestopt zonder omweg`); e.code = 'bron_geblokkeerd'; throw e; }
-    if (r.status >= 300 && r.status < 400) { const e = new Error('AutoScout24 stuurde door; het profieladres klopt niet meer'); e.code = 'bron_omleiding'; throw e; }
-    if (!r.ok) { const e = new Error('AutoScout24 antwoordde HTTP ' + r.status); e.code = 'feed_http'; throw e; }
-    const html = await r.text();
-    if (html.length > MAX_FEED_BYTES) { const e = new Error('pagina groter dan 5 MB'); e.code = 'feed_te_groot'; throw e; }
-    const pagina = leesAutoscoutPagina(html);
-    if (p === 1) {
-      totaal = pagina.totaal;
-      const perPagina = Math.max(1, pagina.listings.length);
-      paginas = Math.min(MAX_AS24_PAGINAS, Math.ceil(totaal / perPagina) || 1);
-    }
-    for (const l of pagina.listings) {
-      const m = mapAutoscout(l, dealer.origin);
-      if (!m || !m.merk) { ongeldig++; continue; }
-      if (!alle.has(m.bronId)) alle.set(m.bronId, m);
-    }
-    if (!pagina.listings.length) break;
-  }
-  const verwacht = Math.min(totaal, MAX_AS24_PAGINAS * 20);
-  if (verwacht && alle.size < Math.floor(verwacht * 0.95)) {
-    const e = new Error(`maar ${alle.size} van ${verwacht} wagens gelezen -- niets op verkocht gezet`); e.code = 'bron_onvolledig'; throw e;
-  }
-  const voertuigen = Array.from(alle.values());
-  const hash = crypto.createHash('sha256').update(JSON.stringify(voertuigen.map((v) => [v.bronId, v.prijs, v.km, v.uitvoering, v.fotos.length]).sort())).digest('hex').slice(0, 16);
-  return { formaat: 'autoscout24', voertuigen, ongeldig, hash, totaalBijBron: totaal };
-}
-
-const PROVIDERS = Object.freeze({
-  feed: {
-    id: 'feed',
-    kentReservering: true,
-    async haal(bron) {
-      if (!bron.url) { const e = new Error('geen feed-adres ingesteld'); e.code = 'geen_url'; throw e; }
-      const { tekst, type } = await haalFeed(bron.url);
-      return parseFeed(tekst, bron.formaat, type);
-    },
-  },
-  autoscout24: {
-    id: 'autoscout24',
-    kentReservering: false,
-    haal: (bron, opties) => haalAutoscout(bron, opties),
-  },
-});
-
-/** feed: ophalen via de provider, verzoenen, alleen de verschillen schrijven. */
-async function syncFeed(projectCode, bron, vorige, opties = {}) {
-  const provider = PROVIDERS[bron.provider] || PROVIDERS.feed;
-  const feed = await provider.haal(bron, opties.provider || {});
-  /* Leeg = de bron is stuk, niet "alle wagens verkocht". Dit gooit, en dan komt
-     er geen enkele wagen in aanraking. Regel 1 van api/_voorraad-sync.js. */
-  if (!feed.voertuigen.length) { const e = new Error('feed bevat geen herkenbare voertuigen'); e.code = 'feed_leeg'; throw e; }
-
-  /* Incrementeel: dezelfde feed als de vorige geslaagde run = niets te doen.
-     Behalve als de vorige run een daling tegenhield en de dealer die nu
-     bevestigt -- dan moet het plan juist wel opnieuw. */
-  if (!opties.bevestigDaling && vorige && vorige.feedHash === feed.hash && vorige.lastResult === 'ok') {
-    return { count: feed.voertuigen.length, changed: 0, removed: 0, failed: 0, ongewijzigd: true, feedHash: feed.hash, version: vorige.version, partial: false };
-  }
-
+async function syncBronnen(projectCode, bron, staat, opties = {}) {
   const _sync = require('./_voorraad-sync');
+  const draaibaar = bron.bronnen.filter((b) => b.enabled && registry.kanSyncen(registry.get(b.provider)));
+  const perBron = {};
+  const budget = Number.isFinite(opties.provider && opties.provider.budgetMs) ? opties.provider.budgetMs : null;
+  const t0 = Date.now();
+
+  for (const b of draaibaar) {
+    const p = registry.get(b.provider);
+    try {
+      const rest = budget === null ? {} : { budgetMs: Math.max(15000, budget - (Date.now() - t0)) };
+      const feed = await p.haal(b, rest);
+      /* Leeg = de bron is stuk, niet "alle wagens verkocht". Dit gooit, en dan
+         komt er voor deze bron geen enkele wagen in aanraking. Regel 1 van
+         api/_voorraad-sync.js. */
+      if (!feed.voertuigen.length) throw fouten.maakFout('feed bevat geen herkenbare voertuigen', 'feed_leeg');
+      perBron[b.provider] = { feed };
+    } catch (e) {
+      perBron[b.provider] = { fout: e, genorm: p.normaliseerFout(e) };
+    }
+  }
+
+  const geslaagd = draaibaar.filter((b) => perBron[b.provider].feed);
+  const mislukt = draaibaar.filter((b) => perBron[b.provider].fout);
+  if (!geslaagd.length) {
+    const e = mislukt.length ? perBron[mislukt[0].provider].fout : fouten.maakFout('geen bron om te synchroniseren', 'geen_url');
+    e.perBron = perBron;
+    throw e;
+  }
+
+  /* Incrementeel: precies dezelfde bronnen als de vorige geslaagde run = niets
+     te doen. Behalve als de vorige run een daling tegenhield en de dealer die
+     nu bevestigt -- dan moet het plan juist wel opnieuw. */
+  const ongewijzigd = !opties.bevestigDaling && !mislukt.length && geslaagd.every((b) => {
+    const v = vorigeVan(staat, b, bron.bronnen.indexOf(b));
+    return v.feedHash && v.feedHash === perBron[b.provider].feed.hash && v.lastResult === 'ok';
+  });
+  const versie = geslaagd.length === 1
+    ? perBron[geslaagd[0].provider].feed.hash
+    : crypto.createHash('sha256').update(geslaagd.map((b) => b.provider + ':' + perBron[b.provider].feed.hash).join('|')).digest('hex').slice(0, 16);
+  const telVoertuigen = geslaagd.reduce((n, b) => n + perBron[b.provider].feed.voertuigen.length, 0);
+  if (ongewijzigd) {
+    for (const b of geslaagd) perBron[b.provider].stand = { nieuw: 0, bijgewerkt: 0, verwijderd: 0, ongewijzigd: true };
+    return { count: telVoertuigen, changed: 0, removed: 0, failed: 0, ongewijzigd: true, feedHash: versie, version: staat.version || versie, partial: false, perBron, geslaagd, mislukt };
+  }
+
   /* De hele voorraad, niet de eerste 1000. Wat hier ontbreekt, ziet verzoen()
      als "nieuw" en maakt het een tweede keer aan. Past hij zelfs in 3000 niet,
      dan liever niets doen dan dubbels schrijven (audit M-9). */
   const { vehicles: bestaand, afgekapt: bestaandAfgekapt } = await vehicles.listMetStatus(projectCode, { inclusiefGearchiveerd: true, maxPaginas: 30 });
-  if (bestaandAfgekapt) { const e = new Error('voorraad groter dan 3000 wagens; sync gestopt om dubbels te vermijden'); e.code = 'voorraad_te_groot'; throw e; }
+  if (bestaandAfgekapt) {
+    throw fouten.maakFout('voorraad groter dan 3000 wagens; sync gestopt om dubbels te vermijden', 'voorraad_te_groot');
+  }
+  /* De advertenties. Bestaat de tabel nog niet, dan draait dit zoals voor
+     advertenties bestonden (de wagen zelf onthoudt zijn bron) en wordt de tabel
+     aangemaakt. Bestaat hij maar is hij niet te lezen: STOPPEN. Zonder te weten
+     welk ander platform een wagen nog toont, mag er niets op verkocht. */
+  const lijstAdv = await _listings.list(projectCode);
+  if (!lijstAdv.beschikbaar && _listings.onbeschikbaarReden() === 'geen_tabel') { try { require('./_schema').ensureLui(); } catch (_) { /* optioneel */ } }
+  if (lijstAdv.afgekapt) {
+    throw fouten.maakFout('meer dan 3000 advertenties; sync gestopt om dubbels te vermijden', 'voorraad_te_groot');
+  }
+
   const nu = new Date().toISOString();
-  const uitgesloten = new Set((bron.uitgesloten || []).map(String));
-  const aangeboden = uitgesloten.size ? feed.voertuigen.filter((f) => !uitgesloten.has(String(f.bronId))) : feed.voertuigen;
-  const plan = _sync.verzoen(bestaand, aangeboden, { nu, verdwenen: bron.verdwenen, bevestigDaling: opties.bevestigDaling, kentReservering: provider.kentReservering !== false });
+  const uitgesloten = new Set((bron.uitgeslotenAlle || []).map(String));
+  const legacy = bron.legacyProvider;
+  const _s = require('./_voorraad-sync');
+  const planBronnen = draaibaar.map((b) => {
+    const p = registry.get(b.provider);
+    const feed = perBron[b.provider].feed;
+    const voertuigen = feed
+      ? (uitgesloten.size ? feed.voertuigen.filter((f) => !uitgesloten.has(_s.bronIdVoor(b.provider, f.bronId, legacy))) : feed.voertuigen)
+      : null;
+    return { provider: b.provider, verdwenen: b.verdwenen, kentReservering: p.kentReservering !== false, voertuigen };
+  });
+  const plan = _sync.verzoenAlles(bestaand, lijstAdv.listings, planBronnen, {
+    nu, bevestigDaling: opties.bevestigDaling, legacyProvider: legacy,
+    geconfigureerd: bron.bronnen.filter((b) => b.enabled).map((b) => b.provider),
+    codesToewijzen: true,
+    /* Kennen we de advertenties niet (tabel ontbreekt) en draaien er meerdere
+       bronnen? Dan weten we van een wagen niet of een ander platform hem nog
+       toont: alleen als ALLES geslaagd is mag er iets op verkocht. */
+    listingsOnbekend: !lijstAdv.beschikbaar && draaibaar.length > 1,
+  });
   const res = await _sync.pasToe(projectCode, plan, { nu, codes: bestaand.map((v) => v.code), max: MAX_SCHRIJF_PER_RUN });
   _sync.logGebeurtenissen(projectCode, plan.gebeurtenissen);
+  let advFout = 0;
+  try {
+    const w = await _listings.schrijf(projectCode, plan.listings, { nu, max: MAX_LISTING_SCHRIJF });
+    advFout = w.failed;
+  } catch (e) { advFout = plan.listings.length; console.warn('[voorraad] advertenties niet weggeschreven voor', projectCode, e && e.message); }
 
   const notities = [];
   if (res.afgekapt) notities.push(`gedeeltelijk: ${MAX_SCHRIJF_PER_RUN} van ${res.totaal} wijzigingen, rest in de volgende run`);
   if (plan.dalingGeblokkeerd) notities.push(`${plan.verdwenenAantal} wagens ontbreken ineens in de bron en zijn NIET op verkocht gezet -- controleer de feed`);
-  const partial = res.failed > 0 || res.afgekapt || plan.dalingGeblokkeerd;
+  if (mislukt.length) notities.push('bron niet gelezen: ' + mislukt.map((b) => b.provider + ' ' + perBron[b.provider].genorm.code).join(', ') + ' -- niets aangepast voor wagens die daar stonden');
+  if (plan.dubbelGemeld) notities.push(`${plan.dubbelGemeld} advertentie(s) pasten op meerdere wagens (zelfde chassisnummer) en zijn niet samengevoegd`);
+  if (advFout) notities.push(`${advFout} advertentierij(en) niet weggeschreven`);
+  const partial = res.failed > 0 || res.afgekapt || plan.dalingGeblokkeerd || mislukt.length > 0;
+
+  for (const b of geslaagd) {
+    const st = plan.perBron[b.provider] || {};
+    perBron[b.provider].stand = { nieuw: st.nieuw || 0, bijgewerkt: (st.bijgewerkt || 0), verwijderd: st.verwijderd || 0, gekoppeld: st.gekoppeld || 0, dalingGeblokkeerd: Boolean(st.dalingGeblokkeerd) };
+  }
+  /* Een bron-eigen telling van wat het platform toont. Bij een bron levert dat
+     het aantal uit de feed (zoals voor er meerdere waren); bij meer bronnen het
+     aantal verschillende wagens. */
+  const gezienTotaal = geslaagd.length === 1 ? telVoertuigen : Object.values(plan.perBron).reduce((n, s) => n + s.gezien, 0);
   return {
-    count: feed.voertuigen.length,
+    count: gezienTotaal,
     changed: plan.nieuw.length + plan.bijwerken.length,
     removed: plan.weg.length,
     failed: res.failed,
-    ongeldig: feed.ongeldig,
+    ongeldig: geslaagd.reduce((n, b) => n + (perBron[b.provider].feed.ongeldig || 0), 0),
     aangemaakt: plan.nieuw.length,
     bijgewerkt: plan.bijwerken.length,
     geadopteerd: plan.geadopteerd,
@@ -645,15 +489,37 @@ async function syncFeed(projectCode, bron, vorige, opties = {}) {
     dalingGeblokkeerd: plan.dalingGeblokkeerd,
     verdwenenAantal: plan.verdwenenAantal,
     /* Een run met fouten of een tegengehouden daling mag de volgende niet laten
-       overslaan: dezelfde feed moet dan opnieuw vergeleken worden. */
-    feedHash: partial ? '' : feed.hash,
-    version: feed.hash,
+       overslaan: dezelfde bronnen moeten dan opnieuw vergeleken worden. */
+    feedHash: partial ? '' : versie,
+    version: versie,
     partial,
     notitie: notities.join(' · '),
+    perBron, geslaagd, mislukt,
   };
 }
 
-/* ── Sync: slot, provider, toestand wegschrijven ───────────────────────── */
+/* De toestand per bron die in 'Inventory State' bewaard wordt. */
+function bronToestand(vorige, uitkomst, nuIso, ms) {
+  const v = vorige || {};
+  const basis = { lastAttemptAt: nuIso, durationMs: ms };
+  if (!uitkomst) return Object.assign({}, v, basis);
+  if (uitkomst.overgeslagen) return Object.assign({}, v, basis, { lastResult: 'skipped', lastErrorCode: '', lastErrorKey: '', lastErrorLegacy: '' });
+  if (uitkomst.fout) {
+    return Object.assign({}, v, basis, {
+      lastResult: 'failed', feedHash: '',
+      lastErrorCode: uitkomst.genorm.code, lastErrorKey: uitkomst.genorm.sleutel, lastErrorLegacy: uitkomst.genorm.legacy,
+    });
+  }
+  const st = uitkomst.stand || {};
+  return Object.assign({}, v, basis, {
+    lastResult: 'ok', lastSuccessAt: nuIso, lastErrorCode: '', lastErrorKey: '', lastErrorLegacy: '',
+    count: uitkomst.feed.voertuigen.length,
+    imported: st.nieuw || 0, updated: st.bijgewerkt || 0, removed: st.verwijderd || 0,
+    feedHash: uitkomst.feed.hash,
+  });
+}
+
+/* ── Sync: slot, bronnen, toestand wegschrijven ────────────────────────── */
 async function sync(projectCode, { door = 'systeem', trigger = 'handmatig', bevestigDaling = false, budgetMs } = {}) {
   const tenant = String(projectCode || '').trim();
   if (!tenant) throw new Error('sync zonder projectcode');
@@ -673,15 +539,19 @@ async function sync(projectCode, { door = 'systeem', trigger = 'handmatig', beve
 
   const start = Date.now();
   const nuIso = new Date(start).toISOString();
-  let resultaat, fout = null;
+  let resultaat, fout = null, perBron = {};
   try {
-    resultaat = bron.type === 'feed' ? await syncFeed(tenant, bron, staat, { bevestigDaling, provider: { budgetMs } }) : await probeNative(tenant, staat);
+    resultaat = bron.type === 'feed' ? await syncBronnen(tenant, bron, staat, { bevestigDaling, provider: { budgetMs } }) : await probeNative(tenant, staat);
+    if (resultaat && resultaat.perBron) perBron = resultaat.perBron;
   } catch (e) {
     fout = e;
+    if (e && e.perBron) perBron = e.perBron;
   }
+  const ms = Date.now() - start;
+  const genorm = fout ? fouten.normaliseer(fout) : null;
   const run = {
     at: nuIso, trigger, door,
-    ok: !fout, ms: Date.now() - start,
+    ok: !fout, ms,
     count: resultaat ? resultaat.count : undefined,
     changed: resultaat ? resultaat.changed : undefined,
     removed: resultaat ? resultaat.removed : undefined,
@@ -694,7 +564,19 @@ async function sync(projectCode, { door = 'systeem', trigger = 'handmatig', beve
     daling: resultaat && resultaat.dalingGeblokkeerd ? resultaat.verdwenenAantal : undefined,
     fout: fout ? String(fout.message).slice(0, 200) : undefined,
     code: fout ? (fout.code || 'fout') : undefined,
+    foutCode: genorm ? genorm.code : undefined,
   };
+  /* Per bron: hoe ging het? Alleen bij een feedrun; native heeft geen bronnen. */
+  const bronnenStaat = Object.assign({}, staat.bronnen || {});
+  const draaibaar = bron.type === 'feed' ? bron.bronnen.filter((b) => b.enabled) : [];
+  for (const b of draaibaar) {
+    const syncbaar = registry.kanSyncen(registry.get(b.provider));
+    const uitkomst = syncbaar ? perBron[b.provider] : { overgeslagen: true };
+    bronnenStaat[b.provider] = bronToestand(vorigeVan(staat, b, bron.bronnen.indexOf(b)), uitkomst, nuIso, ms);
+    if (resultaat && resultaat.partial) bronnenStaat[b.provider].feedHash = '';
+  }
+  if (bron.type === 'feed') run.bronnen = draaibaar.map((b) => ({ p: b.provider, ok: bronnenStaat[b.provider].lastResult !== 'failed', code: bronnenStaat[b.provider].lastErrorCode || undefined }));
+
   const nieuw = Object.assign({}, staat, {
     source: bron.type,
     lastAttemptAt: nuIso,
@@ -705,9 +587,17 @@ async function sync(projectCode, { door = 'systeem', trigger = 'handmatig', beve
     slot: null,
     runs: [run].concat(Array.isArray(staat.runs) ? staat.runs : []).slice(0, GESCHIEDENIS),
   });
+  if (bron.type === 'feed') nieuw.bronnen = bronnenStaat;
   if (!fout) {
+    /* De versheid van het geheel is die van de OUDSTE bron: een platform dat
+       niet gelezen kon worden maakt de voorraad niet "vers", ook al lukte de
+       andere. Bij een bron is dit gewoon het moment van deze run. */
+    const syncbareStaten = draaibaar.filter((b) => registry.kanSyncen(registry.get(b.provider))).map((b) => bronnenStaat[b.provider].lastSuccessAt || '');
+    const oudste = bron.type === 'feed' && syncbareStaten.length
+      ? (syncbareStaten.every(Boolean) ? syncbareStaten.slice().sort()[0] : '')
+      : nuIso;
     Object.assign(nieuw, {
-      lastSuccessAt: nuIso,
+      lastSuccessAt: oudste,
       lastIncrementalAt: resultaat.ongewijzigd ? nuIso : (staat.lastIncrementalAt || ''),
       count: resultaat.count, changed: resultaat.changed, removed: resultaat.removed, failed: resultaat.failed,
       version: resultaat.version,
@@ -729,10 +619,15 @@ async function sync(projectCode, { door = 'systeem', trigger = 'handmatig', beve
     if (stilleControle) throw new Error('stil');
     const _activiteit = require('./_activiteit');
     _activiteit.log(tenant, fout ? 'inventory_sync_failed' : 'inventory_synced', {
-      details: { bron: bron.type, trigger, count: run.count, changed: run.changed, removed: run.removed, failed: run.failed, aangemaakt: run.aangemaakt, verkocht: run.verkocht, daling: run.daling, code: run.code, ms: run.ms },
+      details: { bron: bron.type, trigger, count: run.count, changed: run.changed, removed: run.removed, failed: run.failed, aangemaakt: run.aangemaakt, verkocht: run.verkocht, daling: run.daling, code: run.code, foutCode: run.foutCode, ms: run.ms },
     }).catch(() => {});
   } catch (_) { /* logboek optioneel */ }
+  /* Technische tekst alleen hier, in de log: de dealer krijgt de genormaliseerde zin. */
   if (fout) console.warn('[voorraad] sync mislukt voor', tenant, bron.type, fout.code || '', fout.message);
+  for (const b of draaibaar) {
+    const u = perBron[b.provider];
+    if (u && u.fout && resultaat) console.warn('[voorraad] bron mislukt voor', tenant, b.provider, u.genorm.code, u.fout.code || '', u.fout.message);
+  }
   meldVoorraadAlsNodig(tenant, bron, staat, run, resultaat);
   return { ok: !fout, ...weergave(nieuw, bron) };
 }
@@ -775,6 +670,36 @@ async function controleer(projectCode, { door = 'dashboard', trigger = 'ververse
   return Object.assign({ gesynct: !uit.hergebruikt }, uit);
 }
 
+/* Eén provider voor de integratiekaart: wat het is, of het verbonden is, wat de
+   laatste run deed. Geen inloggegevens, geen vingerafdrukken, nooit de
+   geheimen in een feedadres. De foutzin is een i18n-sleutel; de technische
+   tekst blijft in de log. */
+function providerKaart(p, b, st) {
+  const s = st || {};
+  const geconfigureerd = Boolean(b) && (registry.vraagtCredentials(p) ? Boolean(b.credentials) : Boolean(b.url));
+  return {
+    id: p.id, label: p.label, status: p.status, auth: p.auth,
+    adresSoort: p.adresSoort || 'feed',
+    capabilities: p.capabilities,
+    kanVerbinden: registry.kanBewaren(p),
+    kanSyncen: registry.kanSyncen(p),
+    geconfigureerd,
+    enabled: Boolean(b) && b.enabled,
+    heeftCredentials: Boolean(b && b.credentials),
+    url: b ? maskeerUrl(b.url) : '',
+    verdwenen: b ? b.verdwenen : 'verkocht',
+    laatsteSync: s.lastAttemptAt || null,
+    laatsteSucces: s.lastSuccessAt || null,
+    resultaat: s.lastResult || null,
+    aantal: Number.isFinite(s.count) ? s.count : null,
+    nieuw: Number.isFinite(s.imported) ? s.imported : null,
+    bijgewerkt: Number.isFinite(s.updated) ? s.updated : null,
+    verwijderd: Number.isFinite(s.removed) ? s.removed : null,
+    foutCode: s.lastErrorCode || '',
+    foutSleutel: s.lastErrorCode ? (s.lastErrorKey || 'ig.fout.' + s.lastErrorCode) : '',
+  };
+}
+
 /** Wat het dashboard ziet. Geen tokens, geen vingerafdrukken, geen feed-URL-geheimen. */
 function weergave(staat, bron) {
   const s = staat || {};
@@ -788,7 +713,11 @@ function weergave(staat, bron) {
     vertrouwenReden: v.reden,
     bron: bron ? bron.type : 'native',
     drempels: bron ? bron.drempels : STANDAARD.native,
-    feed: bron && bron.type === 'feed' ? { url: bron.url ? bron.url.replace(/([?&](?:key|token|apikey|api_key|secret)=)[^&]+/gi, '$1***') : '', formaat: bron.formaat, verdwenen: bron.verdwenen, provider: bron.provider || 'feed' } : null,
+    feed: bron && bron.type === 'feed' ? { url: maskeerUrl(bron.url), formaat: bron.formaat, verdwenen: bron.verdwenen, provider: bron.provider || 'feed' } : null,
+    bronnen: bron && Array.isArray(bron.bronnen)
+      ? bron.bronnen.map((x) => providerKaart(registry.get(x.provider), x, s.bronnen && s.bronnen[x.provider])).filter((k) => k.id)
+      : [],
+    bewaarDagen: bron && bron.bewaarDagen ? bron.bewaarDagen : STANDAARD_BEWAAR_DAGEN,
     lastSuccessAt: s.lastSuccessAt || null,
     lastAttemptAt: s.lastAttemptAt || null,
     lastIncrementalAt: s.lastIncrementalAt || null,
@@ -812,29 +741,122 @@ async function status(projectCode) {
   return { ok: true, ...weergave(staat, bron) };
 }
 
-/** Een wagen uit de feed uitsluiten (na verwijderen), zodat de sync hem niet terugzet. */
+/**
+ * Alle bekende platformen voor de integratiepagina, met de stand van deze
+ * dealer erbij. Alleen lezen.
+ */
+async function providersOverzicht(projectCode) {
+  const { rec, bron, staat } = await lees(projectCode);
+  if (!rec) return { ok: false, reden: 'geen_klantrecord' };
+  return {
+    ok: true,
+    bewaarDagen: bron.bewaarDagen,
+    providers: registry.lijst().map((p) => providerKaart(p, bron.bronnen.find((x) => x.provider === p.id) || null, staat.bronnen && staat.bronnen[p.id])),
+  };
+}
+
+/**
+ * Een wagen uit de bron uitsluiten (na verwijderen), zodat de sync hem niet
+ * terugzet. bronId is het Source Record ID van de wagen zoals het in de
+ * voorraad staat -- voor een tweede platform dus met "<provider>:" ervoor.
+ */
 async function sluitUit(projectCode, bronId) {
   const id = String(bronId || '').trim();
   if (!id) return { ok: false, reden: 'geen_bronid' };
   const { rec, bron } = await lees(projectCode);
   if (!rec) return { ok: false, reden: 'geen_klantrecord' };
   if (bron.type !== 'feed') return { ok: true, overgeslagen: true };
-  const nieuw = saneerBron(Object.assign({}, bron, { uitgesloten: (bron.uitgesloten || []).concat(id) }));
-  await schrijf(rec.id, { [F_SOURCE]: JSON.stringify(nieuw) });
+  const nieuw = saneerBron(Object.assign({}, bron, { uitgesloten: (bron.uitgeslotenAlle || []).concat(id) }));
+  await schrijf(rec.id, { [F_SOURCE]: JSON.stringify(naarOpslag(nieuw)) });
   return { ok: true };
 }
 
+/* Is dit de platte vorm van het oude formulier ("de voorraadbron instellen")? */
+function isLegacyInvoer(invoer) { return invoer && typeof invoer === 'object' && !Array.isArray(invoer.bronnen); }
+
+/**
+ * De oude weg: een bron kiezen (native, of een feed/AutoScout24-profiel). Dat
+ * formulier kent maar twee soorten, en kiest er een: wat het eerder koos
+ * wordt vervangen, wat het niet kent (een API-koppeling) blijft staan.
+ */
 async function bewaarBron(projectCode, invoer) {
   const { rec, staat, bron: huidig } = await lees(projectCode);
   if (!rec) return { ok: false, reden: 'geen_klantrecord' };
-  /* Het dashboardformulier kent de uitsluitlijst niet; die mag een nieuwe
-     bronkeuze niet wissen. */
-  const bron = saneerBron(Object.assign({}, invoer, { uitgesloten: invoer && invoer.uitgesloten ? invoer.uitgesloten : huidig.uitgesloten }));
-  if (bron.type === 'feed' && !bron.url) return { ok: false, reden: 'ongeldig_adres' };
+  const ruw = isLegacyInvoer(invoer) ? invoer : {};
+  const gewenst = saneerBron(Object.assign({}, ruw, { uitgesloten: ruw.uitgesloten ? ruw.uitgesloten : huidig.uitgeslotenAlle }));
+  const nieuwItem = gewenst.type === 'feed' ? gewenst.bronnen.find((b) => b.enabled) : null;
+  if (gewenst.type === 'feed' && !gewenst.url) return { ok: false, reden: 'ongeldig_adres' };
+  /* Wat het formulier beheert: de feed- en profielbronnen. De rest blijft. */
+  const formulierBeheerd = (b) => { const p = registry.get(b.provider); return Boolean(p) && p.auth === 'feed_url'; };
+  const rest = huidig.bronnen.filter((b) => !formulierBeheerd(b));
+  const eerste = huidig.bronnen.findIndex(formulierBeheerd);
+  const lijst = rest.slice();
+  if (nieuwItem) lijst.splice(eerste >= 0 ? Math.min(eerste, lijst.length) : lijst.length, 0, nieuwItem);
+  const bron = saneerBron({ bronnen: lijst, drempels: gewenst.drempels, bewaarDagen: ruw.bewaarDagen !== undefined ? ruw.bewaarDagen : huidig.bewaarDagen, legacyProvider: huidig.bronnen.length ? huidig.legacyProvider : (nieuwItem ? nieuwItem.provider : undefined), uitgesloten: gewenst.uitgeslotenAlle });
   /* Van bron wisselen = de vorige toestand geldt niet meer. */
   const nieuweStaat = Object.assign({}, staat, { feedHash: '', lastResult: staat.lastResult === 'ok' ? 'ok' : staat.lastResult });
-  await schrijf(rec.id, { [F_SOURCE]: JSON.stringify(bron), [F_STATE]: JSON.stringify(nieuweStaat) });
+  if (nieuweStaat.bronnen && nieuwItem) nieuweStaat.bronnen = Object.assign({}, nieuweStaat.bronnen, { [nieuwItem.provider]: Object.assign({}, nieuweStaat.bronnen[nieuwItem.provider], { feedHash: '' }) });
+  await schrijf(rec.id, { [F_SOURCE]: JSON.stringify(naarOpslag(bron)), [F_STATE]: JSON.stringify(nieuweStaat) });
   return { ok: true, ...weergave(nieuweStaat, bron) };
+}
+
+/**
+ * Een platform instellen vanaf de integratiepagina: adres, inloggegevens, aan
+ * of uit, of weghalen. Inloggegevens worden hier versleuteld en komen nooit
+ * meer terug.
+ *   { provider, url?, formaat?, verdwenen?, enabled?, credentials?, verwijder? }
+ *   { bewaarDagen }   (zonder provider: de bewaartermijn van verkochte wagens)
+ */
+async function bewaarProvider(projectCode, invoer) {
+  const { rec, staat, bron: huidig } = await lees(projectCode);
+  if (!rec) return { ok: false, reden: 'geen_klantrecord' };
+  const inv = invoer && typeof invoer === 'object' ? invoer : {};
+  let bronnen = huidig.bronnen.map((b) => Object.assign({}, b));
+  let bewaarDagen = huidig.bewaarDagen;
+  const nieuweStaat = Object.assign({}, staat);
+  let legacyProvider = huidig.bronnen.length ? huidig.legacyProvider : undefined;
+
+  if (inv.bewaarDagen !== undefined) {
+    const n = Number(inv.bewaarDagen);
+    if (!Number.isFinite(n) || n < 1 || n > 365) return { ok: false, reden: 'ongeldige_bewaartermijn' };
+    bewaarDagen = Math.round(n);
+  }
+  if (inv.provider !== undefined) {
+    const p = registry.get(String(inv.provider));
+    if (!p) return { ok: false, reden: 'onbekende_provider' };
+    if (inv.verwijder === true) {
+      bronnen = bronnen.filter((b) => b.provider !== p.id);
+    } else {
+      /* COMING_SOON en DISABLED: er is niets om te bewaren. */
+      if (!registry.kanBewaren(p)) return { ok: false, reden: 'provider_niet_beschikbaar' };
+      const bestaand = bronnen.find((b) => b.provider === p.id);
+      const ruw = Object.assign({}, bestaand || {}, { provider: p.id });
+      for (const k of ['url', 'formaat', 'verdwenen', 'enabled']) if (inv[k] !== undefined) ruw[k] = inv[k];
+      /* Het scherm toont een adres met het geheim afgeschermd (token=***). Wie
+         dat ongewijzigd terugstuurt, laat het adres zoals het is; een adres
+         waar *** nog in staat maar dat anders is, kan nooit werken. */
+      if (typeof inv.url === 'string' && bestaand && bestaand.url && inv.url.trim() === maskeerUrl(bestaand.url)) ruw.url = bestaand.url;
+      else if (typeof inv.url === 'string' && /=\*{3}/.test(inv.url)) return { ok: false, reden: 'ongeldig_adres' };
+      if (registry.vraagtCredentials(p) && inv.credentials !== undefined) {
+        const c = credentials.saneer(inv.credentials, p.auth);
+        if (!c) return { ok: false, reden: 'ongeldige_gegevens' };
+        try { ruw.credentials = credentials.versleutel(c); }
+        catch (e) { console.error('[voorraad] inloggegevens niet versleuteld:', e && e.message); return { ok: false, reden: 'geen_versleuteling' }; }
+      }
+      const item = saneerBronItem(ruw);
+      if ((p.auth === 'feed_url' || p.auth === 'csv') && !item.url) return { ok: false, reden: 'ongeldig_adres' };
+      if (registry.vraagtCredentials(p) && !item.credentials) return { ok: false, reden: 'geen_gegevens' };
+      const plek = bronnen.findIndex((b) => b.provider === p.id);
+      if (plek >= 0) bronnen[plek] = item; else bronnen.push(item);
+      if (legacyProvider === undefined) legacyProvider = bronnen[0].provider;
+      /* Een gewijzigd adres of nieuwe gegevens: opnieuw vergelijken. */
+      if (nieuweStaat.bronnen && nieuweStaat.bronnen[p.id]) nieuweStaat.bronnen = Object.assign({}, nieuweStaat.bronnen, { [p.id]: Object.assign({}, nieuweStaat.bronnen[p.id], { feedHash: '' }) });
+      nieuweStaat.feedHash = '';
+    }
+  }
+  const bron = saneerBron({ bronnen, bewaarDagen, legacyProvider, drempels: huidig.drempels, uitgesloten: huidig.uitgeslotenAlle });
+  await schrijf(rec.id, { [F_SOURCE]: JSON.stringify(naarOpslag(bron)), [F_STATE]: JSON.stringify(nieuweStaat) });
+  return { ok: true, ...weergave(nieuweStaat, bron), providers: registry.lijst().map((p) => providerKaart(p, bron.bronnen.find((x) => x.provider === p.id) || null, nieuweStaat.bronnen && nieuweStaat.bronnen[p.id])) };
 }
 
 /** Voor de AI-beurt: kan ik voorraadfeiten bevestigen? Faalt veilig naar 'onzeker'. */
@@ -953,10 +975,17 @@ function promptNotitie(v) {
 
 module.exports = {
   TOESTANDEN, STANDAARD,
-  bereken, vertrouwen, saneerBron, weergave,
-  controleer, sync, status, bewaarBron, sluitUit, vertrouwenVoor,
+  bereken, vertrouwen, saneerBron, naarOpslag, weergave,
+  controleer, sync, status, bewaarBron, bewaarProvider, providersOverzicht, sluitUit, vertrouwenVoor,
   momentopname, hercontroleer, beoordeelVoorVerzenden, promptNotitie, genoemdIn, genoemdeMomentopnames, meldVoorraadAlsNodig,
   // voor tests
-  _test: { noemtGetal, parseCsv, parseJson, parseXml, parseFeed, mapRegel, hashVan, isInternIp, probeNative, autoscoutDealerUrl, robotsStaatToe, mapAutoscout, leesAutoscoutPagina, haalAutoscout },
-  autoscoutDealerUrl,
+  _test: {
+    noemtGetal, hashVan, probeNative, isInternIp, syncBronnen, saneerBronItem, providerKaart, vorigeVan,
+    parseCsv: feedModule.parseCsv, parseJson: feedModule.parseJson, parseXml: feedModule.parseXml,
+    parseFeed: feedModule.parseFeed, mapRegel: feedModule.mapRegel,
+    autoscoutDealerUrl: autoscoutModule.autoscoutDealerUrl, robotsStaatToe: autoscoutModule.robotsStaatToe,
+    mapAutoscout: autoscoutModule.mapAutoscout, leesAutoscoutPagina: autoscoutModule.leesAutoscoutPagina,
+    haalAutoscout: autoscoutModule.haalAutoscout,
+  },
+  autoscoutDealerUrl: autoscoutModule.autoscoutDealerUrl,
 };

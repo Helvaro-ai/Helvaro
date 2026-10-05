@@ -1,0 +1,3 @@
+# Marktplaats: authentication
+
+Not applicable.

@@ -1,0 +1,3 @@
+# heycar: authentication
+
+Not applicable.

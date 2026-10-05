@@ -88,7 +88,7 @@ console.log('\nde server');
   ck('bevestigDaling alleen bij een handmatige sync, en alleen als echte true',
     /inventory-sync'\) uit = await _inventaris\.sync\(projectCode, \{[^}]*bevestigDaling: body\.bevestigDaling === true[^}]*\}\)/.test(blok));
   ck('de telling gaat mee bij status/controle/sync', /uit\.telling = require\('\.\/_voorraad-sync'\)\.telling\(alle\)/.test(blok));
-  ck('maar niet bij het bewaren van de bron', /if \(uit && body\.mode !== 'inventory-source'\)/.test(blok));
+  ck('maar niet bij het bewaren van de bron of het lezen van de platformen', /if \(uit && \(body\.mode === 'inventory-status' \|\| body\.mode === 'inventory-check' \|\| body\.mode === 'inventory-sync'\)\)/.test(blok));
   ck('en een mislukte telling breekt de status niet', /catch \(e\) \{ console\.warn\('\[' \+ body\.mode \+ '\] telling mislukt/.test(blok));
   ck('de cron bevestigt NOOIT zelf een daling', !/bevestigDaling/.test(fs.readFileSync(BASE + 'api/cron-followup.js', 'utf8')));
 }
