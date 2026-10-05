@@ -41,7 +41,7 @@ async function laadIntegraties() {
   if (typeof isDealer !== 'function' || !isDealer()) { sectie.style.display = 'none'; return; }
   sectie.style.display = '';
   var lijst = document.getElementById('ig-lijst');
-  if (!igState.gekoppeld) { lijst.addEventListener('click', igKlik); igState.gekoppeld = true; }
+  if (!igState.gekoppeld) { lijst.addEventListener('click', igKlik); lijst.addEventListener('change', igBestand); igState.gekoppeld = true; }
   try {
     igState.data = await voorraadVraag('inventory-providers');
     tekenIntegraties();
@@ -63,10 +63,17 @@ function igForm(p) {
       + '<input type="password" class="mail-instructie" id="ig-wachtwoord-' + id + '" maxlength="400" autocomplete="new-password" aria-label="' + escHtml(tr('ig.veld.wachtwoord')) + '" placeholder="' + escHtml(tr('ig.veld.wachtwoord')) + '">';
   } else if (p.auth === 'api_key') {
     velden = '<input type="password" class="mail-instructie" id="ig-sleutel-' + id + '" maxlength="400" autocomplete="new-password" aria-label="' + escHtml(tr('ig.veld.sleutel')) + '" placeholder="' + escHtml(tr('ig.veld.sleutel')) + '">';
+  } else if (p.auth === 'customer_id') {
+    velden = '<input type="text" class="mail-instructie" id="ig-klant-' + id + '" maxlength="40" inputmode="numeric" autocomplete="off" spellcheck="false" aria-label="' + escHtml(tr('ig.veld.klantnummer')) + '" placeholder="' + escHtml(tr('ig.veld.klantnummer')) + '" value="' + escHtml(p.klantnummer || '') + '">'
+      + '<div class="mail-hint">' + escHtml(tr('ig.veld.klantnummer')) + '</div>';
   } else if (p.auth === 'feed_url' || p.auth === 'csv') {
     var label = tr(p.adresSoort === 'profiel' ? 'ig.veld.profiel' : 'ig.veld.feed');
     velden = '<input type="url" class="mail-instructie" id="ig-url-' + id + '" maxlength="1000" inputmode="url" autocomplete="off" spellcheck="false" aria-label="' + escHtml(label) + '" placeholder="https://…" value="' + escHtml(p.url || '') + '">'
       + '<div class="mail-hint">' + escHtml(label) + '</div>';
+  }
+  if (p.auth === 'basic' && p.adresSoort === 'verkoper') {
+    velden += '<input type="text" class="mail-instructie" id="ig-verkoper-' + id + '" maxlength="40" inputmode="numeric" autocomplete="off" spellcheck="false" aria-label="' + escHtml(tr('ig.veld.verkoper')) + '" placeholder="' + escHtml(tr('ig.veld.verkoper')) + '" value="' + escHtml(p.verkoperId || '') + '">'
+      + '<div class="mail-hint">' + escHtml(tr('ig.veld.verkoper')) + '</div>';
   }
   if (p.auth === 'basic' || p.auth === 'api_key') velden += '<div class="mail-hint">' + escHtml(tr('ig.cred.uitleg')) + '</div>';
   return '<div class="su-bron-invoer" style="width:100%;margin-top:8px">' + velden
@@ -82,14 +89,16 @@ function igKaart(p) {
   var knoppen = '';
   var open = igState.open === p.id;
 
+  /* Een korte uitleg per platform (wat het is, wat het vraagt). */
+  var uitleg = p.uitlegSleutel && igTekst(p.uitlegSleutel) ? '<div class="settings-label-sub">' + escHtml(igTekst(p.uitlegSleutel)) + '</div>' : '';
   if (p.status === 'COMING_SOON') {
-    sub = '<div class="settings-label-sub">' + escHtml(tr('ig.binnenkort')) + '</div>';
+    sub = '<div class="settings-label-sub">' + escHtml(tr('ig.binnenkort')) + '</div>' + uitleg;
   } else if (p.status === 'DISABLED') {
     sub = '<div class="settings-label-sub">' + escHtml(tr('ig.nietActief')) + '</div>';
   } else {
     var verbonden = p.geconfigureerd;
-    sub = '<div><span class="mail-staat ' + (verbonden ? 'ok' : '') + '">' + escHtml(tr(verbonden ? 'ig.verbonden' : 'ig.nietVerbonden')) + '</span></div>';
-    if (p.status === 'MANUAL') sub += '<div class="settings-label-sub">' + escHtml(tr('ig.handmatig.uitleg')) + '</div>';
+    sub = '<div><span class="mail-staat ' + (verbonden ? 'ok' : '') + '">' + escHtml(tr(verbonden ? 'ig.verbonden' : 'ig.nietVerbonden')) + '</span></div>' + uitleg;
+    if (p.status === 'MANUAL' && !uitleg) sub += '<div class="settings-label-sub">' + escHtml(tr('ig.handmatig.uitleg')) + '</div>';
     if (verbonden && p.kanSyncen) {
       sub += '<div class="settings-label-sub">' + escHtml(tr('ig.laatst', { t: p.laatsteSync ? timeAgo(new Date(p.laatsteSync)) : tr('ig.nooit') })) + '</div>';
       if (p.aantal !== null) {
@@ -102,13 +111,17 @@ function igKaart(p) {
       }
     }
     if (verbonden && p.status === 'FEED_REQUIRED') {
-      sub += '<div class="inv-let" style="margin-top:8px">' + escHtml(tr('ig.wacht')) + '</div>';
+      sub += '<div class="inv-let" style="margin-top:8px">' + escHtml(igTekst(p.wachtSleutel) || tr('ig.wacht')) + '</div>';
       if (p.heeftCredentials) sub += '<div class="settings-label-sub">' + escHtml(tr('ig.cred.bewaard')) + '</div>';
     }
     if (verbonden && p.heeftCredentials && p.status !== 'FEED_REQUIRED') sub += '<div class="settings-label-sub">' + escHtml(tr('ig.cred.bewaard')) + '</div>';
 
     if (!open) {
-      if (verbonden && p.kanSyncen) knoppen += '<button type="button" class="btn-icon" data-ig-actie="sync" data-ig="' + id + '"' + (igState.bezig === p.id ? ' disabled' : '') + '>' + escHtml(tr('ig.knop.sync')) + '</button>';
+      if (p.kanUploaden) {
+        knoppen += '<button type="button" class="btn-icon" data-ig-actie="upload" data-ig="' + id + '"' + (igState.bezig === p.id ? ' disabled' : '') + '>' + escHtml(tr('ig.upload.knop')) + '</button>'
+          + '<input type="file" id="ig-bestand-' + id + '" data-ig-bestand="' + id + '" accept=".csv,.json,.xml,text/csv,application/json,text/xml" style="display:none">';
+      }
+      if (verbonden && p.kanSyncen && !p.uploadBron) knoppen += '<button type="button" class="btn-icon" data-ig-actie="sync" data-ig="' + id + '"' + (igState.bezig === p.id ? ' disabled' : '') + '>' + escHtml(tr('ig.knop.sync')) + '</button>';
       knoppen += '<button type="button" class="btn-icon' + (verbonden ? '' : ' mail-koppel') + '" data-ig-actie="open" data-ig="' + id + '">' + escHtml(tr(verbonden ? 'ig.knop.wijzig' : 'ig.knop.verbind')) + '</button>';
       if (verbonden) knoppen += '<button type="button" class="btn-icon mail-ontkoppel" data-ig-actie="ontkoppel" data-ig="' + id + '">' + escHtml(tr('ig.knop.ontkoppel')) + '</button>';
     }
@@ -143,9 +156,15 @@ async function igOpslaan(id) {
   var waarde = function (el) { return el ? el.value.trim() : ''; };
   if (p.auth === 'basic') {
     var wachtwoord = document.getElementById('ig-wachtwoord-' + id);
-    body.credentials = { username: waarde(document.getElementById('ig-gebruiker-' + id)), password: wachtwoord ? wachtwoord.value : '' };
+    var gebruiker = waarde(document.getElementById('ig-gebruiker-' + id));
+    var geheim = wachtwoord ? wachtwoord.value : '';
+    /* Staan er al versleutelde gegevens en vult de dealer niets in, dan blijven ze zoals ze zijn. */
+    if (gebruiker || geheim || !p.heeftCredentials) body.credentials = { username: gebruiker, password: geheim };
+    if (p.adresSoort === 'verkoper') body.mobileSellerId = waarde(document.getElementById('ig-verkoper-' + id));
   } else if (p.auth === 'api_key') {
     body.credentials = { apiKey: waarde(document.getElementById('ig-sleutel-' + id)) };
+  } else if (p.auth === 'customer_id') {
+    body.customerId = waarde(document.getElementById('ig-klant-' + id));
   } else {
     body.url = waarde(document.getElementById('ig-url-' + id));
   }
@@ -195,6 +214,66 @@ function igOntkoppel(id) {
   });
 }
 
+/* Een exportbestand als bron (mode 'inventory-upload'). Het bestand wordt in het
+   geheugen gelezen en blijft daar tot het klaar is: valt er meer dan de helft
+   van de wagens uit weg, dan vraagt de server om bevestiging en sturen we
+   hetzelfde bestand nog eens mee. De grens (2 MB) is die van de server. */
+function igUploadKies(id) {
+  var el = document.getElementById('ig-bestand-' + id);
+  if (el) { el.value = ''; el.click(); }
+}
+
+function igBestand(ev) {
+  var el = ev.target;
+  if (!el || !el.getAttribute || el.getAttribute('data-ig-bestand') === null) return;
+  var id = el.getAttribute('data-ig-bestand');
+  var f = el.files && el.files[0];
+  if (!f) return;
+  if (f.size > 2 * 1024 * 1024) { toast(tr('ig.err.bestand_te_groot'), 'error'); return; }
+  var lezer = new FileReader();
+  lezer.onload = function () { igUpload(id, String(lezer.result || ''), false); };
+  lezer.onerror = function () { toast(tr('ig.err.bestand_onleesbaar'), 'error'); };
+  lezer.readAsText(f);
+}
+
+async function igUpload(id, tekst, bevestig) {
+  igState.bezig = id;
+  tekenIntegraties();
+  var klaar = true;
+  try {
+    var d = await voorraadVraag('inventory-upload', { provider: id, csv: tekst, bevestigDaling: bevestig === true });
+    var u = (d && d.upload) || {};
+    if (u.dalingGeblokkeerd && !bevestig) {
+      klaar = false;
+      showConfirmModal({
+        title: tr('inv.daling.knop'), message: tr('ig.upload.daling', { n: u.verdwenenAantal || 0, dagen: d.bewaarDagen || 14 }),
+        confirmText: tr('inv.daling.knop'), cancelText: tr('ig.knop.annuleer'), danger: true,
+        onConfirm: function () { igUpload(id, tekst, true); }
+      });
+    } else if (u.ok === false) {
+      toast(igTekst(u.foutSleutel) || tr('ig.fout.UNKNOWN_ERROR'), 'error');
+    } else {
+      toast(tr('ig.upload.klaar', { aantal: u.aantal || 0, nieuw: u.aangemaakt || 0, verkocht: u.verkocht || 0 }), 'success');
+    }
+  } catch (e) {
+    toast(igFoutZin(e), 'error');
+  } finally {
+    igState.bezig = '';
+  }
+  if (klaar) laadIntegraties(); else tekenIntegraties();
+}
+
+/* Een advertentie op de lead (Listing Provider en Listing ID, gezet door
+   WhatsApp als het gesprek een advertentie noemde): klein, alleen lezen. Staat
+   hier omdat deze module al per platform de namen kent. */
+function dealerAdvertentieKaart(lead) {
+  if (!lead || !lead.listingProvider) return '';
+  var namen = { feed: 'Website', autoscout24: 'AutoScout24', autoscout24_api: 'AutoScout24', mobile_de: 'mobile.de', gocar: 'Gocar.be' };
+  var naam = namen[lead.listingProvider] || lead.listingProvider;
+  return '<div class="panel-section"><div class="panel-section-title">' + escHtml(tr('lead.listing.titel')) + '</div>'
+    + '<div class="settings-label-sub">' + escHtml(tr('lead.listing.regel', { platform: naam, id: lead.listingId || '–' })) + '</div></div>';
+}
+
 async function igDagen() {
   var el = document.getElementById('ig-bewaardagen');
   if (!el) return;
@@ -214,6 +293,7 @@ function igKlik(ev) {
   else if (actie === 'annuleer') { igState.open = ''; tekenIntegraties(); }
   else if (actie === 'bewaar') igOpslaan(id);
   else if (actie === 'sync') igSync(id, false);
+  else if (actie === 'upload') igUploadKies(id);
   else if (actie === 'ontkoppel') igOntkoppel(id);
   else if (actie === 'dagen') igDagen();
 }

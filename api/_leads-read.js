@@ -124,6 +124,10 @@ function mapLead(r) {
        wel goed doen" geen acceptabele controle meer. Elke bestaande lezer krijgt
        er een sleutel bij en verandert verder niet. */
     projectCode:           f[FIELD_PROJECT]         || f['Project Code']      || '',
+    /* Via welk platform en welke advertentie de koper kwam (gezet door
+       WhatsApp, api/_schema.js). Alleen lezen; leeg = onbekend. */
+    listingProvider:       String(f['Listing Provider'] || ''),
+    listingId:             String(f['Listing ID'] || ''),
   };
 }
 

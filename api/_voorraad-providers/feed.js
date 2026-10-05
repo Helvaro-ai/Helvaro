@@ -198,6 +198,7 @@ const feed = {
   status: 'ACTIVE',
   auth: 'feed_url',
   kentReservering: true,
+  uploadBaar: true,
   capabilities: { lezen: true, publiceren: false, leads: false },
   saneer: saneerFeedBron,
   async haal(bron) {

@@ -7069,7 +7069,7 @@ async function voorraadSync() {
 function voorraadBevestigDaling(n) {
   showConfirmModal({
     title: tr('inv.daling.knop'),
-    message: tr('inv.daling.vraag', { n: n }),
+    message: tr('inv.daling.vraag', { n: n, dagen: HV_BEWAAR_DAGEN }),
     confirmText: tr('inv.daling.knop'),
     onConfirm: async function () {
       if (voorraadState.bezig) return;
@@ -9236,6 +9236,7 @@ function openPanel(lead) {
 
   // Dealer-only: score, temperatuur, redenen, volgende actie, koopfeiten.
   if (isDealer()) bodyHTML += dealerScoreKaart(lead);
+  if (isDealer() && typeof dealerAdvertentieKaart === 'function') bodyHTML += dealerAdvertentieKaart(lead);
 
   // Kwalificatie section
   bodyHTML += \`

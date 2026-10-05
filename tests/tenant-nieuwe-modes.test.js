@@ -14,6 +14,7 @@ const ck = (n, ok) => { console.log(`  ${ok ? 'OK  ' : 'FOUT'}  ${n}`); ok ? pas
 
 const blokken = [
   ["inventory-status", "body.mode === 'inventory-status'"],
+  ["inventory-upload", "body.mode === 'inventory-upload'"],
   ["email/conversation", "const MAIL_MODES = ["],
   ["widget", "body.mode === 'widget-status' || body.mode === 'widget-save'"],
 ];

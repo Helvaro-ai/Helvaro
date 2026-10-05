@@ -16,8 +16,10 @@ const FAMILIES = {
 };
 /* Integraties: automotive (2026-10-05). Statussen van het register en de genormaliseerde bronfouten. */
 FAMILIES['ig.status.'] = ['ACTIVE', 'BETA', 'COMING_SOON', 'FEED_REQUIRED', 'MANUAL', 'DISABLED'];
-FAMILIES['ig.fout.'] = ['AUTH_ERROR', 'RATE_LIMIT', 'PROVIDER_DOWN', 'INVALID_DATA', 'MISSING_FIELD', 'DUPLICATE_VEHICLE', 'PERMISSION_DENIED', 'SYNC_TIMEOUT', 'UNKNOWN_ERROR', 'ACTIVATIE', 'NIET_BESCHIKBAAR'];
-FAMILIES['ig.err.'] = ['onbekende_provider', 'provider_niet_beschikbaar', 'ongeldig_adres', 'ongeldige_gegevens', 'geen_gegevens', 'geen_versleuteling', 'ongeldige_bewaartermijn', 'algemeen'];
+FAMILIES['ig.fout.'] = ['AUTH_ERROR', 'RATE_LIMIT', 'PROVIDER_DOWN', 'INVALID_DATA', 'MISSING_FIELD', 'DUPLICATE_VEHICLE', 'PERMISSION_DENIED', 'SYNC_TIMEOUT', 'UNKNOWN_ERROR', 'ACTIVATIE', 'NIET_BESCHIKBAAR', 'AS24_AUTH', 'AS24_TOESTEMMING', 'AS24_KLANT', 'GEEN_KLANTNUMMER', 'GEEN_VERKOPER', 'KIES_VERKOPER'];
+FAMILIES['ig.uitleg.'] = ['autoscout24_api', 'mobile_de', 'gocar', 'auto1'];
+FAMILIES['ig.wacht.'] = ['autoscout24_api'];
+FAMILIES['ig.err.'] = ['onbekende_provider', 'provider_niet_beschikbaar', 'ongeldig_adres', 'ongeldige_gegevens', 'geen_gegevens', 'geen_versleuteling', 'ongeldige_bewaartermijn', 'algemeen', 'bestand_te_groot', 'bestand_leeg', 'bestand_onleesbaar', 'geen_bestand', 'upload_niet_mogelijk', 'klantnummer_bezet', 'controle_mislukt'];
 for (const id of ['dealership', 'real_estate', 'construction', 'kitchen', 'renovation', 'other']) FAMILIES['markt.' + id + '.'] = ['t', 's'];
 console.log('\nDynamische vertaalsleutelfamilies');
 for (const taal of ['nl', 'fr', 'en', 'de']) {

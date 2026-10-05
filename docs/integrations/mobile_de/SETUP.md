@@ -1,5 +1,5 @@
 # mobile.de: setup
 
-1. Settings, Integrations, mobile.de, Connect. Enter the interface credentials from your mobile.de Dealer Area.
-2. The credentials are stored encrypted and never shown again.
-3. Activation by Helvaro is still needed before anything is read.
+1. Request the Seller API activation for your own mobile.de account: e-mail `service@team.mobile.de` with your mobile.de customer number and company name. mobile.de sends the access credentials.
+2. Settings, Integrations, mobile.de, Connect. Enter the username and password. The seller ID is optional when your account has one seller; if it has several, enter the one to read.
+3. Credentials are stored encrypted and never shown again. Saving them starts a first synchronisation straight away.

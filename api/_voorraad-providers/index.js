@@ -12,7 +12,13 @@
  *   id                 korte sleutel, ook de provider-naam in vehicle_listings
  *   label              naam voor de dealer
  *   status             ACTIVE | BETA | COMING_SOON | FEED_REQUIRED | MANUAL | DISABLED
- *   auth               none | feed_url | api_key | basic | partner | csv
+ *                      (mag een getter zijn: autoscout24_api is FEED_REQUIRED tot Helvaro
+ *                      zijn data-provider-gegevens op de server heeft, daarna BETA)
+ *   uploadBaar         (optioneel) kan de dealer een export als bestand aanleveren
+ *                      (inventory-upload)? Een bron zonder adres van zo'n platform is
+ *                      een upload-bron: de geplande sync slaat hem over.
+ *   velden             (optioneel) extra velden van de bron naast url/formaat, bv. customerId
+ *   auth               none | feed_url | api_key | basic | customer_id | partner | csv
  *   kentReservering    weet het platform van "gereserveerd"? (zo niet, dan
  *                      draait de sync een reservering van de dealer niet terug)
  *   capabilities       { lezen, publiceren, leads } -- wat Helvaro NU kan, niet
@@ -32,23 +38,25 @@
 
 const feed = require('./feed').provider;
 const autoscout24 = require('./autoscout24').provider;
+const autoscout24Api = require('./autoscout24-api').provider;
+const mobileDe = require('./mobile-de').provider;
 const { maakAanvraag, maakNietBeschikbaar, maakHandmatig } = require('./aanvragen');
 
 const STATUSSEN = Object.freeze(['ACTIVE', 'BETA', 'COMING_SOON', 'FEED_REQUIRED', 'MANUAL', 'DISABLED']);
-const AUTHTYPES = Object.freeze(['none', 'feed_url', 'api_key', 'basic', 'partner', 'csv']);
+const AUTHTYPES = Object.freeze(['none', 'feed_url', 'api_key', 'basic', 'customer_id', 'partner', 'csv']);
 const SYNCBAAR = Object.freeze(['ACTIVE', 'BETA', 'MANUAL']);
 const BEWAARBAAR = Object.freeze(['ACTIVE', 'BETA', 'MANUAL', 'FEED_REQUIRED']);
 
 const LIJST = [
   feed,
   autoscout24,
-  /* AutoScout24 Listing Creation API: Basic Auth per dealeraccount. Of die API
-     de EIGEN advertenties ook kan LEZEN is niet geverifieerd; zie
-     docs/integrations/autoscout24_api. Tot dan: bewaren, niet lezen. */
-  maakAanvraag({ id: 'autoscout24_api', label: 'AutoScout24 (API)', auth: 'basic' }),
-  /* mobile.de Seller API: de dealer haalt zijn inloggegevens uit zijn
-     Dealer Area. Nog niet geactiveerd voor Helvaro. */
-  maakAanvraag({ id: 'mobile_de', label: 'mobile.de', auth: 'basic' }),
+  /* AutoScout24 Listing Creation API: de Basic Auth-gegevens zijn van Helvaro als
+     DATA PROVIDER (AS24_API_USER / AS24_API_PASSWORD op de server); de dealer
+     geeft alleen zijn customerId. Zonder die gegevens: wacht op activatie. */
+  autoscout24Api,
+  /* mobile.de Seller API: Basic Auth met de API-gegevens van de dealer zelf
+     (activatie via service@team.mobile.de), versleuteld bewaard. */
+  mobileDe,
   /* 2dehands en Marktplaats hebben geen eigen API; alleen gecertificeerde
      partners (Hexon, IZI Motive) leveren de voorraad aan. */
   maakNietBeschikbaar({ id: 'tweedehands', label: '2dehands', status: 'COMING_SOON', auth: 'partner' }),
@@ -56,10 +64,14 @@ const LIJST = [
   maakNietBeschikbaar({ id: 'vroom', label: 'Vroom.be', status: 'COMING_SOON', auth: 'partner' }),
   /* Gocar.be: geen publieke dealerkoppeling gevonden. Heeft de dealer een
      export, dan loopt die via het gewone feedpad. */
-  maakHandmatig({ id: 'gocar', label: 'Gocar.be', auth: 'csv' }),
+  maakHandmatig({ id: 'gocar', label: 'Gocar.be', auth: 'csv', uploadBaar: true, uitlegSleutel: 'ig.uitleg.gocar' }),
   /* Meta: de automotive-catalogusfeed is een PUBLICEERkanaal (voorraad naar
      Meta), geen bron. */
   maakNietBeschikbaar({ id: 'meta', label: 'Meta (Facebook/Instagram)', status: 'COMING_SOON', auth: 'partner' }),
+  /* wijkopenautos.be / AUTO1.com KOOPT wagens van particulieren; AUTO1.com
+     Remarketing laat dealers inruilwagens B2B verkopen via een partner-API.
+     Geen voorraadbron. Activatie vraagt een partnerovereenkomst met AUTO1. */
+  maakNietBeschikbaar({ id: 'auto1', label: 'AUTO1.com / wijkopenautos.be', status: 'COMING_SOON', auth: 'partner', uitlegSleutel: 'ig.uitleg.auto1' }),
   /* Heycar is niet actief in Belgie. */
   maakNietBeschikbaar({ id: 'heycar', label: 'heycar', status: 'DISABLED', auth: 'none' }),
 ];
@@ -71,6 +83,8 @@ function get(id) { return Object.prototype.hasOwnProperty.call(PROVIDERS, id) ? 
 function lijst() { return LIJST.slice(); }
 function kanSyncen(p) { return Boolean(p) && SYNCBAAR.indexOf(p.status) !== -1; }
 function kanBewaren(p) { return Boolean(p) && BEWAARBAAR.indexOf(p.status) !== -1; }
+/** Kan de dealer voor dit platform een exportbestand uploaden? */
+function kanUploaden(p) { return Boolean(p) && p.uploadBaar === true && kanSyncen(p); }
 /** Heeft deze provider inloggegevens (en dus versleutelde opslag) nodig? */
 function vraagtCredentials(p) { return Boolean(p) && (p.auth === 'basic' || p.auth === 'api_key'); }
 
@@ -89,4 +103,4 @@ function controleerContract(p) {
   return fouten;
 }
 
-module.exports = { PROVIDERS, STATUSSEN, AUTHTYPES, get, lijst, kanSyncen, kanBewaren, vraagtCredentials, controleerContract };
+module.exports = { PROVIDERS, STATUSSEN, AUTHTYPES, get, lijst, kanSyncen, kanBewaren, kanUploaden, vraagtCredentials, controleerContract };

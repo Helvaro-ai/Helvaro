@@ -583,12 +583,14 @@ const server = http.createServer(async (req, res) => {
                 if (!_reg.kanBewaren(p)) return res.status(400).json({ error: 'niet beschikbaar', code: 'provider_niet_beschikbaar' });
                 const ruw = Object.assign({}, bronnen.find((x) => x.provider === p.id) || {}, { provider: p.id });
                 if (b.url !== undefined) ruw.url = b.url;
+                for (const k of p.velden || []) if (b[k] !== undefined) ruw[k] = b[k];
                 if (_reg.vraagtCredentials(p) && b.credentials) {
                   const c = require('../api/_voorraad-providers/credentials').saneer(b.credentials, p.auth);
                   if (!c) return res.status(400).json({ error: 'ongeldig', code: 'ongeldige_gegevens' });
                   ruw.credentials = 'v1:AAAA';
                 }
                 const item = _inv._test.saneerBronItem(ruw);
+                if (p.auth === 'customer_id' && !item.customerId) return res.status(400).json({ error: 'ongeldig', code: 'ongeldige_gegevens' });
                 if ((p.auth === 'feed_url' || p.auth === 'csv') && !item.url) return res.status(400).json({ error: 'ongeldig', code: 'ongeldig_adres' });
                 if (_reg.vraagtCredentials(p) && !item.credentials) return res.status(400).json({ error: 'ongeldig', code: 'geen_gegevens' });
                 const plek = bronnen.findIndex((x) => x.provider === p.id);
@@ -599,6 +601,21 @@ const server = http.createServer(async (req, res) => {
             return res.status(200).json(Object.assign({ ok: true, providers: kaarten() }, _inv.weergave(_devVoorraad.staat, _devVoorraad.bron)));
           }
           return res.status(200).json({ ok: true, bewaarDagen: _devVoorraad.bron.bewaarDagen, providers: kaarten() });
+        }
+        /* Een exportbestand als bron: het bestand wordt echt gelezen (zelfde parser
+           als de server), maar er wordt niets weggeschreven. De limiet is de
+           echte (api/_inventaris.js MAX_UPLOAD_BYTES). */
+        case 'inventory-upload': {
+          const _inv = require('../api/_inventaris');
+          const _reg = require('../api/_voorraad-providers');
+          const p = _reg.get(String(req.body.provider || ''));
+          if (!_reg.kanUploaden(p)) return res.status(400).json({ error: 'niet mogelijk', code: 'upload_niet_mogelijk' });
+          const tekst = typeof req.body.csv === 'string' ? req.body.csv : '';
+          if (!tekst.trim()) return res.status(400).json({ error: 'leeg', code: 'geen_bestand' });
+          if (Buffer.byteLength(tekst, 'utf8') > _inv.MAX_UPLOAD_BYTES) return res.status(413).json({ error: 'te groot', code: 'bestand_te_groot' });
+          const f = require('../api/_voorraad-providers/feed').parseFeed(tekst, 'auto', '');
+          if (!f.voertuigen.length) return res.status(400).json({ error: 'leeg', code: 'bestand_leeg' });
+          return res.status(200).json({ ok: true, upload: { provider: p.id, ok: true, aantal: f.voertuigen.length, ongeldig: f.ongeldig, aangemaakt: 0, bijgewerkt: 0, verkocht: 0, dalingGeblokkeerd: false, verdwenenAantal: 0 } });
         }
         case 'vehicle-save':
         case 'vehicle-archive':

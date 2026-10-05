@@ -172,7 +172,8 @@ function vinSleutel(x) {
  *     legacyProvider      wiens id een kaal Source Record ID is (standaard: de eerste bron)
  *     geconfigureerd      alle providers die de dealer nog heeft; advertenties van
  *                         een provider die er niet meer tussen staat tellen niet mee
- *     codesToewijzen      geef nieuwe wagens meteen hun Helvaro-code (nodig om er
+ *     dalingMin           vanaf hoeveel verdwenen wagens de dalingswacht geldt (standaard DALING_MIN)
+     codesToewijzen      geef nieuwe wagens meteen hun Helvaro-code (nodig om er
  *                         advertenties aan te hangen); zonder dit doet pasToe het
  * @returns {{nieuw, bijwerken, weg, ongewijzigd, geadopteerd, verdwenenAantal,
  *            dalingGeblokkeerd, gebeurtenissen, listings, perBron, dubbelGemeld}}
@@ -403,7 +404,7 @@ function verzoenAlles(bestaand, listings, bronnen, opties = {}) {
     st.verdwenen = verdwenen.length;
     const modus = MODI.indexOf(S.verdwenen) !== -1 ? S.verdwenen : 'verkocht';
     if (modus === 'negeren' || !verdwenen.length) continue;
-    const verdacht = verdwenen.length >= DALING_MIN && verdwenen.length > gehouden.size * DALING_AANDEEL;
+    const verdacht = verdwenen.length >= (Number.isFinite(opties.dalingMin) ? opties.dalingMin : DALING_MIN) && verdwenen.length > gehouden.size * DALING_AANDEEL;
     if (verdacht && !opties.bevestigDaling) { plan.dalingGeblokkeerd = true; st.dalingGeblokkeerd = true; continue; }
     weggelaten[P] = new Set(verdwenen.map((v) => v.code));
     modusVan[P] = modus;

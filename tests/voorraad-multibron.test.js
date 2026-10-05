@@ -396,11 +396,11 @@ const stand = () => JSON.parse(klanten.DEALERA.fields['Inventory State'] || '{}'
     ck('het overzicht zegt alleen dat ze er zijn', JSON.parse(overzicht).providers.find((p) => p.id === 'mobile_de').heeftCredentials === true);
     const stuk = await inv.bewaarProvider('DEALERA', { provider: 'mobile_de', credentials: 'v1:AAAA' });
     ck('een client kan geen eigen "versleutelde" waarde instellen', stuk.ok === false && stuk.reden === 'ongeldige_gegevens', stuk);
-    const leeg = await inv.bewaarProvider('DEALERA', { provider: 'autoscout24_api', credentials: { username: 'x' } });
+    const leeg = await inv.bewaarProvider('DEALERA', { provider: 'mobile_de', credentials: { username: 'x' } });
     ck('onvolledige gegevens worden geweigerd', leeg.ok === false, leeg);
     const geenSleutel = process.env.GOOGLE_TOKEN_KEY;
     delete process.env.GOOGLE_TOKEN_KEY; delete process.env.SESSION_SECRET; delete process.env.ADMIN_KEY;
-    const zonder = await inv.bewaarProvider('DEALERA', { provider: 'autoscout24_api', credentials: { username: 'x', password: 'y' } });
+    const zonder = await inv.bewaarProvider('DEALERA', { provider: 'mobile_de', credentials: { username: 'x', password: 'y' } });
     ck('zonder encryptiesleutel op de server: weigeren in plaats van platte tekst bewaren', zonder.ok === false && zonder.reden === 'geen_versleuteling' && !(klanten.DEALERA.fields['Inventory Source'] || '').includes('"password"'), zonder);
     process.env.GOOGLE_TOKEN_KEY = geenSleutel;
   }
@@ -425,7 +425,7 @@ const stand = () => JSON.parse(klanten.DEALERA.fields['Inventory State'] || '{}'
     }
     ck('een onbekend platform ook niet', (await inv.bewaarProvider('DEALERA', { provider: 'bestaatniet' })).reden === 'onbekende_provider');
     /* Een met de hand in Airtable gezette bron voor een platform dat er niet is: de sync slaat hem over. */
-    zet({ bronnen: [{ provider: 'feed', url: FEED_A, formaat: 'json' }, { provider: 'marktplaats', url: 'https://x.example/f' }, { provider: 'mobile_de', credentials: '' }] });
+    zet({ bronnen: [{ provider: 'feed', url: FEED_A, formaat: 'json' }, { provider: 'marktplaats', url: 'https://x.example/f' }, { provider: 'autoscout24_api', customerId: '42' }] });
     klanten.DEALERA.fields['Inventory State'] = '';
     feeds[FEED_A].items = [{ id: 'Z1', make: 'Fiat', model: 'Panda', price: 8000 }];
     geopend.length = 0;
@@ -433,15 +433,16 @@ const stand = () => JSON.parse(klanten.DEALERA.fields['Inventory State'] || '{}'
     ck('de sync slaagt zonder een foutmelding voor die bronnen', r.ok === true && r.lastResult === 'ok', { ok: r.ok, res: r.lastResult });
     ck('er is niets opgehaald bij een ander adres dan de feed', geopend.every((u) => u === FEED_A), geopend);
     ck('marktplaats staat als overgeslagen, zonder fout', stand().bronnen.marktplaats.lastResult === 'skipped' && !stand().bronnen.marktplaats.lastErrorCode, stand().bronnen.marktplaats);
+    ck('de AutoScout24-API zonder gegevens van Helvaro ook: overgeslagen, geen verzoek', stand().bronnen.autoscout24_api.lastResult === 'skipped' && !stand().bronnen.autoscout24_api.lastErrorCode, stand().bronnen.autoscout24_api);
     const md = reg.get('mobile_de');
     let fout;
     try { await md.haal({ credentials: '' }); } catch (e) { fout = e; }
     ck('mobile_de zonder gegevens: MISSING_FIELD', fout && md.normaliseerFout(fout).code === 'MISSING_FIELD', fout && fout.code);
     const creds = require(BASE + 'api/_voorraad-providers/credentials.js');
     fout = null;
-    try { await md.haal({ credentials: creds.versleutel({ username: 'a', password: 'b' }) }); } catch (e) { fout = e; }
-    const n = fout && md.normaliseerFout(fout);
-    ck('mobile_de met gegevens: een uitleg dat activatie nog moet komen (geen verzonnen API)', n && n.code === 'PERMISSION_DENIED' && n.sleutel === 'ig.fout.ACTIVATIE', n);
+    try { await reg.get('autoscout24_api').haal({ customerId: '42' }); } catch (e) { fout = e; }
+    const n = fout && reg.get('autoscout24_api').normaliseerFout(fout);
+    ck('autoscout24_api zonder gegevens van Helvaro: een uitleg dat activatie nog moet komen', n && n.code === 'PERMISSION_DENIED' && n.sleutel === 'ig.fout.ACTIVATIE', n);
     ck('geen netwerk gebruikt door die stubs', geopend.every((u) => u === FEED_A));
     fout = null;
     try { await reg.get('marktplaats').haal({}); } catch (e) { fout = e; }

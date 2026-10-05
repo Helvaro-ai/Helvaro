@@ -124,9 +124,38 @@ function leesJson(v, standaard) {
 const MAX_BRONNEN = 10;
 const STANDAARD_BEWAAR_DAGEN = 14;
 const MAX_LISTING_SCHRIJF = 600;        // advertentierijen per run
+const MAX_UPLOAD_BYTES = 2 * 1024 * 1024;   // een geuploade export: 2 MB
 
 function getal(x, d, min, max) { const n = Number(x); return Number.isFinite(n) ? Math.min(max, Math.max(min, Math.round(n))) : d; }
 function maskeerUrl(u) { return u ? String(u).replace(/([?&](?:key|token|apikey|api_key|secret)=)[^&]+/gi, '$1***') : ''; }
+
+/* Een upload-bron: de dealer leverde een exportbestand aan (inventory-upload)
+   en gaf geen adres. De bron draagt dat zelf (`upload: true`); een feed zonder
+   adres en zonder die markering blijft wat hij was, een onvolledig ingestelde feed.
+   De geplande sync slaat een upload-bron over -- er is niets om op te halen -- en
+   hij telt niet mee voor de versheid van de voorraad: een bestand veroudert niet
+   "op de achtergrond". Krijgt hij later alsnog een adres, dan is hij gewoon een feed. */
+function isUploadBron(b) {
+  const p = b && registry.get(b.provider);
+  return Boolean(p) && p.uploadBaar === true && b.upload === true && !b.url;
+}
+/* Een bron die de geplande sync echt ophaalt. */
+function draaibaarBron(b) {
+  return Boolean(b) && b.enabled !== false && registry.kanSyncen(registry.get(b.provider)) && !isUploadBron(b);
+}
+
+/* De toestand van een bron voor het scherm. Een dealer van voor de
+   meerbronnenvorm heeft alleen de platte velden bovenaan de toestand; die horen
+   bij zijn ENE bron (legacyProvider). Zonder deze terugval zegt de kaart van
+   een bron "laatste synchronisatie: nooit" terwijl hij elk uur synchroniseert. */
+function bronStaatVan(staat, bron, provider) {
+  const s = staat || {};
+  if (s.bronnen && s.bronnen[provider]) return s.bronnen[provider];
+  if (bron && bron.legacyProvider === provider && s.source !== 'native' && (s.lastSuccessAt || s.lastAttemptAt)) {
+    return { lastAttemptAt: s.lastAttemptAt, lastSuccessAt: s.lastSuccessAt, lastResult: s.lastResult, count: s.count, lastErrorCode: s.lastErrorCode && s.lastResult === 'failed' ? s.lastErrorCode : '' };
+  }
+  return undefined;
+}
 
 /* De oude enkele bron als een element van de lijst. De provider volgt uit wat de
    dealer koos; een adres dat een provider herkent (een AutoScout24-verkopers-
@@ -159,6 +188,7 @@ function saneerBronItem(o) {
     verdwenen: r.verdwenen === 'negeren' ? 'negeren' : r.verdwenen === 'uit_aanbod' ? 'uit_aanbod' : 'verkocht',
   };
   Object.assign(item, p.saneer(r));
+  if (p.uploadBaar === true && r.upload === true && !item.url) item.upload = true;
   /* Inloggegevens bestaan alleen als sluitend versleutelde waarde; platte tekst
      of iets anders wordt hier nooit overgenomen. */
   if (registry.vraagtCredentials(p)) item.credentials = credentials.isVersleuteld(r.credentials) ? r.credentials : '';
@@ -178,7 +208,7 @@ function saneerBron(ruw) {
     if (b && !bronnen.some((x) => x.provider === b.provider)) bronnen.push(b);
     if (bronnen.length >= MAX_BRONNEN) break;
   }
-  const actief = bronnen.filter((b) => b.enabled && registry.kanSyncen(registry.get(b.provider)));
+  const actief = bronnen.filter(draaibaarBron);
   /* 'feed' = de voorraad staat (ook) in een ander systeem en kan dus achterlopen.
      Een bron die alleen inloggegevens bewaart en nog niet kan lezen telt niet:
      dan zou de assistent stoppen met bevestigen voor een dealer die gewoon in
@@ -354,7 +384,8 @@ async function probeNative(projectCode, vorige) {
 function vorigeVan(staat, bron, index) {
   const s = staat || {};
   if (s.bronnen && s.bronnen[bron.provider]) return s.bronnen[bron.provider];
-  if (!s.bronnen && index === 0) return s;
+  /* De toestand van een dealer die alleen een lokale voorraad had (source native) is geen bron-toestand. */
+  if (!s.bronnen && index === 0 && s.source !== 'native') return s;
   return {};
 }
 
@@ -369,7 +400,11 @@ function vorigeVan(staat, bron, index) {
  */
 async function syncBronnen(projectCode, bron, staat, opties = {}) {
   const _sync = require('./_voorraad-sync');
-  const draaibaar = bron.bronnen.filter((b) => b.enabled && registry.kanSyncen(registry.get(b.provider)));
+  /* Een upload: alleen dat platform, met het bestand dat de dealer net gaf. */
+  const upload = opties.upload || null;
+  const draaibaar = upload
+    ? bron.bronnen.filter((b) => b.provider === upload.provider)
+    : bron.bronnen.filter(draaibaarBron);
   const perBron = {};
   const budget = Number.isFinite(opties.provider && opties.provider.budgetMs) ? opties.provider.budgetMs : null;
   const t0 = Date.now();
@@ -378,7 +413,7 @@ async function syncBronnen(projectCode, bron, staat, opties = {}) {
     const p = registry.get(b.provider);
     try {
       const rest = budget === null ? {} : { budgetMs: Math.max(15000, budget - (Date.now() - t0)) };
-      const feed = await p.haal(b, rest);
+      const feed = upload ? upload.feed : await p.haal(b, rest);
       /* Leeg = de bron is stuk, niet "alle wagens verkocht". Dit gooit, en dan
          komt er voor deze bron geen enkele wagen in aanraking. Regel 1 van
          api/_voorraad-sync.js. */
@@ -447,6 +482,10 @@ async function syncBronnen(projectCode, bron, staat, opties = {}) {
   });
   const plan = _sync.verzoenAlles(bestaand, lijstAdv.listings, planBronnen, {
     nu, bevestigDaling: opties.bevestigDaling, legacyProvider: legacy,
+    /* Een bestand dat de dealer zelf aanlevert is een momentopname: dalen er
+       meer dan de helft van zijn wagens uit weg, dan wacht dat op zijn bevestiging,
+       ook bij een kleine voorraad (een feed krijgt die ondergrens van 5 wel). */
+    dalingMin: upload ? 1 : undefined,
     geconfigureerd: bron.bronnen.filter((b) => b.enabled).map((b) => b.provider),
     codesToewijzen: true,
     /* Kennen we de advertenties niet (tabel ontbreekt) en draaien er meerdere
@@ -509,14 +548,17 @@ function bronToestand(vorige, uitkomst, nuIso, ms) {
   if (!uitkomst) return Object.assign({}, v, basis);
   if (uitkomst.overgeslagen) return Object.assign({}, v, basis, { lastResult: 'skipped', lastErrorCode: '', lastErrorKey: '', lastErrorLegacy: '' });
   if (uitkomst.fout) {
+    /* Hoeveel keer op rij deze bron faalde. Een toestand van voor de teller
+       met lastResult 'failed' telt als een keer. */
+    const eerder = Number(v.fouten) || (v.lastResult === 'failed' ? 1 : 0);
     return Object.assign({}, v, basis, {
-      lastResult: 'failed', feedHash: '',
+      lastResult: 'failed', feedHash: '', fouten: eerder + 1,
       lastErrorCode: uitkomst.genorm.code, lastErrorKey: uitkomst.genorm.sleutel, lastErrorLegacy: uitkomst.genorm.legacy,
     });
   }
   const st = uitkomst.stand || {};
   return Object.assign({}, v, basis, {
-    lastResult: 'ok', lastSuccessAt: nuIso, lastErrorCode: '', lastErrorKey: '', lastErrorLegacy: '',
+    lastResult: 'ok', lastSuccessAt: nuIso, lastErrorCode: '', lastErrorKey: '', lastErrorLegacy: '', fouten: 0,
     count: uitkomst.feed.voertuigen.length,
     imported: st.nieuw || 0, updated: st.bijgewerkt || 0, removed: st.verwijderd || 0,
     feedHash: uitkomst.feed.hash,
@@ -524,7 +566,7 @@ function bronToestand(vorige, uitkomst, nuIso, ms) {
 }
 
 /* ── Sync: slot, bronnen, toestand wegschrijven ────────────────────────── */
-async function sync(projectCode, { door = 'systeem', trigger = 'handmatig', bevestigDaling = false, budgetMs } = {}) {
+async function sync(projectCode, { door = 'systeem', trigger = 'handmatig', bevestigDaling = false, budgetMs, upload = null } = {}) {
   const tenant = String(projectCode || '').trim();
   if (!tenant) throw new Error('sync zonder projectcode');
   const { rec, bron, staat } = await lees(tenant);
@@ -545,7 +587,7 @@ async function sync(projectCode, { door = 'systeem', trigger = 'handmatig', beve
   const nuIso = new Date(start).toISOString();
   let resultaat, fout = null, perBron = {};
   try {
-    resultaat = bron.type === 'feed' ? await syncBronnen(tenant, bron, staat, { bevestigDaling, provider: { budgetMs } }) : await probeNative(tenant, staat);
+    resultaat = (bron.type === 'feed' || upload) ? await syncBronnen(tenant, bron, staat, { bevestigDaling, provider: { budgetMs }, upload }) : await probeNative(tenant, staat);
     if (resultaat && resultaat.perBron) perBron = resultaat.perBron;
   } catch (e) {
     fout = e;
@@ -572,16 +614,25 @@ async function sync(projectCode, { door = 'systeem', trigger = 'handmatig', beve
   };
   /* Per bron: hoe ging het? Alleen bij een feedrun; native heeft geen bronnen. */
   const bronnenStaat = Object.assign({}, staat.bronnen || {});
-  const draaibaar = bron.type === 'feed' ? bron.bronnen.filter((b) => b.enabled) : [];
+  const draaibaar = upload ? bron.bronnen.filter((b) => b.provider === upload.provider)
+    : (bron.type === 'feed' ? bron.bronnen.filter((b) => b.enabled && !isUploadBron(b)) : []);
   for (const b of draaibaar) {
     const syncbaar = registry.kanSyncen(registry.get(b.provider));
     const uitkomst = syncbaar ? perBron[b.provider] : { overgeslagen: true };
     bronnenStaat[b.provider] = bronToestand(vorigeVan(staat, b, bron.bronnen.indexOf(b)), uitkomst, nuIso, ms);
     if (resultaat && resultaat.partial) bronnenStaat[b.provider].feedHash = '';
   }
-  if (bron.type === 'feed') run.bronnen = draaibaar.map((b) => ({ p: b.provider, ok: bronnenStaat[b.provider].lastResult !== 'failed', code: bronnenStaat[b.provider].lastErrorCode || undefined }));
+  if (bron.type === 'feed' || upload) run.bronnen = draaibaar.map((b) => ({ p: b.provider, ok: bronnenStaat[b.provider].lastResult !== 'failed', code: bronnenStaat[b.provider].lastErrorCode || undefined }));
 
-  const nieuw = Object.assign({}, staat, {
+  /* Een upload is een aanvulling op de bron, geen nieuwe controle van de hele
+     voorraad: hij raakt alleen de toestand van zijn eigen bron en de
+     geschiedenis. Een mislukte upload (leeg bestand, onleesbaar) mag de dealer
+     niet als "voorraad mislukt" zichtbaar maken, en een geslaagde maakt een
+     voorraad die al uren niet gelezen werd niet ineens "vers". */
+  const nieuw = upload ? Object.assign({}, staat, {
+    slot: null, bronnen: bronnenStaat,
+    runs: [run].concat(Array.isArray(staat.runs) ? staat.runs : []).slice(0, GESCHIEDENIS),
+  }) : Object.assign({}, staat, {
     source: bron.type,
     lastAttemptAt: nuIso,
     lastResult: fout ? 'failed' : (resultaat.partial ? 'partial' : 'ok'),
@@ -591,8 +642,8 @@ async function sync(projectCode, { door = 'systeem', trigger = 'handmatig', beve
     slot: null,
     runs: [run].concat(Array.isArray(staat.runs) ? staat.runs : []).slice(0, GESCHIEDENIS),
   });
-  if (bron.type === 'feed') nieuw.bronnen = bronnenStaat;
-  if (!fout) {
+  if (!upload && bron.type === 'feed') nieuw.bronnen = bronnenStaat;
+  if (!fout && !upload) {
     /* De versheid van het geheel is die van de OUDSTE bron: een platform dat
        niet gelezen kon worden maakt de voorraad niet "vers", ook al lukte de
        andere. Bij een bron is dit gewoon het moment van deze run. */
@@ -633,8 +684,30 @@ async function sync(projectCode, { door = 'systeem', trigger = 'handmatig', beve
     const u = perBron[b.provider];
     if (u && u.fout && resultaat) console.warn('[voorraad] bron mislukt voor', tenant, b.provider, u.genorm.code, u.fout.code || '', u.fout.message);
   }
-  meldVoorraadAlsNodig(tenant, bron, staat, run, resultaat);
-  return { ok: !fout, ...weergave(nieuw, bron) };
+  if (!upload) {
+    meldVoorraadAlsNodig(tenant, bron, staat, run, resultaat);
+    meldBronAlsNodig(tenant, draaibaar, bronnenStaat, resultaat);
+  }
+  const antwoord = { ok: !fout, ...weergave(nieuw, bron) };
+  if (upload) {
+    antwoord.upload = {
+      provider: upload.provider,
+      ok: !fout,
+      foutCode: genorm ? genorm.code : '',
+      foutSleutel: genorm ? genorm.sleutel : '',
+      aantal: upload.feed.voertuigen.length,
+      ongeldig: upload.feed.ongeldig || 0,
+      aangemaakt: resultaat ? resultaat.aangemaakt || 0 : 0,
+      bijgewerkt: resultaat ? resultaat.bijgewerkt || 0 : 0,
+      verkocht: resultaat ? resultaat.verkocht || 0 : 0,
+      /* Meer dan de helft van de wagens van dit platform ontbreekt in het bestand:
+         niets is op verkocht gezet. Het scherm vraagt of dat klopt en stuurt het
+         bestand dan opnieuw met bevestigDaling. */
+      dalingGeblokkeerd: Boolean(resultaat && resultaat.dalingGeblokkeerd),
+      verdwenenAantal: resultaat && resultaat.dalingGeblokkeerd ? resultaat.verdwenenAantal : 0,
+    };
+  }
+  return antwoord;
 }
 
 /* De dealer moet het weten zonder de Voertuigen-pagina open te hebben
@@ -662,6 +735,27 @@ function meldVoorraadAlsNodig(tenant, bron, staat, run, resultaat) {
   } catch (_) { /* push is bijzaak */ }
 }
 
+/* Een bron die twee keer op rij faalt terwijl een andere gewoon slaagt: de
+   run als geheel is dan "gedeeltelijk", er is geen run-melding, en de dealer
+   weet niet dat een platform al uren niet gelezen wordt. Dezelfde regels als
+   hierboven: alleen bij de OVERGANG (de tweede mislukking), niet bij elke
+   volgende. Is alles mislukt, dan meldt meldVoorraadAlsNodig dat al. */
+function meldBronAlsNodig(tenant, draaibaar, bronnenStaat, resultaat) {
+  if (!resultaat || !Array.isArray(resultaat.geslaagd) || !resultaat.geslaagd.length) return;
+  for (const b of draaibaar || []) {
+    const st = bronnenStaat && bronnenStaat[b.provider];
+    if (!st || st.lastResult !== 'failed' || st.fouten !== 2) continue;
+    const p = registry.get(b.provider);
+    try {
+      require('./_push').stuurVertaald({
+        projectCode: tenant, titelSleutel: 'push.voorraad.titel', tekstSleutel: 'push.voorraad.bron',
+        vars: { bron: p ? p.label : b.provider },
+        url: 'https://app.helvaro.pro/dashboard',
+      }).catch(() => {});
+    } catch (_) { /* push is bijzaak */ }
+  }
+}
+
 /**
  * De versheidscontrole bij inloggen en verversen. Licht: alleen metadata lezen;
  * pas als de voorraad verouderd is (of nooit gecontroleerd) volgt een sync.
@@ -681,16 +775,29 @@ async function controleer(projectCode, { door = 'dashboard', trigger = 'ververse
    tekst blijft in de log. */
 function providerKaart(p, b, st) {
   const s = st || {};
-  const geconfigureerd = Boolean(b) && (registry.vraagtCredentials(p) ? Boolean(b.credentials) : Boolean(b.url));
+  const upload = Boolean(b) && isUploadBron(b);
+  /* Wat "verbonden" betekent hangt van het soort koppeling af: inloggegevens,
+     een klantnummer, een adres -- of een eerder geuploade export. */
+  const geconfigureerd = Boolean(b) && (registry.vraagtCredentials(p) ? Boolean(b.credentials)
+    : p.auth === 'customer_id' ? Boolean(b.customerId)
+    : (Boolean(b.url) || upload));
   return {
     id: p.id, label: p.label, status: p.status, auth: p.auth,
     adresSoort: p.adresSoort || 'feed',
+    /* i18n-sleutels voor de kaart: een eigen wachttekst en een uitleg per platform. */
+    wachtSleutel: p.status === 'FEED_REQUIRED' ? (p.wachtSleutel || 'ig.wacht') : '',
+    uitlegSleutel: p.uitlegSleutel || '',
     capabilities: p.capabilities,
     kanVerbinden: registry.kanBewaren(p),
     kanSyncen: registry.kanSyncen(p),
+    kanUploaden: registry.kanUploaden(p),
+    uploadBron: upload,
     geconfigureerd,
     enabled: Boolean(b) && b.enabled,
     heeftCredentials: Boolean(b && b.credentials),
+    /* De id's van de dealer zelf (klantnummer, verkoper-id): geen geheimen, wel nodig om te bewerken. */
+    klantnummer: b && b.customerId ? String(b.customerId) : '',
+    verkoperId: b && b.mobileSellerId ? String(b.mobileSellerId) : '',
     url: b ? maskeerUrl(b.url) : '',
     verdwenen: b ? b.verdwenen : 'verkocht',
     laatsteSync: s.lastAttemptAt || null,
@@ -720,7 +827,7 @@ function weergave(staat, bron) {
     drempels: bron ? bron.drempels : STANDAARD.native,
     feed: bron && bron.type === 'feed' ? { url: maskeerUrl(bron.url), formaat: bron.formaat, verdwenen: bron.verdwenen, provider: bron.provider || 'feed' } : null,
     bronnen: bron && Array.isArray(bron.bronnen)
-      ? bron.bronnen.map((x) => providerKaart(registry.get(x.provider), x, s.bronnen && s.bronnen[x.provider])).filter((k) => k.id)
+      ? bron.bronnen.map((x) => providerKaart(registry.get(x.provider), x, bronStaatVan(s, bron, x.provider))).filter((k) => k.id)
       : [],
     bewaarDagen: bron && bron.bewaarDagen ? bron.bewaarDagen : STANDAARD_BEWAAR_DAGEN,
     lastSuccessAt: s.lastSuccessAt || null,
@@ -756,7 +863,7 @@ async function providersOverzicht(projectCode) {
   return {
     ok: true,
     bewaarDagen: bron.bewaarDagen,
-    providers: registry.lijst().map((p) => providerKaart(p, bron.bronnen.find((x) => x.provider === p.id) || null, staat.bronnen && staat.bronnen[p.id])),
+    providers: registry.lijst().map((p) => providerKaart(p, bron.bronnen.find((x) => x.provider === p.id) || null, bronStaatVan(staat, bron, p.id))),
   };
 }
 
@@ -774,6 +881,50 @@ async function sluitUit(projectCode, bronId) {
   const nieuw = saneerBron(Object.assign({}, bron, { uitgesloten: (bron.uitgeslotenAlle || []).concat(id) }));
   await schrijf(rec.id, { [F_SOURCE]: JSON.stringify(naarOpslag(nieuw)) });
   return { ok: true };
+}
+
+/**
+ * Is dit klantnummer al aan een ANDERE dealer gekoppeld?
+ *
+ * De gegevens van Helvaro als data provider werken voor elk AutoScout24-
+ * klantnummer dat Helvaro heeft gemachtigd. Een klantnummer is geen geheim: zonder
+ * deze controle kon dealer A het nummer van dealer B invullen en B's voorraad in
+ * zijn eigen account lezen. Een nummer hoort bij een dealer; een tweede dealer
+ * die hetzelfde nummer opgeeft wordt geweigerd. (Dat is een vangnet, geen
+ * bewijs van wie het nummer is: zie docs/integrations/autoscout24_api/AUTH.md.)
+ */
+async function klantnummerBezet(projectCode, customerId) {
+  const naald = '"customerId":' + JSON.stringify(String(customerId));
+  const formule = encodeURIComponent(`AND(FIND("${escapeFormula(naald)}", {${F_SOURCE}}), NOT({${F_PROJECT}}="${escapeFormula(projectCode)}"))`);
+  const r = await at(`${CLIENTS_TABLE}?filterByFormula=${formule}&maxRecords=1&pageSize=1`);
+  if (!r.ok) {
+    /* Bestaat het veld nog nergens (schema nog niet gedraaid), dan heeft niemand een nummer. */
+    const txt = await r.text().catch(() => '');
+    if (r.status === 422 && /UNKNOWN_FIELD_NAME/.test(txt)) return false;
+    const e = new Error('klantnummer controleren ' + r.status);
+    e.status = r.status;
+    throw e;
+  }
+  const d = await r.json();
+  return Array.isArray(d.records) && d.records.length > 0;
+}
+
+/**
+ * De ids van de advertenties van een verwijderde wagen uitsluiten, op elk
+ * platform: een wagen die de dealer zelf wegdeed komt niet terug omdat een
+ * tweede platform hem nog toont. Alleen rijen van deze dealer.
+ */
+async function sluitUitAdvertenties(projectCode, rijen) {
+  const tenant = String(projectCode || '').trim();
+  const { rec, bron } = await lees(tenant);
+  if (!rec) return { ok: false, reden: 'geen_klantrecord' };
+  const eigen = (Array.isArray(rijen) ? rijen : []).filter((l) => l && l.projectCode === tenant && l.provider && l.externalId);
+  if (!eigen.length || bron.type !== 'feed') return { ok: true, overgeslagen: true };
+  const _s = require('./_voorraad-sync');
+  const ids = eigen.map((l) => _s.bronIdVoor(l.provider, l.externalId, bron.legacyProvider));
+  const nieuw = saneerBron(Object.assign({}, bron, { uitgesloten: (bron.uitgeslotenAlle || []).concat(ids) }));
+  await schrijf(rec.id, { [F_SOURCE]: JSON.stringify(naarOpslag(nieuw)) });
+  return { ok: true, aantal: ids.length };
 }
 
 /* Is dit de platte vorm van het oude formulier ("de voorraadbron instellen")? */
@@ -836,7 +987,7 @@ async function bewaarProvider(projectCode, invoer) {
       if (!registry.kanBewaren(p)) return { ok: false, reden: 'provider_niet_beschikbaar' };
       const bestaand = bronnen.find((b) => b.provider === p.id);
       const ruw = Object.assign({}, bestaand || {}, { provider: p.id });
-      for (const k of ['url', 'formaat', 'verdwenen', 'enabled']) if (inv[k] !== undefined) ruw[k] = inv[k];
+      for (const k of ['url', 'formaat', 'verdwenen', 'enabled'].concat(p.velden || [])) if (inv[k] !== undefined) ruw[k] = inv[k];
       /* Het scherm toont een adres met het geheim afgeschermd (token=***). Wie
          dat ongewijzigd terugstuurt, laat het adres zoals het is; een adres
          waar *** nog in staat maar dat anders is, kan nooit werken. */
@@ -848,8 +999,20 @@ async function bewaarProvider(projectCode, invoer) {
         try { ruw.credentials = credentials.versleutel(c); }
         catch (e) { console.error('[voorraad] inloggegevens niet versleuteld:', e && e.message); return { ok: false, reden: 'geen_versleuteling' }; }
       }
+      /* Een bron die alleen een bestand krijgt: markeren, tenzij er een adres is. */
+      if (inv.uploadBron === true && registry.kanUploaden(p)) ruw.upload = true;
       const item = saneerBronItem(ruw);
-      if ((p.auth === 'feed_url' || p.auth === 'csv') && !item.url) return { ok: false, reden: 'ongeldig_adres' };
+      /* Een eigen veld van het platform (klantnummer, verkoper-id) dat niet door de saneer komt, is fout ingevuld. */
+      for (const k of p.velden || []) if (inv[k] !== undefined && String(inv[k]).trim() !== '' && !item[k]) return { ok: false, reden: 'ongeldige_gegevens' };
+      if (p.auth === 'customer_id' && !item.customerId) return { ok: false, reden: 'ongeldige_gegevens' };
+      if (p.auth === 'customer_id') {
+        let bezet;
+        try { bezet = await klantnummerBezet(projectCode, item.customerId); }
+        catch (e) { console.error('[voorraad] klantnummer niet gecontroleerd:', e && e.message); return { ok: false, reden: 'controle_mislukt' }; }
+        if (bezet) return { ok: false, reden: 'klantnummer_bezet' };
+      }
+      /* Een bron zonder adres kan alleen als de dealer er een bestand voor uploadt. */
+      if ((p.auth === 'feed_url' || p.auth === 'csv') && !item.url && !(inv.uploadBron === true && registry.kanUploaden(p))) return { ok: false, reden: 'ongeldig_adres' };
       if (registry.vraagtCredentials(p) && !item.credentials) return { ok: false, reden: 'geen_gegevens' };
       const plek = bronnen.findIndex((b) => b.provider === p.id);
       if (plek >= 0) bronnen[plek] = item; else bronnen.push(item);
@@ -861,7 +1024,45 @@ async function bewaarProvider(projectCode, invoer) {
   }
   const bron = saneerBron({ bronnen, bewaarDagen, legacyProvider, drempels: huidig.drempels, uitgesloten: huidig.uitgeslotenAlle });
   await schrijf(rec.id, { [F_SOURCE]: JSON.stringify(naarOpslag(bron)), [F_STATE]: JSON.stringify(nieuweStaat) });
-  return { ok: true, ...weergave(nieuweStaat, bron), providers: registry.lijst().map((p) => providerKaart(p, bron.bronnen.find((x) => x.provider === p.id) || null, nieuweStaat.bronnen && nieuweStaat.bronnen[p.id])) };
+  return { ok: true, ...weergave(nieuweStaat, bron), providers: registry.lijst().map((p) => providerKaart(p, bron.bronnen.find((x) => x.provider === p.id) || null, bronStaatVan(nieuweStaat, bron, p.id))) };
+}
+
+/**
+ * Een exportbestand van de dealer als bron: voor een platform zonder adres dat
+ * hij kan geven (Gocar.be heeft geen publieke koppeling), of een DMS dat alleen
+ * een bestand levert. Het bestand wordt precies zo gelezen als een feed (CSV,
+ * JSON of XML, zelfde kolomnamen, zelfde regels) en loopt door dezelfde sync als
+ * elke andere bron -- met een eigen veiligheid: een bestand is een momentopname,
+ * dus laat het meer dan de helft van de actieve wagens van dit platform vallen,
+ * dan wordt NIETS op verkocht gezet tot de dealer het bevestigt.
+ *
+ * De tenant komt van de aanroeper (de sessie); niets in `invoer` kiest een dealer.
+ * @param {string} projectCode
+ * @param {{provider:string, tekst:string, bevestigDaling?:boolean, door?:string, budgetMs?:number}} invoer
+ * @returns {Promise<object>} { ok:false, reden } of het resultaat van sync() met `upload` erin
+ */
+async function syncUpload(projectCode, invoer = {}) {
+  const tenant = String(projectCode || '').trim();
+  if (!tenant) throw new Error('upload zonder projectcode');
+  const p = registry.get(String(invoer.provider || ''));
+  if (!p) return { ok: false, reden: 'onbekende_provider' };
+  if (!registry.kanUploaden(p)) return { ok: false, reden: 'upload_niet_mogelijk' };
+  const tekst = typeof invoer.tekst === 'string' ? invoer.tekst : '';
+  if (!tekst.trim()) return { ok: false, reden: 'geen_bestand' };
+  if (Buffer.byteLength(tekst, 'utf8') > MAX_UPLOAD_BYTES) return { ok: false, reden: 'bestand_te_groot' };
+  let feed;
+  try { feed = feedModule.parseFeed(tekst, 'auto', ''); }
+  catch (_) { return { ok: false, reden: 'bestand_onleesbaar' }; }
+  if (!feed.voertuigen.length) return { ok: false, reden: 'bestand_leeg' };
+
+  /* Heeft de dealer dit platform nog niet als bron, dan wordt het er een zonder adres. */
+  const { rec, bron } = await lees(tenant);
+  if (!rec) return { ok: false, reden: 'geen_klantrecord' };
+  if (!bron.bronnen.some((b) => b.provider === p.id)) {
+    const o = await bewaarProvider(tenant, { provider: p.id, uploadBron: true });
+    if (!o.ok) return o;
+  }
+  return sync(tenant, { door: invoer.door || 'dashboard', trigger: 'upload', bevestigDaling: invoer.bevestigDaling === true, budgetMs: invoer.budgetMs, upload: { provider: p.id, feed } });
 }
 
 /** Voor de AI-beurt: kan ik voorraadfeiten bevestigen? Faalt veilig naar 'onzeker'. */
@@ -979,13 +1180,13 @@ function promptNotitie(v) {
 }
 
 module.exports = {
-  TOESTANDEN, STANDAARD,
+  TOESTANDEN, STANDAARD, MAX_UPLOAD_BYTES,
   bereken, vertrouwen, saneerBron, naarOpslag, weergave,
-  controleer, sync, status, bewaarBron, bewaarProvider, providersOverzicht, sluitUit, vertrouwenVoor,
-  momentopname, hercontroleer, beoordeelVoorVerzenden, promptNotitie, genoemdIn, genoemdeMomentopnames, meldVoorraadAlsNodig,
+  controleer, sync, syncUpload, status, bewaarBron, bewaarProvider, providersOverzicht, sluitUit, sluitUitAdvertenties, vertrouwenVoor,
+  momentopname, hercontroleer, beoordeelVoorVerzenden, promptNotitie, genoemdIn, genoemdeMomentopnames, meldVoorraadAlsNodig, meldBronAlsNodig,
   // voor tests
   _test: {
-    noemtGetal, hashVan, probeNative, isInternIp, syncBronnen, saneerBronItem, providerKaart, vorigeVan,
+    noemtGetal, hashVan, probeNative, klantnummerBezet, isInternIp, syncBronnen, saneerBronItem, providerKaart, vorigeVan, bronStaatVan, isUploadBron,
     parseCsv: feedModule.parseCsv, parseJson: feedModule.parseJson, parseXml: feedModule.parseXml,
     parseFeed: feedModule.parseFeed, mapRegel: feedModule.mapRegel,
     autoscoutDealerUrl: autoscoutModule.autoscoutDealerUrl, robotsStaatToe: autoscoutModule.robotsStaatToe,

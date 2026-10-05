@@ -14,6 +14,35 @@ enige eerlijke datum voor "uitgerold" is de dag dat `main` deployt.
 
 ## Nog niet uitgerold
 
+### Voorraad: officiele koppelingen, bestand uploaden, betere meldingen
+
+- **mobile.de leest nu echt** (officiele Seller API). Vraag de Seller API-
+  activatie aan via service@team.mobile.de (klantnummer en bedrijfsnaam), vul de
+  gegevens in bij Integraties (versleuteld, nooit meer getoond) en de eerste
+  synchronisatie start meteen. Heb je een enkele verkoper bij je account, dan
+  is het verkoper-id niet nodig. Koppelen met andere platformen gaat op het
+  chassisnummer.
+- **AutoScout24 (officiele API)** staat klaar: jij geeft in AutoScout24 aan dat
+  Helvaro namens jou mag werken en vult alleen je klantnummer in. De
+  inloggegevens zijn die van Helvaro zelf, niet van jou. **Actie (Helvaro):**
+  registreren als data provider bij AutoScout24 en `AS24_API_USER` en
+  `AS24_API_PASSWORD` in Vercel zetten; tot dan staat de kaart op "wacht op
+  activatie" en gaat er geen enkel verzoek weg. Dezelfde wagen via het profiel
+  en via de API blijft een wagen.
+- **Bestand uploaden** (Gocar.be en de gewone feed): heb je geen adres maar wel
+  een export (CSV, JSON of XML, 2 MB), dan upload je hem in de kaart. Valt er
+  meer dan de helft van de wagens van dat platform weg, dan wordt er niets op
+  verkocht gezet tot je het bevestigt.
+- **AUTO1.com / wijkopenautos.be** staat erbij als uitleg: het koopt wagens van
+  particulieren en is geen voorraadbron; activatie vraagt een partnerovereenkomst.
+- **Meldingen en kleine fixes:** een bron die twee keer op rij faalt terwijl
+  een andere slaagt geeft nu een melding; de kaart van een bron van voor de
+  meerbronnenvorm toont zijn laatste synchronisatie; de bevestigingsvraag voor
+  "op verkocht zetten" noemt jouw bewaartermijn in plaats van vast 14 dagen;
+  bij een lead staat via welk platform en welke advertentie hij kwam; een
+  verwijderde wagen neemt zijn advertentierijen mee en komt via een ander
+  platform niet terug.
+
 ### Voorraad uit meerdere platformen (fase 1)
 
 - **Meer dan een voorraadbron per dealer.** Naast je feed of AutoScout24-profiel

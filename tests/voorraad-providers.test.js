@@ -29,31 +29,31 @@ const i18n = require(BASE + 'api/_i18n.js');
   console.log('\nHet contract: elke provider, dezelfde vorm');
   {
     const lijst = reg.lijst();
-    ck('tien platformen in het register', lijst.length === 10, lijst.map((p) => p.id));
+    ck('elf platformen in het register', lijst.length === 11, lijst.map((p) => p.id));
     ck('ids zijn uniek', new Set(lijst.map((p) => p.id)).size === lijst.length);
     for (const p of lijst) {
       const f = reg.controleerContract(p);
       ck(`${p.id}: voldoet aan het contract (id, label, status, auth, kentReservering, capabilities, haal, health, normaliseerFout)`, f.length === 0, f);
     }
     ck('statussen kloppen met wat het platform kan', JSON.stringify(Object.fromEntries(reg.lijst().map((p) => [p.id, p.status]))) === JSON.stringify({
-      feed: 'ACTIVE', autoscout24: 'BETA', autoscout24_api: 'FEED_REQUIRED', mobile_de: 'FEED_REQUIRED',
-      tweedehands: 'COMING_SOON', marktplaats: 'COMING_SOON', vroom: 'COMING_SOON', gocar: 'MANUAL', meta: 'COMING_SOON', heycar: 'DISABLED',
+      feed: 'ACTIVE', autoscout24: 'BETA', autoscout24_api: 'FEED_REQUIRED', mobile_de: 'BETA',
+      tweedehands: 'COMING_SOON', marktplaats: 'COMING_SOON', vroom: 'COMING_SOON', gocar: 'MANUAL', meta: 'COMING_SOON', auto1: 'COMING_SOON', heycar: 'DISABLED',
     }), Object.fromEntries(reg.lijst().map((p) => [p.id, p.status])));
     ck('alleen bestaande statussen en authtypes', reg.lijst().every((p) => reg.STATUSSEN.includes(p.status) && reg.AUTHTYPES.includes(p.auth)));
     ck('een kapotte provider valt door de controle', reg.controleerContract({ id: 'x' }).length > 0 && reg.controleerContract(null).length > 0);
     ck('het register is bevroren: een platform er niet stiekem bij', Object.isFrozen(reg.PROVIDERS) && Object.isFrozen(reg.get('feed')));
     ck('get() kent alleen echte platformen (geen prototype-sleutels)', reg.get('constructor') === null && reg.get('__proto__') === null && reg.get('') === null && reg.get(undefined) === null);
-    ck('wat Helvaro nu echt kan: alleen lezen, via feed, profiel en gocar-export', reg.lijst().filter((p) => p.capabilities.lezen).map((p) => p.id).sort().join() === 'autoscout24,feed,gocar');
+    ck('wat Helvaro nu echt kan: alleen lezen, via feed, profiel, gocar-export en mobile.de (AutoScout24-API pas met de gegevens van Helvaro)', reg.lijst().filter((p) => p.capabilities.lezen).map((p) => p.id).sort().join() === 'autoscout24,feed,gocar,mobile_de');
     ck('nergens wordt gepubliceerd of op leads gereageerd (Fase 1)', reg.lijst().every((p) => !p.capabilities.publiceren && !p.capabilities.leads));
   }
 
   console.log('\nWie mag synchroniseren en wie mag inloggegevens bewaren');
   {
     const sync = reg.lijst().filter(reg.kanSyncen).map((p) => p.id).sort().join();
-    ck('synchroniseren: feed, autoscout24, gocar', sync === 'autoscout24,feed,gocar', sync);
+    ck('synchroniseren: feed, autoscout24, gocar en mobile.de', sync === 'autoscout24,feed,gocar,mobile_de', sync);
     const bewaar = reg.lijst().filter(reg.kanBewaren).map((p) => p.id).sort().join();
     ck('bewaren: die drie plus de twee API-koppelingen die op activatie wachten', bewaar === 'autoscout24,autoscout24_api,feed,gocar,mobile_de', bewaar);
-    ck('inloggegevens: alleen de API-koppelingen', reg.lijst().filter(reg.vraagtCredentials).map((p) => p.id).sort().join() === 'autoscout24_api,mobile_de');
+    ck('inloggegevens: alleen mobile.de (AutoScout24-API gebruikt de gegevens van Helvaro)', reg.lijst().filter(reg.vraagtCredentials).map((p) => p.id).sort().join() === 'mobile_de');
     for (const id of ['tweedehands', 'marktplaats', 'vroom', 'meta', 'heycar']) {
       const p = reg.get(id);
       let fout;
@@ -63,7 +63,7 @@ const i18n = require(BASE + 'api/_i18n.js');
     }
     const md = reg.get('mobile_de');
     ck('mobile_de zonder gegevens: niet geconfigureerd', (await md.health({})).toestand === 'niet_geconfigureerd');
-    ck('mobile_de met gegevens: wacht op activatie', (await md.health({ credentials: 'v1:AAAA' })).toestand === 'wacht_op_activatie');
+    ck('autoscout24_api zonder gegevens van Helvaro: wacht op activatie, zonder netwerk', (await reg.get('autoscout24_api').health({ customerId: '42' })).toestand === 'wacht_op_activatie');
     ck('feed zonder adres: niet geconfigureerd, met adres: ok', (await reg.get('feed').health({})).ok === false && (await reg.get('feed').health({ url: 'https://x.example/f' })).ok === true);
   }
 

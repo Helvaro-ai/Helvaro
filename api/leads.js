@@ -13,6 +13,7 @@ const images  = require('./_images'); // Phase 4 AI property images — see its 
 const _properties = require('./_properties'); // de panden zelf, niet hun beelden
 const _vehicles  = require('./_vehicles');   // de voorraad van een dealer
 const _inventaris = require('./_inventaris'); // hoe vers en betrouwbaar die voorraad is
+const _listings = require('./_listings');     // welk platform welke wagen toont (vehicle_listings)
 const _vertical  = require('./_vertical');   // vastgoed of dealership
 const _ledger = require('./_ledger');         // creditgrootboek: elke beweging een regel
 const _lang   = require('./_lang');   // language registry — see its file header
@@ -3138,12 +3139,27 @@ module.exports = _errors.vangAf(async function handler(req, res) {
       if (!projectCode) return res.status(403).json({ error: 'Geen client context' });
       if (body.confirm !== true) return res.status(400).json({ error: 'Verwijderen vraagt een bevestiging.', code: 'confirm_required' });
       try {
+        /* De advertenties van deze wagen VOOR het verwijderen lezen: daarna weten
+           we niet meer welke er waren. */
+        let advertenties = [];
+        try { advertenties = await _listings.voorVoertuig(projectCode, body.code); }
+        catch (e) { console.error('[vehicle-delete] advertenties lezen mislukt', e && e.message); }
         const weg = await _vehicles.verwijder(projectCode, body.code);
         let uitgesloten = false;
         if (weg.bron === 'feed' && weg.bronId) {
           try { uitgesloten = (await _inventaris.sluitUit(projectCode, weg.bronId)).ok === true; }
           catch (e) { console.error('[vehicle-delete] uitsluiten mislukt', e && e.message); }
         }
+        /* De advertentierijen van een wagen die niet meer bestaat: weg. Anders wijst
+           een rij naar een code die later aan een andere wagen wordt gegeven, en
+           een tweede platform zet de wagen via zijn eigen id gewoon weer terug.
+           Dat laatste voorkomen we door ook die ids uit te sluiten. */
+        try {
+          if (advertenties.length) {
+            await _inventaris.sluitUitAdvertenties(projectCode, advertenties);
+            await _listings.verwijderVoorVoertuig(projectCode, weg.code);
+          }
+        } catch (e) { console.error('[vehicle-delete] advertenties opruimen mislukt', e && e.message); }
         console.log('[vehicle-delete]', projectCode, weg.code, weg.bron || 'native', uitgesloten ? '(uitgesloten van sync)' : '');
         return res.status(200).json({ ok: true, code: weg.code, uitgesloten });
       } catch (err) {
@@ -3284,10 +3300,11 @@ module.exports = _errors.vangAf(async function handler(req, res) {
           uit = await _inventaris.bewaarProvider(projectCode, {
             provider: body.provider, url: body.url, formaat: body.formaat, verdwenen: body.verdwenen, enabled: body.enabled,
             credentials: body.credentials, verwijder: body.verwijder, bewaarDagen: body.bewaarDagen,
+            customerId: body.customerId, mobileSellerId: body.mobileSellerId,
           });
           /* De reden is een kort woord; het scherm vertaalt hem (ig.err.<reden>). */
           if (uit && uit.ok === false && uit.reden && uit.reden !== 'geen_klantrecord') {
-            return res.status(uit.reden === 'geen_versleuteling' ? 503 : 400).json({ error: 'Deze koppeling kon niet bewaard worden.', code: uit.reden });
+            return res.status(uit.reden === 'geen_versleuteling' || uit.reden === 'controle_mislukt' ? 503 : 400).json({ error: 'Deze koppeling kon niet bewaard worden.', code: uit.reden });
           }
         }
         else uit = await _inventaris.bewaarBron(projectCode, body.source || {});
@@ -3315,6 +3332,37 @@ module.exports = _errors.vangAf(async function handler(req, res) {
           return res.status(503).json({ error: 'De voorraadvelden worden nog aangemaakt. Probeer het zo opnieuw.', code: 'schema_ontbreekt' });
         }
         return res.status(503).json({ error: 'De voorraadstatus kon niet opgehaald worden.', code: 'unavailable' });
+      }
+    }
+
+    /* ── Een exportbestand als voorraadbron (api/_inventaris.js syncUpload) ────
+       inventory-upload  { provider, csv, bevestigDaling? }
+       Voor een platform zonder adres dat de dealer kan geven (Gocar.be) of een
+       DMS dat alleen een bestand levert. Het bestand gaat door dezelfde sync als
+       een feed, met een eigen veiligheid: valt meer dan de helft van de wagens
+       van dat platform weg, dan wordt niets op verkocht gezet tot de dealer het
+       bevestigt (bevestigDaling). Tenant komt uit de sessie, nooit uit de body;
+       grootte begrensd op MAX_UPLOAD_BYTES. */
+    if (body.mode === 'inventory-upload') {
+      if (!projectCode) return res.status(403).json({ error: 'Geen client context' });
+      try {
+        const uit = await _inventaris.syncUpload(projectCode, {
+          provider: body.provider, tekst: body.csv, bevestigDaling: body.bevestigDaling === true,
+          door: clientName || 'dashboard', budgetMs: 45000,
+        });
+        if (uit && uit.ok === false && uit.reden) {
+          if (uit.reden === 'geen_klantrecord') return res.status(404).json({ error: 'Account niet gevonden.', code: 'geen_klantrecord' });
+          if (uit.reden === 'schema_ontbreekt') {
+            try { require('./_schema').ensureLui(); } catch (_) { /* optioneel */ }
+            return res.status(503).json({ error: 'De voorraadvelden worden nog aangemaakt. Probeer het zo opnieuw.', code: 'schema_ontbreekt' });
+          }
+          const status = uit.reden === 'bestand_te_groot' ? 413 : (uit.reden === 'slot_mislukt' ? 503 : 400);
+          return res.status(status).json({ error: 'Dit bestand kon niet verwerkt worden.', code: uit.reden });
+        }
+        return res.status(200).json(uit);
+      } catch (err) {
+        console.error('[inventory-upload]', err && err.status, err && err.message);
+        return res.status(503).json({ error: 'Het bestand kon niet verwerkt worden.', code: 'unavailable' });
       }
     }
 

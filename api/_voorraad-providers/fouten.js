@@ -25,6 +25,9 @@ const CODES = Object.freeze([
 const LEGACY = Object.freeze({
   geen_url:                   ['MISSING_FIELD'],
   geen_credentials:           ['MISSING_FIELD'],
+  geen_klantnummer:           ['MISSING_FIELD', 'ig.fout.GEEN_KLANTNUMMER'],
+  geen_verkoper:              ['MISSING_FIELD', 'ig.fout.GEEN_VERKOPER'],
+  meerdere_verkopers:         ['INVALID_DATA', 'ig.fout.KIES_VERKOPER'],
   url_geweigerd:              ['INVALID_DATA'],
   ongeldig_adres:             ['INVALID_DATA'],
   feed_leeg:                  ['INVALID_DATA'],
@@ -63,7 +66,10 @@ function vanHttp(status) {
 function normaliseer(e) {
   const fout = e || {};
   if (CODES.indexOf(fout.genormaliseerd) !== -1) {
-    return { code: fout.genormaliseerd, sleutel: 'ig.fout.' + fout.genormaliseerd, legacy: String(fout.code || '') };
+    /* Een provider mag de zin van de dealer verfijnen (fout.sleutel) zolang de
+       code een van de negen blijft: bij AutoScout24 (API) is een 401 een
+       probleem van Helvaro, niet van de dealer. */
+    return { code: fout.genormaliseerd, sleutel: fout.sleutel || 'ig.fout.' + fout.genormaliseerd, legacy: String(fout.code || '') };
   }
   const legacy = String(fout.code || '');
   const http = Number(fout.http || fout.status) || 0;

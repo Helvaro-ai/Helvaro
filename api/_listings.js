@@ -210,9 +210,32 @@ async function schrijf(projectCode, rijen, opties = {}) {
   return uit;
 }
 
+/**
+ * De advertentierijen van een wagen die niet meer bestaat (de dealer
+ * verwijderde hem): weg. Een rij die naar een verdwenen wagen wijst is geen
+ * informatie meer, en een voertuigcode wordt later aan een andere wagen
+ * gegeven. Alleen rijen van DEZE dealer; elke rij wordt nog eens gecontroleerd.
+ * @returns {Promise<{verwijderd:number, failed:number}>}
+ */
+async function verwijderVoorVoertuig(projectCode, voertuigCode) {
+  const tenant = tenantVan(projectCode);
+  if (!tenant) throw new Error('advertenties verwijderen zonder projectcode');
+  const uit = { verwijderd: 0, failed: 0 };
+  const rijen = (await voorVoertuig(tenant, voertuigCode)).filter((l) => l.id && l.projectCode === tenant && l.sleutel.startsWith(tenant + '|'));
+  for (let i = 0; i < rijen.length; i += 10) {
+    const deel = rijen.slice(i, i + 10);
+    const q = deel.map((l) => 'records[]=' + encodeURIComponent(l.id)).join('&');
+    try {
+      const r = await I().atFetch(`${TABEL}?${q}`, { method: 'DELETE' });
+      if (r.ok) uit.verwijderd += deel.length; else uit.failed += deel.length;
+    } catch (_) { uit.failed += deel.length; }
+  }
+  return uit;
+}
+
 module.exports = {
   TABEL, F, STATUSSEN, GEZIEN_VERS_MS,
   sleutel, vanRecord, naarVelden,
-  available, onbeschikbaarReden, list, voorVoertuig, schrijf,
+  available, onbeschikbaarReden, list, voorVoertuig, schrijf, verwijderVoorVoertuig,
   _reset,
 };
