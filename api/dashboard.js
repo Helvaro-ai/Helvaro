@@ -19656,8 +19656,10 @@ function renderActiviteit() {
     if (typeof ev.type === 'string' && ev.type.indexOf('server:') === 0) {
       const soort = ev.type.slice('server:'.length);
       const titel = (T_DICT['act.' + soort] !== undefined) ? tr('act.' + soort) : String(soort).replace(/_/g, ' ').replace(/^./, function (c) { return c.toUpperCase(); });   // een nieuw type zonder tekst toont leesbaar Engels, nooit een kale sleutel
+      /* Zonder namen geen tweede regel: anders stond er een losse "…" onder elke groep. */
+      const namen = ev.namen.filter(Boolean);
       const details = ev.aantal > 1
-        ? ev.namen.filter(Boolean).slice(0, 3).map(escHtml).join(', ') + (ev.namen.length > 3 ? ' …' : '')
+        ? (namen.length ? namen.slice(0, 3).map(escHtml).join(', ') + (namen.length > 3 ? ' …' : '') : '')
         : [ev.naam, ev.voertuigCode].filter(Boolean).map(escHtml).join(' · ');
       return \`<div class="activity-item">
         <div class="activity-dot activity-dot-dealer"></div>

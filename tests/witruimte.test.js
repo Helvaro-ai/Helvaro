@@ -16,8 +16,10 @@ ck('facturatie: breder dan 940px', /max-width:\s*(\d+)px/.test(fa) && Number(/ma
 ck('facturatie: verdeling en boekingen naast elkaar', /\.fa-onder \{ display: grid; grid-template-columns: minmax\(0, 5fr\) minmax\(0, 7fr\)/.test(css) && dash.includes('<div class="fa-onder">'));
 const col = regel('.pipeline-col');
 ck('pipelinekolommen vullen de breedte (geen vaste 260px)', /flex:\s*1 1 210px/.test(col) && !/flex:\s*0 0 260px/.test(col), col);
-ck('instellingen: leesbare maximale breedte', /\.settings-wrap \{[^}]*max-width:\s*1040px/.test(css));
-ck('activiteit: leesbare maximale breedte', /max-width:\s*960px/.test(regel('.activity-feed-wrap')));
+ck('instellingen: gebruikt de hele breedte (geen lege strook rechts)', /\.settings-wrap \{[^}]*max-width:\s*none/.test(css));
+ck('activiteit: gebruikt de hele breedte', !/max-width/.test(regel('.activity-feed-wrap')));
+ck('lege toestanden zijn compact (40px, niet 72px)', /\.empty-state \{\s*text-align: center;\s*padding: 40px 32px;/.test(css));
+ck('activiteit: geen losse "…" als een groep geen namen heeft', dash.includes('const namen = ev.namen.filter(Boolean);') && dash.includes('(namen.length ? namen.slice(0, 3)'));
 ck('identieke servergebeurtenissen worden één regel met teller', /const gegroepeerd = \[\]/.test(dash) && /activity-aantal/.test(dash) && /laatste\.type === ev\.type/.test(dash));
 ck('de voetnoot bij resultaten verdwijnt zonder cijfers', /#resultaten-grid:has\(\.empty-state\) ~ \.res-voetnoot \{ display: none; \}/.test(css) && dash.includes('class="res-voetnoot"'));
 ck('de doelkaart verschijnt pas als er iets te meten valt', /kaart\.hidden = !\(current > 0/.test(dash) && /\.revenue-goal-card\[hidden\] \{ display: none; \}/.test(css));

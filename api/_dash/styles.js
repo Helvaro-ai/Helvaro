@@ -5041,7 +5041,7 @@ tr:hover .td-arrow { color: var(--accent-ink); }
 /* Empty state */
 .empty-state {
   text-align: center;
-  padding: 72px 32px;
+  padding: 40px 32px;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -6686,7 +6686,7 @@ body.panel-open .main-content { transform: scale(0.985); }
   align-items: flex-start;
 }
 /* Een leeg bord: de melding over de hele breedte, in het midden, niet in de linkerhoek. */
-.pipeline-board > .empty-state { flex: 1 1 100%; min-width: 0; padding-top: 96px; }
+.pipeline-board > .empty-state { flex: 1 1 100%; min-width: 0; padding-top: 48px; }
 .pipeline-board::-webkit-scrollbar { height: 6px; }
 .pipeline-board::-webkit-scrollbar-thumb { background: rgba(var(--accent-rgb),0.35); border-radius: var(--r-xs); }
 .pipeline-col {
@@ -8294,7 +8294,7 @@ summary.ap-tpl-header:focus-visible { outline: 2px solid var(--accent); outline-
 }
 .pi-result-actions { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 10px; }
 
-.settings-wrap { width: 100%; max-width: 1040px; display: flex; flex-direction: column; gap: 20px; }
+.settings-wrap { width: 100%; max-width: none; display: flex; flex-direction: column; gap: 20px; }
 .settings-section {
   background: var(--bg-card);
   border: 1px solid var(--border);
@@ -8472,7 +8472,6 @@ summary.ap-tpl-header:focus-visible { outline: 2px solid var(--accent); outline-
   border-radius: var(--r-md);
   padding: 20px 24px;
   width: 100%;
-  max-width: 960px;
 }
 /* De voetnoot over de pipelinewaarde hoort bij de cijfers; zonder cijfers hing hij los in de lege ruimte. */
 #resultaten-grid:has(.empty-state) ~ .res-voetnoot { display: none; }
