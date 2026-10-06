@@ -112,7 +112,7 @@ const CSV1 = 'id;make;model;price;mileage\nG1;BMW;X5;50000;40000\nG2;Audi;A4;300
 (async () => {
   console.log('\nUpload: een exportbestand voor een platform zonder adres');
   {
-    ck('Gocar.be en Feed kunnen uploaden, de officiele API\'s en AUTO1 niet', reg.kanUploaden(reg.get('gocar')) && reg.kanUploaden(reg.get('feed')) && !['autoscout24', 'autoscout24_api', 'mobile_de', 'auto1', 'marktplaats', 'heycar'].some((id) => reg.kanUploaden(reg.get(id))));
+    ck('feed en de platformen zonder eigen API kunnen uploaden, de API-koppelingen en Meta niet', ['feed', 'gocar', 'tweedehands', 'marktplaats', 'vroom', 'heycar', 'auto1'].every((id) => reg.kanUploaden(reg.get(id))) && !['autoscout24', 'autoscout24_api', 'mobile_de', 'meta'].some((id) => reg.kanUploaden(reg.get(id))));
     const voorOverzicht = (await inv.providersOverzicht('DEALERA')).providers.find((x) => x.id === 'gocar');
     ck('de kaart weet dat er geupload kan worden', voorOverzicht.kanUploaden === true && voorOverzicht.uploadBron === false && voorOverzicht.geconfigureerd === false);
 
@@ -184,7 +184,7 @@ const CSV1 = 'id;make;model;price;mileage\nG1;BMW;X5;50000;40000\nG2;Audi;A4;300
     ck('geen bestand of alleen witruimte: geen_bestand', await reden({ provider: 'gocar', tekst: '   \n' }) === 'geen_bestand' && await reden({ provider: 'gocar' }) === 'geen_bestand' && await reden({ provider: 'gocar', tekst: { x: 1 } }) === 'geen_bestand');
     ck('een bestand zonder herkenbare wagens: bestand_leeg', await reden({ provider: 'gocar', tekst: 'a;b;c\n1;2;3\n' }) === 'bestand_leeg' && await reden({ provider: 'gocar', tekst: '[]' }) === 'bestand_leeg');
     ck('kapotte JSON: bestand_onleesbaar', await reden({ provider: 'gocar', tekst: '{"vehicles": [' }) === 'bestand_onleesbaar');
-    for (const id of ['autoscout24', 'autoscout24_api', 'mobile_de', 'auto1', 'marktplaats', 'heycar', 'meta']) ck(`${id}: upload_niet_mogelijk`, await reden({ provider: id, tekst: CSV1 }) === 'upload_niet_mogelijk');
+    for (const id of ['autoscout24', 'autoscout24_api', 'mobile_de', 'meta']) ck(`${id}: upload_niet_mogelijk`, await reden({ provider: id, tekst: CSV1 }) === 'upload_niet_mogelijk');
     ck('een onbekend platform: onbekende_provider', await reden({ provider: 'bestaatniet', tekst: CSV1 }) === 'onbekende_provider' && await reden({ provider: undefined, tekst: CSV1 }) === 'onbekende_provider');
     ck('niets veranderde bij al die weigeringen', db.vehicles.length === voorAantal[0] && db.vehicle_listings.length === voorAantal[1] && klanten.DEALERA.fields['Inventory State'] === voorStaat);
     let gooit = false;

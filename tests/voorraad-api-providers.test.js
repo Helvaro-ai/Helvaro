@@ -106,7 +106,7 @@ function maakAs24(opties = {}) {
     process.env.AS24_API_USER = AS24_USER;
     ck('slechts een van de twee variabelen is niet genoeg', p.status === 'FEED_REQUIRED');
     process.env.AS24_API_PASSWORD = AS24_PW;
-    ck('met beide: BETA, kan synchroniseren en lezen', p.status === 'BETA' && reg.kanSyncen(p) && p.capabilities.lezen === true);
+    ck('met beide: ACTIVE, kan synchroniseren en lezen', p.status === 'ACTIVE' && reg.kanSyncen(p) && p.capabilities.lezen === true);
     ck('het register blijft bevroren (de getters veranderen dat niet)', Object.isFrozen(reg.get('autoscout24_api')));
   }
 
@@ -309,7 +309,7 @@ function maakAs24(opties = {}) {
       ck('het klantnummer wordt bewaard', o.ok === true && opgeslagen.bronnen[0].customerId === '42' && !('credentials' in opgeslagen.bronnen[0]), opgeslagen);
       ck('geen wachtwoord of gebruikersnaam van Helvaro in Airtable', !JSON.stringify(klanten.DEALERA.fields).includes(AS24_PW) && !JSON.stringify(klanten.DEALERA.fields).includes(AS24_USER));
       const kaart = (await inv.providersOverzicht('DEALERA')).providers.find((x) => x.id === 'autoscout24_api');
-      ck('de kaart: verbonden, klantnummer zichtbaar, geen geheimen', kaart.geconfigureerd === true && kaart.klantnummer === '42' && kaart.status === 'BETA' && kaart.kanSyncen === true && !JSON.stringify(kaart).includes(AS24_PW), kaart);
+      ck('de kaart: verbonden, klantnummer zichtbaar, geen geheimen', kaart.geconfigureerd === true && kaart.klantnummer === '42' && kaart.status === 'ACTIVE' && kaart.kanSyncen === true && !JSON.stringify(kaart).includes(AS24_PW), kaart);
       /* Een klantnummer is geen geheim: een tweede dealer mag het van de eerste niet overnemen. */
       const kaper = await inv.bewaarProvider('DEALERB', { provider: 'autoscout24_api', customerId: '42' });
       ck('een tweede dealer met hetzelfde klantnummer wordt geweigerd (anders leest hij de voorraad van de eerste)', kaper.ok === false && kaper.reden === 'klantnummer_bezet' && !klanten.DEALERB.fields['Inventory Source'], kaper);
@@ -375,7 +375,7 @@ function maakAs24(opties = {}) {
       };
       return st;
     };
-    ck('mobile.de is BETA, leest, en kent reserveringen niet terug (een reservering van de dealer blijft)', p.status === 'BETA' && p.capabilities.lezen === true && p.kentReservering === false && reg.kanSyncen(p));
+    ck('mobile.de is ACTIVE, leest, en kent reserveringen niet terug (een reservering van de dealer blijft)', p.status === 'ACTIVE' && p.capabilities.lezen === true && p.kentReservering === false && reg.kanSyncen(p));
     let st = maak();
     const res = await p.haal(bron(), { fetch: st.fetch, wacht: echteWacht });
     ck('eerst de verkopers, dan de advertenties van die verkoper', st.aanroepen.map((a) => a.pad).join() === '/seller-api/sellers,/seller-api/sellers/12/ads', st.aanroepen.map((a) => a.pad));
@@ -490,34 +490,11 @@ function maakAs24(opties = {}) {
     } finally { global.fetch = echteFetch; }
   }
 
-  console.log('\nAUTO1.com / wijkopenautos.be: geen voorraadbron');
+  console.log('\nAUTO1.com / wijkopenautos.be: via een export of feed van AUTO1.com Remarketing');
   {
     const p = reg.get('auto1');
     ck('staat in het register met de juiste naam', p && p.label === 'AUTO1.com / wijkopenautos.be' && p.id === 'auto1');
-    ck('COMING_SOON, partner, geen enkele capability', p.status === 'COMING_SOON' && p.auth === 'partner' && p.capabilities.lezen === false && p.capabilities.publiceren === false && p.capabilities.leads === false);
-    ck('kan niet bewaard en niet gesynchroniseerd worden', !reg.kanBewaren(p) && !reg.kanSyncen(p) && !reg.kanUploaden(p));
-    let e; try { await p.haal({ url: 'https://x.example/f' }); } catch (x) { e = x; }
-    ck('haal() gooit: niet beschikbaar, zonder netwerk', e && e.code === 'provider_niet_beschikbaar' && p.normaliseerFout(e).sleutel === 'ig.fout.NIET_BESCHIKBAAR');
-    const klanten = { DEALERA: { id: 'recKA', fields: { 'Project Code': 'DEALERA' } } };
-    const echteFetch = global.fetch;
-    global.fetch = async (u, o = {}) => {
-      const s = String(u);
-      const okAt = (x) => ({ ok: true, status: 200, json: async () => x, text: async () => JSON.stringify(x), headers: { get: () => null } });
-      const km = /\/tblPidTrwGRzRt4LZ\/(rec\w+)/.exec(s);
-      if (km) { if ((o.method || 'GET') === 'PATCH') Object.assign(klanten.DEALERA.fields, JSON.parse(o.body).fields); return okAt(klanten.DEALERA); }
-      if (s.includes('/tblPidTrwGRzRt4LZ')) return okAt({ records: [klanten.DEALERA] });
-      return okAt({ records: [] });
-    };
-    try {
-      const o = await inv.bewaarProvider('DEALERA', { provider: 'auto1', url: 'https://x.example/f' });
-      ck('bewaren wordt geweigerd (provider_niet_beschikbaar)', o.ok === false && o.reden === 'provider_niet_beschikbaar', o);
-      ck('en er staat niets in Airtable', !klanten.DEALERA.fields['Inventory Source']);
-      const kaart = (await inv.providersOverzicht('DEALERA')).providers.find((x) => x.id === 'auto1');
-      ck('de kaart heeft een uitleg, geen knoppen', kaart.uitlegSleutel === 'ig.uitleg.auto1' && kaart.kanVerbinden === false && kaart.kanSyncen === false && kaart.kanUploaden === false, kaart);
-      /* Met de hand in Airtable gezet: de sync slaat hem over. */
-      const sync = inv.saneerBron({ bronnen: [{ provider: 'auto1', url: 'https://x.example/f' }] });
-      ck('een met de hand gezette auto1-bron telt niet als actieve bron', sync.type === 'native');
-    } finally { global.fetch = echteFetch; }
+    ck('ACTIVE via het feedpad: lezen, uploaden, geen eigen API', p.status === 'ACTIVE' && p.auth === 'csv' && p.capabilities.lezen === true && reg.kanSyncen(p) && reg.kanUploaden(p) && !reg.vraagtCredentials(p));
   }
 
   console.log('\nTeksten en geen platformlogica in het register');
@@ -528,7 +505,7 @@ function maakAs24(opties = {}) {
       ck(`${taal}: de nieuwe kaartteksten bestaan`, sleutels.every((k) => w[k] && w[k].length > 5), sleutels.filter((k) => !w[k]));
     }
     const nl = i18n.woordenboek('nl');
-    ck('de AUTO1-uitleg zegt dat het wagens van particulieren koopt en een partnerovereenkomst vraagt', /particulieren/.test(nl['ig.uitleg.auto1']) && /partner/i.test(nl['ig.uitleg.auto1']) && /geen voorraadbron/.test(nl['ig.uitleg.auto1']));
+    ck('de AUTO1-uitleg noemt Remarketing en dat wijkopenautos.be zelf wagens van particulieren koopt', /Remarketing/.test(nl['ig.uitleg.auto1']) && /particulieren/.test(nl['ig.uitleg.auto1']));
     const as24Bron = lees('api/_voorraad-providers/autoscout24-api.js').replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/.*$/gm, '');
     ck('de gegevens van Helvaro komen alleen uit de omgeving, nooit uit de bron of het scherm', /process\.env\.AS24_API_USER/.test(as24Bron) && !/body\.|req\./.test(as24Bron));
     ck('nergens een AS24-gegeven in een route, scherm of vertaling', !/AS24_API_(USER|PASSWORD)/.test(lees('api/leads.js') + lees('api/_dash/integraties.js') + lees('api/_i18n.js') + lees('api/_inventaris.js')));

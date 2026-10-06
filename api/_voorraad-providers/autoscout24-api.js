@@ -220,7 +220,11 @@ const autoscout24Api = {
   id: 'autoscout24_api',
   label: 'AutoScout24 (API)',
   /* Dynamisch, niet vast: zonder gegevens van Helvaro kan de koppeling niets. */
-  get status() { return helvaroGegevens() ? 'BETA' : 'FEED_REQUIRED'; },
+  get status() { return helvaroGegevens() ? 'ACTIVE' : 'FEED_REQUIRED'; },
+  /* Zolang Helvaro geen data-provider-gegevens van AutoScout24 heeft, kan deze
+     koppeling niets lezen. Dan staat hij niet op het scherm: AutoScout24 loopt
+     via het verkopersprofiel (autoscout24). */
+  get verborgen() { return !helvaroGegevens(); },
   auth: 'customer_id',
   adresSoort: 'klant',
   /* Sleutels voor de kaart (api/_i18n.js). */

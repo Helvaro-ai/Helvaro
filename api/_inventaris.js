@@ -899,7 +899,11 @@ async function status(projectCode) {
 async function providersOverzicht(projectCode) {
   const { rec, bron, staat } = await lees(projectCode);
   if (!rec) return { ok: false, reden: 'geen_klantrecord' };
-  let kaarten = registry.lijst().map((p) => providerKaart(p, bron.bronnen.find((x) => x.provider === p.id) || null, bronStaatVan(staat, bron, p.id)));
+  /* Een verborgen koppeling (bv. de AutoScout24-API zonder gegevens van Helvaro)
+     blijft zichtbaar voor een dealer die hem al ingesteld had: anders kan hij
+     hem niet meer zien of ontkoppelen. */
+  const zichtbaar = (p) => !p.verborgen || bron.bronnen.some((x) => x.provider === p.id);
+  let kaarten = registry.lijst().filter(zichtbaar).map((p) => providerKaart(p, bron.bronnen.find((x) => x.provider === p.id) || null, bronStaatVan(staat, bron, p.id)));
   /* De telling voor Meta kost een voertuigenlijst; alleen als Meta klaar staat, en zonder telling als dat mislukt. */
   let voertuigen = null;
   if (kaarten.some((k) => k.auth === 'catalog_feed' && k.geconfigureerd)) {
@@ -1075,7 +1079,7 @@ async function bewaarProvider(projectCode, invoer) {
   }
   const bron = saneerBron({ bronnen, bewaarDagen, legacyProvider, drempels: huidig.drempels, uitgesloten: huidig.uitgeslotenAlle });
   await schrijf(rec.id, { [F_SOURCE]: JSON.stringify(naarOpslag(bron)), [F_STATE]: JSON.stringify(nieuweStaat) });
-  return { ok: true, ...weergave(nieuweStaat, bron), providers: verrijkMeta(registry.lijst().map((p) => providerKaart(p, bron.bronnen.find((x) => x.provider === p.id) || null, bronStaatVan(nieuweStaat, bron, p.id))), projectCode, null, '') };
+  return { ok: true, ...weergave(nieuweStaat, bron), providers: verrijkMeta(registry.lijst().filter((p) => !p.verborgen || bron.bronnen.some((x) => x.provider === p.id)).map((p) => providerKaart(p, bron.bronnen.find((x) => x.provider === p.id) || null, bronStaatVan(nieuweStaat, bron, p.id))), projectCode, null, '') };
 }
 
 /**

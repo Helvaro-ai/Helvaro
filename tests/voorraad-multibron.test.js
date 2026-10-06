@@ -128,6 +128,22 @@ const stand = () => JSON.parse(klanten.DEALERA.fields['Inventory State'] || '{}'
     p = vsync.verzoenAlles(bestaand, [], bronnen([regel({ bronId: 'G9' })]), opt);
     ck('zelfde merk, model, prijs en km zonder exacte sleutel: NIEUWE wagen (nooit fuzzy)', p.nieuw.length === 1, p.nieuw);
 
+    /* Kenmerken: merk, model, EXACTE km en eerste inschrijving, alleen bij precies een kandidaat. */
+    const metDatum = [wagen({ code: 'V1', bron: 'feed', bronId: 'A1', inschrijving: '03/2021' })];
+    const bronnenD = (items) => [{ provider: 'feed', verdwenen: 'verkocht', voertuigen: [regel({ bronId: 'A1', inschrijving: '03/2021' })] }, { provider: 'gocar', verdwenen: 'verkocht', voertuigen: items }];
+    p = vsync.verzoenAlles(metDatum, [], bronnenD([regel({ bronId: 'G9', merk: 'bmw', model: 'X 5', inschrijving: '2021-03' })]), opt);
+    ck('zelfde merk, model, exacte km en inschrijving (andere schrijfwijze): een wagen', p.nieuw.length === 0 && p.listings.some((l) => l.provider === 'gocar' && l.vehicleCode === 'V1'), p.nieuw);
+    p = vsync.verzoenAlles(metDatum, [], bronnenD([regel({ bronId: 'G9', km: 40001, inschrijving: '03/2021' })]), opt);
+    ck('een kilometer verschil: nieuwe wagen', p.nieuw.length === 1, p.nieuw);
+    p = vsync.verzoenAlles(metDatum, [], bronnenD([regel({ bronId: 'G9', inschrijving: '04/2021' })]), opt);
+    ck('andere inschrijvingsmaand: nieuwe wagen', p.nieuw.length === 1, p.nieuw);
+    p = vsync.verzoenAlles([wagen({ code: 'V1', bron: 'feed', bronId: 'A1', inschrijving: '03/2021', vin: VIN1 })], [], [{ provider: 'feed', verdwenen: 'verkocht', voertuigen: [regel({ bronId: 'A1', inschrijving: '03/2021', vin: VIN1 })] }, { provider: 'gocar', verdwenen: 'verkocht', voertuigen: [regel({ bronId: 'G9', inschrijving: '03/2021', vin: 'WBA00000000000002' })] }], opt);
+    ck('zelfde kenmerken maar een ANDER chassisnummer: nieuwe wagen', p.nieuw.length === 1, p.nieuw);
+    const tweeGelijk = [wagen({ code: 'V1', bron: 'feed', bronId: 'A1', inschrijving: '03/2021' }), wagen({ code: 'V2', bron: 'feed', bronId: 'A2', inschrijving: '03/2021' })];
+    p = vsync.verzoenAlles(tweeGelijk, [], [{ provider: 'feed', verdwenen: 'verkocht', voertuigen: [regel({ bronId: 'A1', inschrijving: '03/2021' }), regel({ bronId: 'A2', inschrijving: '03/2021' })] }, { provider: 'gocar', verdwenen: 'verkocht', voertuigen: [regel({ bronId: 'G9', inschrijving: '03/2021' })] }], opt);
+    ck('twee kandidaten met dezelfde kenmerken: niet gokken, nieuwe wagen', p.nieuw.length === 1, p.nieuw);
+    ck('zonder km of datum geen kenmerksleutel', vsync._test.kenmerkSleutel({ merk: 'BMW', model: 'X5', km: 0, inschrijving: '03/2021' }) === '' && vsync._test.kenmerkSleutel({ merk: 'BMW', model: 'X5', km: 10 }) === '');
+
     const metLink = [wagen({ code: 'V1', link: 'https://www.autoscout24.be/nl/aanbod/bmw-x5-' + AS_ID, bron: 'feed', bronId: 'A1' })];
     p = vsync.verzoenAlles(metLink, [], bronnen([regel({ bronId: 'G9', link: 'https://WWW.autoscout24.be/nl/aanbod/bmw-x5-' + AS_ID + '?utm=x#top' })]), opt);
     ck('zelfde genormaliseerde link (hoofdletters, query, hash): een wagen', p.nieuw.length === 0 && p.listings.some((l) => l.provider === 'gocar'), p);
@@ -417,22 +433,21 @@ const stand = () => JSON.parse(klanten.DEALERA.fields['Inventory State'] || '{}'
     ck('en het echte adres bleef staan', JSON.parse(klanten.DEALERA.fields['Inventory Source']).bronnen[0].url.endsWith('token=GEHEIM123'));
   }
 
-  console.log('\nPlatformen die (nog) niet kunnen: bewaren en synchroniseren');
+  console.log('\nPlatformen zonder eigen API: werken via een feedadres of export');
   {
-    for (const id of ['marktplaats', 'tweedehands', 'vroom', 'heycar']) {
-      const o = await inv.bewaarProvider('DEALERA', { provider: id, url: 'https://x.example/f' });
-      ck(id + ': kan niet bewaard worden', o.ok === false && o.reden === 'provider_niet_beschikbaar', o);
+    for (const id of ['marktplaats', 'tweedehands', 'vroom', 'heycar', 'auto1']) {
+      ck(id + ': actief, leest via het feedpad en kan uploaden', reg.get(id).status === 'ACTIVE' && reg.kanSyncen(reg.get(id)) && reg.kanUploaden(reg.get(id)));
     }
+    ck('een platform zonder adres en zonder bestand kan niet bewaard worden', (await inv.bewaarProvider('DEALERA', { provider: 'marktplaats', url: '' })).reden === 'ongeldig_adres');
     ck('een onbekend platform ook niet', (await inv.bewaarProvider('DEALERA', { provider: 'bestaatniet' })).reden === 'onbekende_provider');
     /* Een met de hand in Airtable gezette bron voor een platform dat er niet is: de sync slaat hem over. */
-    zet({ bronnen: [{ provider: 'feed', url: FEED_A, formaat: 'json' }, { provider: 'marktplaats', url: 'https://x.example/f' }, { provider: 'autoscout24_api', customerId: '42' }] });
+    zet({ bronnen: [{ provider: 'feed', url: FEED_A, formaat: 'json' }, { provider: 'autoscout24_api', customerId: '42' }] });
     klanten.DEALERA.fields['Inventory State'] = '';
     feeds[FEED_A].items = [{ id: 'Z1', make: 'Fiat', model: 'Panda', price: 8000 }];
     geopend.length = 0;
     r = await inv.sync('DEALERA', { door: 'test', ...snel });
     ck('de sync slaagt zonder een foutmelding voor die bronnen', r.ok === true && r.lastResult === 'ok', { ok: r.ok, res: r.lastResult });
     ck('er is niets opgehaald bij een ander adres dan de feed', geopend.every((u) => u === FEED_A), geopend);
-    ck('marktplaats staat als overgeslagen, zonder fout', stand().bronnen.marktplaats.lastResult === 'skipped' && !stand().bronnen.marktplaats.lastErrorCode, stand().bronnen.marktplaats);
     ck('de AutoScout24-API zonder gegevens van Helvaro ook: overgeslagen, geen verzoek', stand().bronnen.autoscout24_api.lastResult === 'skipped' && !stand().bronnen.autoscout24_api.lastErrorCode, stand().bronnen.autoscout24_api);
     const md = reg.get('mobile_de');
     let fout;
@@ -446,13 +461,16 @@ const stand = () => JSON.parse(klanten.DEALERA.fields['Inventory State'] || '{}'
     ck('geen netwerk gebruikt door die stubs', geopend.every((u) => u === FEED_A));
     fout = null;
     try { await reg.get('marktplaats').haal({}); } catch (e) { fout = e; }
-    ck('een coming-soon platform kan niet lezen', fout && reg.get('marktplaats').normaliseerFout(fout).sleutel === 'ig.fout.NIET_BESCHIKBAAR', fout && fout.code);
+    ck('marktplaats zonder adres: een duidelijke fout, geen verzoek', fout && fout.code === 'geen_url' && geopend.every((u) => u === FEED_A), fout && fout.code);
   }
 
   console.log('\nHet dashboard krijgt per bron alleen gewone gegevens');
   {
     const o = await inv.providersOverzicht('DEALERA');
-    ck('alle platformen staan erin', o.ok && o.providers.length === reg.lijst().length);
+    const ingesteld = JSON.parse(klanten.DEALERA.fields['Inventory Source'] || '{}').bronnen || [];
+    const verwacht = reg.lijst().filter((p) => !p.verborgen || ingesteld.some((x) => x.provider === p.id)).length;
+    ck('alle zichtbare platformen staan erin (een verborgen koppeling alleen als de dealer hem al had)', o.ok && o.providers.length === verwacht, { n: o.providers.length, verwacht });
+    ck('de AutoScout24-API zonder gegevens van Helvaro: alleen zichtbaar voor wie hem al instelde', o.providers.some((p) => p.id === 'autoscout24_api') === ingesteld.some((x) => x.provider === 'autoscout24_api'));
     ck('met status en wat het kan', o.providers.every((p) => p.status && p.auth && p.capabilities && typeof p.kanVerbinden === 'boolean'));
     const feedKaart = o.providers.find((p) => p.id === 'feed');
     ck('een gesynchroniseerd platform toont aantal, nieuw, bijgewerkt, verwijderd', feedKaart.aantal === 1 && feedKaart.nieuw !== null && feedKaart.verwijderd !== null, feedKaart);

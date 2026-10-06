@@ -152,6 +152,24 @@ function splitsBronId(bronId, legacyProvider, bekend) {
 const lkSleutel = (provider, id) => provider + '|' + bronSleutel(id);
 
 /* Een chassisnummer als sleutel; ongeldig of leeg telt nooit mee. */
+/* Kenmerken als laatste herkenning tussen platformen, voor bronnen zonder
+   chassisnummer of AutoScout-nummer (exports van partners, uploads): zelfde merk,
+   model, EXACTE kilometerstand en eerste inschrijving (maand/jaar). Een exacte
+   kilometerstand is per wagen bijna uniek; zonder km of datum geen sleutel, en
+   alleen bij precies een kandidaat (zie kandidaat()). */
+function kenmerkSleutel(v) {
+  if (!v) return '';
+  const km = Number(v.km);
+  if (!Number.isFinite(km) || km <= 0) return '';
+  const merk = String(v.merk || '').trim().toLowerCase().replace(/[^a-z0-9]/g, '');
+  const model = String(v.model || '').trim().toLowerCase().replace(/[^a-z0-9]/g, '');
+  const d = String(v.inschrijving || '').match(/(\d{1,2})\D+(\d{4})|(\d{4})\D+(\d{1,2})/);
+  if (!merk || !model || !d) return '';
+  const maand = Number(d[1] || d[4]), jaar = Number(d[2] || d[3]);
+  if (!(maand >= 1 && maand <= 12) || !(jaar > 1950 && jaar < 2100)) return '';
+  return [merk, model, Math.round(km), jaar, maand].join('|');
+}
+
 function vinSleutel(x) {
   const v = String(x == null ? '' : x).trim().toUpperCase();
   return /^[A-HJ-NPR-Z0-9]{17}$/.test(v) ? v : '';
@@ -226,7 +244,7 @@ function verzoenAlles(bestaand, listings, bronnen, opties = {}) {
   const houdersVan = (code) => Array.from(lk.values()).filter((l) => l.vehicleCode === code && l.status !== 'REMOVED');
   const heeftActief = (code, provider) => houdersVan(code).some((l) => l.provider === provider);
 
-  const perAutoscout = new Map(), perLink = new Map(), perVin = new Map();
+  const perAutoscout = new Map(), perLink = new Map(), perVin = new Map(), perKenmerk = new Map();
   const indexeer = (v) => {
     const as = autoscoutUit(v);
     if (as && !perAutoscout.has(as)) perAutoscout.set(as, v);
@@ -234,6 +252,8 @@ function verzoenAlles(bestaand, listings, bronnen, opties = {}) {
     if (lnk && !perLink.has(lnk)) perLink.set(lnk, v);
     const vin = vinSleutel(v.vin);
     if (vin) { if (!perVin.has(vin)) perVin.set(vin, []); perVin.get(vin).push(v); }
+    const km = kenmerkSleutel(v);
+    if (km) { if (!perKenmerk.has(km)) perKenmerk.set(km, []); if (perKenmerk.get(km).indexOf(v) === -1) perKenmerk.get(km).push(v); }
   };
   for (const v of werk) indexeer(v);
   /* Een bron die een AutoScout-nummer of chassisnummer levert dat de wagen nog
@@ -298,6 +318,13 @@ function verzoenAlles(bestaand, listings, bronnen, opties = {}) {
         if (eigen.length === 1) return eigen[0];
         if (eigen.length > 1) { plan.dubbelGemeld++; gebeurtenis('listing_ambiguous', { merk: f.merk, model: f.model, bronId: f.bronId }, { via: 'vin', provider: P }); }
       }
+      /* Laatste kans: kenmerken. Nooit als beide een ANDER chassisnummer hebben,
+         en alleen bij precies een kandidaat. */
+      const ks = kenmerkSleutel(f);
+      if (ks) {
+        const kand = (perKenmerk.get(ks) || []).filter((v) => goed(v) && !(vin && vinSleutel(v.vin) && vinSleutel(v.vin) !== vin));
+        if (kand.length === 1) return kand[0];
+      }
       return null;
     };
 
@@ -321,7 +348,7 @@ function verzoenAlles(bestaand, listings, bronnen, opties = {}) {
           nieuweCodes.add(invoer.code);
           /* Meteen zichtbaar voor de volgende bron en het volgende item: anders
              maakt het tweede platform dezelfde wagen nog een keer aan. */
-          const vl = { id: 'nieuw:' + invoer.code, code: invoer.code, merk: f.merk, model: f.model, prijs: f.prijs, link: f.link || '',
+          const vl = { id: 'nieuw:' + invoer.code, code: invoer.code, merk: f.merk, model: f.model, prijs: f.prijs, km: f.km, inschrijving: f.inschrijving, link: f.link || '',
             autoscout: autoscoutUit(f), vin: vinSleutel(f.vin), status: vehicles.normStatus(f.status), gearchiveerd: false,
             bron: 'feed', bronId: invoer.bronId, verkochtOp: invoer.verkochtOp || '' };
           werk.push(vl); byCode.set(vl.code, vl); indexeer(vl);
@@ -638,5 +665,5 @@ function logGebeurtenissen(projectCode, lijst) {
 module.exports = {
   BEWAAR_DAGEN, DALING_MIN, DALING_AANDEEL, MAX_GEBEURTENISSEN, VERGELIJK,
   verzoen, verzoenAlles, bronIdVoor, splitsBronId, planArchief, telling, pasToe, archiveerVerkocht, logGebeurtenissen,
-  _test: { gelijk, linkSleutel, autoscoutUit, isActief, maakSchrijver },
+  _test: { gelijk, linkSleutel, autoscoutUit, isActief, maakSchrijver, kenmerkSleutel },
 };

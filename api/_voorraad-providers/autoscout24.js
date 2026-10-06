@@ -172,7 +172,7 @@ async function haalAutoscout(bron, opties = {}) {
 const autoscout24 = {
   id: 'autoscout24',
   label: 'AutoScout24 (seller profile)',
-  status: 'BETA',
+  status: 'ACTIVE',
   auth: 'feed_url',
   /* Wat het adres is, voor het formulier: een verkopersprofiel, geen feed. */
   adresSoort: 'profiel',

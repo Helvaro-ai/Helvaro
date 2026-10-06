@@ -58,13 +58,13 @@ const LIJST = [
   /* mobile.de Seller API: Basic Auth met de API-gegevens van de dealer zelf
      (activatie via service@team.mobile.de), versleuteld bewaard. */
   mobileDe,
-  /* 2dehands en Marktplaats hebben geen eigen API; alleen gecertificeerde
-     partners (Hexon, IZI Motive) leveren de voorraad aan. */
-  maakNietBeschikbaar({ id: 'tweedehands', label: '2dehands', status: 'COMING_SOON', auth: 'partner' }),
-  maakNietBeschikbaar({ id: 'marktplaats', label: 'Marktplaats', status: 'COMING_SOON', auth: 'partner' }),
-  maakNietBeschikbaar({ id: 'vroom', label: 'Vroom.be', status: 'COMING_SOON', auth: 'partner' }),
-  /* Gocar.be: geen publieke dealerkoppeling gevonden. Heeft de dealer een
-     export, dan loopt die via het gewone feedpad. */
+  /* 2dehands, Marktplaats en Vroom.be hebben geen eigen dealer-API; de voorraad
+     komt er via gecertificeerde partners (Hexon, IZI Motive) of een DMS. Die
+     leveren een export of een feedadres, en dat leest Helvaro: echt werkend,
+     zonder verzonnen eindpunt. Gocar.be idem. */
+  maakHandmatig({ id: 'tweedehands', label: '2dehands', auth: 'csv', uploadBaar: true }),
+  maakHandmatig({ id: 'marktplaats', label: 'Marktplaats', auth: 'csv', uploadBaar: true }),
+  maakHandmatig({ id: 'vroom', label: 'Vroom.be', auth: 'csv', uploadBaar: true }),
   maakHandmatig({ id: 'gocar', label: 'Gocar.be', auth: 'csv', uploadBaar: true, uitlegSleutel: 'ig.uitleg.gocar' }),
   /* Meta: de automotive-catalogusfeed is een PUBLICEERkanaal (voorraad naar
      Meta), geen bron: status ACTIVE maar lezen=false, dus nooit gesynchroniseerd
@@ -73,9 +73,9 @@ const LIJST = [
   /* wijkopenautos.be / AUTO1.com KOOPT wagens van particulieren; AUTO1.com
      Remarketing laat dealers inruilwagens B2B verkopen via een partner-API.
      Geen voorraadbron. Activatie vraagt een partnerovereenkomst met AUTO1. */
-  maakNietBeschikbaar({ id: 'auto1', label: 'AUTO1.com / wijkopenautos.be', status: 'COMING_SOON', auth: 'partner', uitlegSleutel: 'ig.uitleg.auto1' }),
-  /* Heycar is niet actief in Belgie. */
-  maakNietBeschikbaar({ id: 'heycar', label: 'heycar', status: 'DISABLED', auth: 'none' }),
+  maakHandmatig({ id: 'auto1', label: 'AUTO1.com / wijkopenautos.be', auth: 'csv', uploadBaar: true, uitlegSleutel: 'ig.uitleg.auto1' }),
+  /* heycar (actief in o.a. Duitsland en Spanje): ook via een export of feed. */
+  maakHandmatig({ id: 'heycar', label: 'heycar', auth: 'csv', uploadBaar: true }),
 ];
 
 const PROVIDERS = Object.freeze(LIJST.reduce((o, p) => { o[p.id] = Object.freeze(p); return o; }, {}));
@@ -83,6 +83,8 @@ const PROVIDERS = Object.freeze(LIJST.reduce((o, p) => { o[p.id] = Object.freeze
 /** De provider bij een id, of null. */
 function get(id) { return Object.prototype.hasOwnProperty.call(PROVIDERS, id) ? PROVIDERS[id] : null; }
 function lijst() { return LIJST.slice(); }
+/** Wat de dealer op het scherm ziet: zonder koppelingen die (nog) niets kunnen lezen. */
+function zichtbaar() { return LIJST.filter((p) => !p.verborgen); }
 /* Een publiceerkanaal (capabilities.lezen false, zoals Meta) is nooit een bron,
    ook niet met status ACTIVE. */
 function kanSyncen(p) { return Boolean(p) && SYNCBAAR.indexOf(p.status) !== -1 && !(p.capabilities && p.capabilities.lezen === false); }
@@ -107,4 +109,5 @@ function controleerContract(p) {
   return fouten;
 }
 
-module.exports = { PROVIDERS, STATUSSEN, AUTHTYPES, get, lijst, kanSyncen, kanBewaren, kanUploaden, vraagtCredentials, controleerContract };
+module.exports = {
+  zichtbaar, PROVIDERS, STATUSSEN, AUTHTYPES, get, lijst, kanSyncen, kanBewaren, kanUploaden, vraagtCredentials, controleerContract };

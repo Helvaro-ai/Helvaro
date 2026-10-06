@@ -59,10 +59,12 @@ function maakNietBeschikbaar(o) {
   }, o));
 }
 
-/** MANUAL: dezelfde weg als een feed, voor wie een export heeft. */
+/** Geen eigen API, wel een echte weg: een exportbestand van de dealer of het
+    feedadres van zijn partner (Hexon, IZI Motive, ...) of DMS. Loopt via het
+    gewone feedpad en is dus even betrouwbaar als een feed: ACTIVE. */
 function maakHandmatig(o) {
   return basis(Object.assign({
-    status: 'MANUAL',
+    status: 'ACTIVE',
     capabilities: { lezen: true, publiceren: false, leads: false },
     saneer: feed.saneer,
     haal: (bron, opties) => feed.haal(bron, opties),

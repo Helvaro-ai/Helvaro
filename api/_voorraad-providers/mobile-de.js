@@ -138,7 +138,7 @@ async function haalMobileDe(bron, opties = {}) {
 const mobileDe = {
   id: 'mobile_de',
   label: 'mobile.de',
-  status: 'BETA',
+  status: 'ACTIVE',
   auth: 'basic',
   adresSoort: 'verkoper',
   uitlegSleutel: 'ig.uitleg.mobile_de',
