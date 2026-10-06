@@ -220,7 +220,7 @@ const tabel = (t) => { const [k, ...rest] = parseCsv(t); return rest.map((r) => 
     ck('de bevestiging bij ontkoppelen noemt het platform en het aantal wagens', /ig\.ontkoppel\.titel', \{ platform: p\.label \}/.test(mod) && /ig\.ontkoppel\.aantal/.test(mod));
     ck('het platform staat in de tekst van de ontkoppelvraag', /\{platform\}/.test(w['ig.ontkoppel.vraag']) && /\{platform\}/.test(w['ig.ontkoppel.titel']));
     ck('AutoScout24 (API) zonder activatie: wacht-tekst in plaats van een werkend uitziend formulier', /ig\.pending\./.test(mod) && /ig\.veld\.klantnummerLater/.test(mod) && /ig\.knop\.bewaarLater/.test(mod));
-    ck('de lijst met aan te vullen wagens opent het bestaande bewerkvenster', /data-ig-actie="bewerk"/.test(mod) && /actie === 'bewerk' && typeof openPandModal === 'function'\) openPandModal\(id\)/.test(mod) && w['ig.meta.aanvullen']);
+    ck('de lijst met aan te vullen wagens opent het bestaande bewerkvenster', /data-ig-actie="bewerk"/.test(mod) && /actie === 'bewerk'\) igBewerk\(id\)/.test(mod) && /async function igBewerk[\s\S]*await loadPanden\(true\)[\s\S]*if \(!gevonden[\s\S]*openPandModal\(code\)/.test(mod) && w['ig.err.voertuigWeg'] && w['ig.meta.aanvullen']);
     ck('"Binnenkort" en "Niet beschikbaar" staan er alleen zonder eigen uitleg', /uitleg \|\| '<div class="settings-label-sub">' \+ escHtml\(tr\('ig\.binnenkort'\)\)/.test(mod));
   }
 

@@ -410,6 +410,25 @@ async function igDagen() {
   } catch (e) { toast(igFoutZin(e), 'error'); }
 }
 
+/* Een wagen uit de Meta-lijst aanvullen in het bestaande bewerkvenster. Dat
+   venster zoekt de wagen in de lijst van de Voertuigen-pagina, en die is nog
+   niet geladen als de dealer op Instellingen staat: zonder dit opende het een
+   LEEG "Voertuig toevoegen" en maakte bewaren een dubbele wagen. Daarom eerst
+   de lijst verversen, en alleen openen als de wagen er echt in staat. Na het
+   sluiten de kaart opnieuw laden, zodat de tellingen kloppen. */
+async function igBewerk(code) {
+  try {
+    if (typeof loadPanden === 'function') await loadPanden(true);
+  } catch (_) { /* hieronder: niet gevonden */ }
+  var gevonden = typeof pandState !== 'undefined' && (pandState.panden || []).some(function (p) { return p.code === code; });
+  if (!gevonden || typeof openPandModal !== 'function') { toast(tr('ig.err.voertuigWeg'), 'error'); return; }
+  openPandModal(code);
+  var modal = document.getElementById('pd-overlay');
+  var wacht = setInterval(function () {
+    if (!modal || !modal.classList.contains('open')) { clearInterval(wacht); laadIntegraties(); }
+  }, 700);
+}
+
 function igKlik(ev) {
   var el = ev.target && ev.target.closest ? ev.target.closest('[data-ig-actie]') : null;
   if (!el) return;
@@ -421,7 +440,7 @@ function igKlik(ev) {
   else if (actie === 'sync') igSync(id, false);
   else if (actie === 'upload') igUploadKies(id);
   else if (actie === 'ontkoppel') igOntkoppel(id);
-  else if (actie === 'bewerk' && typeof openPandModal === 'function') openPandModal(id);
+  else if (actie === 'bewerk') igBewerk(id);
   else if (actie === 'dagen') igDagen();
   else if (actie === 'kopieer') igKopieer();
 }
