@@ -17,6 +17,7 @@ const _vehicles   = require('./_vehicles');
 const _vertical   = require('./_vertical');
 const _errors = require('./_errors');   // gedeelde foutentaxonomie, buitenste vangnet
 const _stijl  = require('./_form-stijl'); // vormgeving per klant (Form Style), gesaneerd
+const _regio  = require('./_regio');      // land van de dealer: standaard landcode in het telefoonveld
 
 module.exports = _errors.vangAf(async function handler(req, res) {
   /* Twee vormen:
@@ -59,6 +60,7 @@ module.exports = _errors.vangAf(async function handler(req, res) {
   let trustBadges   = '';     // custom 'a | b | c' string, overrides defaults
   let workingHours  = '';     // 'mon-fri 9-18' style; informational for the form-page
   let stijl         = _stijl.saneer({});   // vormgeving per klant; leeg = Helvaro-standaard (donker)
+  let dealerLand   = _regio.standaard().land || 'BE';   // landcode die het telefoonveld voorselecteert
   try {
     const AIRTABLE_TOKEN = process.env.API_AIRTABLE;
     const BASE_ID        = process.env.BASE_AIRTABLE;
@@ -90,6 +92,7 @@ module.exports = _errors.vangAf(async function handler(req, res) {
           trustBadges  = (rec.fields['fld4nzMbnQseuGhnN'] || rec.fields['Trust Badges'] || '').toString().trim();
           workingHours = (rec.fields['fldq5oIqw5MG8fKhc'] || rec.fields['Working Hours'] || '').toString().trim();
           stijl        = _stijl.saneer(rec.fields['Form Style'] || '');
+          try { dealerLand = _regio.lees(rec.fields).land || dealerLand; } catch (_) { /* standaard blijft */ }
           /* In welke markt deze klant zit. Het formulier moet dat weten omdat
              de kaart bovenaan anders een pand zoekt bij een dealer -- en dan
              staat er niets, terwijl de link wel klopte. */
@@ -239,8 +242,9 @@ module.exports = _errors.vangAf(async function handler(req, res) {
       typing:          'typt',
       labelName:       'Hoe mag ik je noemen?',
       labelPhone:      'Je WhatsApp nummer',
+      labelCountry:    'Land van je nummer',
       placeholderName: 'Jouw naam',
-      placeholderPhone:'0478 12 34 56',
+      placeholderPhone:'478 12 34 56',
       btn:             'Stuur',
       btnSuffix:       'mijn gegevens',
       errMissing:      'Vul je naam en telefoonnummer in zodat',
@@ -304,8 +308,9 @@ module.exports = _errors.vangAf(async function handler(req, res) {
       typing:          'écrit',
       labelName:       'Comment puis-je vous appeler ?',
       labelPhone:      'Votre numéro WhatsApp',
+      labelCountry:    'Pays de votre numéro',
       placeholderName: 'Votre nom',
-      placeholderPhone:'0478 12 34 56',
+      placeholderPhone:'478 12 34 56',
       btn:             'Envoyer mes coordonnées à',
       btnSuffix:       '',
       errMissing:      'Saisissez votre nom et votre numéro pour que',
@@ -369,8 +374,9 @@ module.exports = _errors.vangAf(async function handler(req, res) {
       typing:          'typing',
       labelName:       'What should I call you?',
       labelPhone:      'Your WhatsApp number',
+      labelCountry:    'Country of your number',
       placeholderName: 'Your name',
-      placeholderPhone:'+32 478 12 34 56',
+      placeholderPhone:'478 12 34 56',
       btn:             'Send my details to',
       btnSuffix:       '',
       errMissing:      'Please fill in your name and phone number so',
@@ -427,6 +433,27 @@ module.exports = _errors.vangAf(async function handler(req, res) {
     }
   };
   const t = i18n[lang] || i18n.nl;
+
+  /* Landcodes voor het telefoonveld. Het land van de dealer staat voorgeselecteerd;
+     een buitenlandse koper kiest zijn eigen land en tikt zijn nummer zoals hij
+     het kent. Wie toch +.. of 00.. intikt, krijgt precies dat nummer. */
+  const LANDCODES = [['BE','32'],['NL','31'],['FR','33'],['DE','49'],['LU','352'],['GB','44'],['ES','34'],['IT','39'],['PT','351'],['AT','43'],['CH','41'],['IE','353'],
+    ['PL','48'],['RO','40'],['BG','359'],['GR','30'],['HR','385'],['CZ','420'],['SK','421'],['HU','36'],['SI','386'],['DK','45'],['SE','46'],['NO','47'],['FI','358'],
+    ['EE','372'],['LV','371'],['LT','370'],['UA','380'],['TR','90'],['MA','212'],['DZ','213'],['TN','216'],['EG','20'],['AE','971'],['SA','966'],['IN','91'],['CN','86'],
+    ['US','1'],['CA','1'],['BR','55'],['AU','61'],['ZA','27'],['NG','234'],['AL','355'],['RS','381'],['BA','387'],['MK','389'],['XK','383']];
+  let landNamen = null;
+  try { landNamen = new Intl.DisplayNames([lang], { type: 'region' }); } catch (_) { landNamen = null; }
+  const vlag = (cc) => String.fromCodePoint(...cc.split('').map((c) => 0x1F1E6 + c.charCodeAt(0) - 65));
+  const naamLand = (cc) => { try { return (landNamen && landNamen.of(cc)) || cc; } catch (_) { return cc; } };
+  const eerst = LANDCODES.find((x) => x[0] === dealerLand) ? dealerLand : 'BE';
+  const gesorteerd = LANDCODES.slice().sort((a, b) => (a[0] === eerst ? -1 : b[0] === eerst ? 1 : naamLand(a[0]).localeCompare(naamLand(b[0]), lang)));
+  /* Landen zonder nationale 0: daar hoort een 0 vooraan bij het nummer zelf
+     (bv. Italiaanse vaste lijnen +39 06...) en mag hij er niet af. */
+  const ZONDER_NUL = ['IT', 'ES', 'PT', 'LU', 'GR', 'DK', 'NO', 'EE', 'LV', 'CZ', 'US', 'CA'];
+  const eersteBel = (LANDCODES.find((x) => x[0] === eerst) || ['BE', '32'])[1];
+  const eersteVlag = vlag(eerst);
+  const landOpties = gesorteerd.map(([cc, bel]) =>
+    '<option value="' + bel + '" data-land="' + cc + '"' + (ZONDER_NUL.indexOf(cc) !== -1 ? ' data-houd-nul="1"' : '') + (cc === eerst ? ' selected' : '') + '>' + vlag(cc) + ' ' + escHtml(naamLand(cc)) + ' (+' + bel + ')</option>').join('');
 
   // Custom Form Intro Message overrides the language default; supports {naam}/{bedrijf}/{ai} placeholders
   let introText = formIntro || t.nicheHooks[niche] || t.nicheHooks.default;
@@ -658,6 +685,32 @@ module.exports = _errors.vangAf(async function handler(req, res) {
     transition: border-color .15s, box-shadow .15s;
   }
   input:focus { border-color: var(--brand); box-shadow: 0 0 0 3px var(--brand-faint); }
+  /* Telefoon: een veld met de vlag en een pijltje links (de landkeuze), de
+     landcode als vaste prefix en dan het nummer. De echte <select> ligt
+     onzichtbaar over de vlag: toetsenbord en schermlezer werken gewoon. */
+  .tel-veld {
+    display: flex; align-items: center; width: 100%;
+    background: var(--vlak-2); border: 1px solid var(--lijn); border-radius: var(--hoek-veld);
+    transition: border-color .15s, box-shadow .15s;
+  }
+  .tel-veld:focus-within { border-color: var(--brand); box-shadow: 0 0 0 3px var(--brand-faint); }
+  .tel-land-knop {
+    position: relative; display: flex; align-items: center; gap: 6px; flex: 0 0 auto;
+    padding: 0 10px 0 14px; align-self: stretch; color: var(--mut);
+    border-right: 1px solid var(--lijn); cursor: pointer;
+  }
+  .tel-vlag { font-size: 20px; line-height: 1; }
+  .tel-land-knop select {
+    position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0; cursor: pointer;
+    font-size: 16px; border: 0;
+  }
+  .tel-prefix { padding-left: 12px; color: var(--tekst); font-size: 15px; white-space: nowrap; }
+  .tel-prefix[hidden] { display: none; }
+  .tel-veld input {
+    flex: 1 1 auto; min-width: 0; border: 0; background: transparent; box-shadow: none;
+    padding-left: 8px;
+  }
+  .tel-veld input:focus { box-shadow: none; border: 0; }
   /* #666666 gaf 2,74:1 op deze invulvelden -- ruim onder de 4,5:1 die je nodig
      hebt om vlot te lezen. En juist hier staat het voorbeeld van het formaat
      ("0478 12 34 56"), dus de aanwijzing die iemand nodig heeft om zijn nummer
@@ -869,7 +922,15 @@ module.exports = _errors.vangAf(async function handler(req, res) {
     <input id="naam" type="text" placeholder="${escHtml(t.placeholderName)}" autocomplete="name" required>
 
     <label for="tel">${escHtml(t.labelPhone)}</label>
-    <input id="tel" type="tel" placeholder="${escHtml(t.placeholderPhone)}" autocomplete="tel" inputmode="tel" required>
+    <div class="tel-veld">
+      <span class="tel-land-knop">
+        <span class="tel-vlag" id="tel-vlag" aria-hidden="true">${eersteVlag}</span>
+        <svg class="tel-pijl" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg>
+        <select id="tel-land" aria-label="${escHtml(t.labelCountry)}" autocomplete="tel-country-code">${landOpties}</select>
+      </span>
+      <span class="tel-prefix" id="tel-prefix" aria-hidden="true">+${eersteBel}</span>
+      <input id="tel" type="tel" placeholder="${escHtml(t.placeholderPhone)}" autocomplete="tel-national" inputmode="tel" required>
+    </div>
 
     <!-- E-mail is een uitwijk, geen tweede verplicht veld: WhatsApp blijft de
          snelle weg. Wie geen WhatsApp wil, klikt en krijgt het veld. -->
@@ -979,9 +1040,40 @@ altMail.addEventListener('click', function() {
   document.getElementById('mail').focus();
 });
 
+/* De landkeuze: vlag en code volgen de gekozen optie. Tikt iemand zelf +.. of
+   00.., dan verdwijnt de vaste prefix (zijn nummer heeft er al een). */
+(function () {
+  var sel = document.getElementById('tel-land');
+  var vlagEl = document.getElementById('tel-vlag');
+  var prefixEl = document.getElementById('tel-prefix');
+  var telEl = document.getElementById('tel');
+  if (!sel || !vlagEl || !prefixEl || !telEl) return;
+  function bij() {
+    var o = sel.options[sel.selectedIndex];
+    var tekst = o ? o.textContent : '';
+    var vlag = tekst.split(' ')[0];
+    if (vlag) vlagEl.textContent = vlag;
+    prefixEl.textContent = '+' + sel.value;
+    prefixEl.hidden = /^\\s*(\\+|00)/.test(telEl.value);
+  }
+  sel.addEventListener('change', function () { bij(); telEl.focus(); });
+  telEl.addEventListener('input', bij);
+  bij();
+})();
+
 btn.addEventListener('click', function() {
   var name    = document.getElementById('naam').value.trim();
-  var phone   = document.getElementById('tel').value.trim();
+  var phoneRuw = document.getElementById('tel').value.trim();
+  /* Het nummer met de gekozen landcode ervoor. Wie zelf +.. of 00.. typt,
+     bedoelt precies dat nummer; anders valt de nationale 0 weg. */
+  var landSel = document.getElementById('tel-land');
+  var phone   = phoneRuw;
+  if (phoneRuw && landSel && !/^\\s*(\\+|00)/.test(phoneRuw)) {
+    var gekozen = landSel.options ? landSel.options[landSel.selectedIndex] : null;
+    var houdNul = gekozen && gekozen.getAttribute && gekozen.getAttribute('data-houd-nul') === '1';
+    var nationaal = phoneRuw.replace(/[^0-9]/g, '');
+    phone = '+' + landSel.value + (houdNul ? nationaal : nationaal.replace(/^0+/, ''));
+  }
   var email   = mailModus ? document.getElementById('mail').value.trim() : '';
   var consent = document.getElementById('consent');
 

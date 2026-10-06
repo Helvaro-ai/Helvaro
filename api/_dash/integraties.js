@@ -56,6 +56,9 @@ function igTekst(sleutel, vars) {
   return T_DICT[sleutel] !== undefined ? tr(sleutel, vars) : '';
 }
 
+/* De naam van een platform in de taal van het scherm (alleen waar die verschilt). */
+function igLabel(p) { return igTekst('ig.label.' + p.id) || p.label; }
+
 /* De reden van de server of een mislukte aanroep, als zin voor de dealer. */
 function igFoutZin(e) {
   var s = 'ig.err.' + ((e && e.code) || '');
@@ -314,13 +317,13 @@ async function igSync(id, stil) {
    laatste lezen van kwamen: wie op de verkeerde kaart klikte, ziet het hier. */
 function igOntkoppel(id) {
   var p = igKaartVan(id) || { id: id, label: id, aantal: null };
-  var bericht = tr(p.alleenPubliceren ? 'ig.ontkoppel.meta' : 'ig.ontkoppel.vraag', { platform: p.label });
+  var bericht = tr(p.alleenPubliceren ? 'ig.ontkoppel.meta' : 'ig.ontkoppel.vraag', { platform: igLabel(p) });
   if (!p.alleenPubliceren && p.aantal !== null && p.aantal !== undefined) {
     bericht += ' ' + tr(Number(p.aantal) === 1 ? 'ig.ontkoppel.aantal.een' : 'ig.ontkoppel.aantal', { n: p.aantal });
   }
   showConfirmModal({
-    title: tr('ig.ontkoppel.titel', { platform: p.label }), message: bericht,
-    confirmText: tr('ig.knop.ontkoppel') + ' ' + p.label, cancelText: tr('ig.knop.annuleer'), danger: true,
+    title: tr('ig.ontkoppel.titel', { platform: igLabel(p) }), message: bericht,
+    confirmText: tr('ig.knop.ontkoppel') + ' ' + igLabel(p), cancelText: tr('ig.knop.annuleer'), danger: true,
     onConfirm: async function () {
       try {
         await voorraadVraag('inventory-provider-save', { provider: id, verwijder: true });
