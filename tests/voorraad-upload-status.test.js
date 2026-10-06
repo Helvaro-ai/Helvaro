@@ -366,6 +366,7 @@ const CSV1 = 'id;make;model;price;mileage\nG1;BMW;X5;50000;40000\nG2;Audi;A4;300
     const invBron = require('fs').readFileSync(BASE + 'api/_inventaris.js', 'utf8');
     ck('verwijderen sluit ook uit bij een dealer met alleen een upload-bron (type native)', (invBron.match(/bron\.type !== 'feed' && !\(bron\.bronnen \|\| \[\]\)\.length/g) || []).length === 2);
     ck('een eerder verwijderde wagen in het bestand telt als overgeslagen', r && r.upload && r.upload.overgeslagen === 1, r && r.upload);
+    ck('en de kaart telt hem niet mee als wagen van dit platform', stand().bronnen.gocar.count === 1, stand().bronnen.gocar);
   }
 
   global.fetch = echteFetch;

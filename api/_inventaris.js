@@ -60,6 +60,7 @@
  */
 
 const crypto = require('crypto');
+const _waarden = require('./_voorraad-providers/waarden');
 const vehicles = require('./_vehicles');
 const registry = require('./_voorraad-providers');
 const credentials = require('./_voorraad-providers/credentials');
@@ -443,7 +444,7 @@ async function syncBronnen(projectCode, bron, staat, opties = {}) {
   /* Ook niet overslaan zolang de advertentietabel nog nooit gevuld werd: een
      tabel die na de vorige run werd aangemaakt, blijft anders leeg tot de
      bron toevallig verandert. */
-  const ongewijzigd = !opties.bevestigDaling && !mislukt.length && staat.listingsKlaar === true && geslaagd.every((b) => {
+  const ongewijzigd = !opties.bevestigDaling && !mislukt.length && staat.listingsKlaar === true && staat.waardenVersie === _waarden.VERSIE && geslaagd.every((b) => {
     const v = vorigeVan(staat, b, bron.bronnen.indexOf(b));
     return v.feedHash && v.feedHash === perBron[b.provider].feed.hash && v.lastResult === 'ok';
   });
@@ -480,9 +481,13 @@ async function syncBronnen(projectCode, bron, staat, opties = {}) {
   const planBronnen = draaibaar.map((b) => {
     const p = registry.get(b.provider);
     const feed = perBron[b.provider].feed;
+    /* Brandstof en transmissie in Helvaro's eigen woorden (zie _voorraad-providers/waarden.js),
+       voor elke bron op dezelfde plek, voor er vergeleken wordt. */
     const voertuigen = feed
-      ? (uitgesloten.size ? feed.voertuigen.filter((f) => !uitgesloten.has(_s.bronIdVoor(b.provider, f.bronId, legacy))) : feed.voertuigen)
+      ? (uitgesloten.size ? feed.voertuigen.filter((f) => !uitgesloten.has(_s.bronIdVoor(b.provider, f.bronId, legacy))) : feed.voertuigen).map(_waarden.voertuig)
       : null;
+    /* Wat de kaart als "aantal" toont: zonder de wagens die de dealer zelf verwijderde. */
+    if (voertuigen) perBron[b.provider].gebruikt = voertuigen.length;
     return { provider: b.provider, verdwenen: b.verdwenen, kentReservering: p.kentReservering !== false, voertuigen };
   });
   const plan = _sync.verzoenAlles(bestaand, lijstAdv.listings, planBronnen, {
@@ -564,7 +569,7 @@ function bronToestand(vorige, uitkomst, nuIso, ms) {
   const st = uitkomst.stand || {};
   return Object.assign({}, v, basis, {
     lastResult: 'ok', lastSuccessAt: nuIso, lastErrorCode: '', lastErrorKey: '', lastErrorLegacy: '', fouten: 0,
-    count: uitkomst.feed.voertuigen.length,
+    count: Number.isFinite(uitkomst.gebruikt) ? uitkomst.gebruikt : uitkomst.feed.voertuigen.length,
     imported: st.nieuw || 0, updated: st.bijgewerkt || 0, removed: st.verwijderd || 0,
     feedHash: uitkomst.feed.hash,
   });
@@ -665,6 +670,8 @@ async function sync(projectCode, { door = 'systeem', trigger = 'handmatig', beve
       feedHash: resultaat.feedHash || '',
       vingers: resultaat.vingers || staat.vingers,
       listingsKlaar: resultaat.ongewijzigd ? staat.listingsKlaar === true : resultaat.listingsKlaar === true,
+      /* Nieuwe normalisatieregels (waarden.js): een keer alles opnieuw vergelijken. */
+      waardenVersie: resultaat.ongewijzigd ? staat.waardenVersie : (resultaat.partial ? staat.waardenVersie : _waarden.VERSIE),
     });
   }
   try { await schrijf(rec.id, { [F_STATE]: JSON.stringify(nieuw) }); }
