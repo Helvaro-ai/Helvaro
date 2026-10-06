@@ -37,14 +37,14 @@ const i18n = require(BASE + 'api/_i18n.js');
     }
     ck('statussen kloppen met wat het platform kan', JSON.stringify(Object.fromEntries(reg.lijst().map((p) => [p.id, p.status]))) === JSON.stringify({
       feed: 'ACTIVE', autoscout24: 'BETA', autoscout24_api: 'FEED_REQUIRED', mobile_de: 'BETA',
-      tweedehands: 'COMING_SOON', marktplaats: 'COMING_SOON', vroom: 'COMING_SOON', gocar: 'MANUAL', meta: 'COMING_SOON', auto1: 'COMING_SOON', heycar: 'DISABLED',
+      tweedehands: 'COMING_SOON', marktplaats: 'COMING_SOON', vroom: 'COMING_SOON', gocar: 'MANUAL', meta: 'ACTIVE', auto1: 'COMING_SOON', heycar: 'DISABLED',
     }), Object.fromEntries(reg.lijst().map((p) => [p.id, p.status])));
     ck('alleen bestaande statussen en authtypes', reg.lijst().every((p) => reg.STATUSSEN.includes(p.status) && reg.AUTHTYPES.includes(p.auth)));
     ck('een kapotte provider valt door de controle', reg.controleerContract({ id: 'x' }).length > 0 && reg.controleerContract(null).length > 0);
     ck('het register is bevroren: een platform er niet stiekem bij', Object.isFrozen(reg.PROVIDERS) && Object.isFrozen(reg.get('feed')));
     ck('get() kent alleen echte platformen (geen prototype-sleutels)', reg.get('constructor') === null && reg.get('__proto__') === null && reg.get('') === null && reg.get(undefined) === null);
     ck('wat Helvaro nu echt kan: alleen lezen, via feed, profiel, gocar-export en mobile.de (AutoScout24-API pas met de gegevens van Helvaro)', reg.lijst().filter((p) => p.capabilities.lezen).map((p) => p.id).sort().join() === 'autoscout24,feed,gocar,mobile_de');
-    ck('nergens wordt gepubliceerd of op leads gereageerd (Fase 1)', reg.lijst().every((p) => !p.capabilities.publiceren && !p.capabilities.leads));
+    ck('alleen Meta publiceert (catalogusfeed); nergens wordt op leads gereageerd', reg.lijst().filter((p) => p.capabilities.publiceren).map((p) => p.id).join() === 'meta' && reg.lijst().every((p) => !p.capabilities.leads));
   }
 
   console.log('\nWie mag synchroniseren en wie mag inloggegevens bewaren');
@@ -52,9 +52,10 @@ const i18n = require(BASE + 'api/_i18n.js');
     const sync = reg.lijst().filter(reg.kanSyncen).map((p) => p.id).sort().join();
     ck('synchroniseren: feed, autoscout24, gocar en mobile.de', sync === 'autoscout24,feed,gocar,mobile_de', sync);
     const bewaar = reg.lijst().filter(reg.kanBewaren).map((p) => p.id).sort().join();
-    ck('bewaren: die drie plus de twee API-koppelingen die op activatie wachten', bewaar === 'autoscout24,autoscout24_api,feed,gocar,mobile_de', bewaar);
+    ck('bewaren: die drie, de API-koppelingen die op activatie wachten en Meta (dealerinstellingen)', bewaar === 'autoscout24,autoscout24_api,feed,gocar,meta,mobile_de', bewaar);
     ck('inloggegevens: alleen mobile.de (AutoScout24-API gebruikt de gegevens van Helvaro)', reg.lijst().filter(reg.vraagtCredentials).map((p) => p.id).sort().join() === 'mobile_de');
     for (const id of ['tweedehands', 'marktplaats', 'vroom', 'meta', 'heycar']) {
+      if (id === 'meta') { ck('meta: publiceerkanaal, nooit een bron (kanSyncen false, haal gooit)', !reg.kanSyncen(reg.get('meta')) && (await reg.get('meta').haal({}).catch((e) => e.code)) === 'provider_niet_beschikbaar'); continue; }
       const p = reg.get(id);
       let fout;
       try { await p.haal({ url: 'https://x.example/f' }); } catch (e) { fout = e; }

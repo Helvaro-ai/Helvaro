@@ -565,7 +565,7 @@ const server = http.createServer(async (req, res) => {
         case 'inventory-provider-save': {
           const _inv = require('../api/_inventaris');
           const _reg = require('../api/_voorraad-providers');
-          const kaarten = () => _reg.lijst().map((p) => _inv._test.providerKaart(p, _devVoorraad.bron.bronnen.find((x) => x.provider === p.id) || null, (_devVoorraad.staat.bronnen || {})[p.id]));
+          const kaarten = () => _inv.verrijkMeta(_reg.lijst().map((p) => _inv._test.providerKaart(p, _devVoorraad.bron.bronnen.find((x) => x.provider === p.id) || null, (_devVoorraad.staat.bronnen || {})[p.id])), 'DEVDEALER', _fixtureVoertuigen, 'Dev Garage');
           if (req.body.mode === 'inventory-provider-save') {
             const b = req.body;
             let bronnen = _devVoorraad.bron.bronnen.map((x) => Object.assign({}, x));
@@ -581,6 +581,7 @@ const server = http.createServer(async (req, res) => {
               if (b.verwijder === true) bronnen = bronnen.filter((x) => x.provider !== p.id);
               else {
                 if (!_reg.kanBewaren(p)) return res.status(400).json({ error: 'niet beschikbaar', code: 'provider_niet_beschikbaar' });
+                if (typeof p.valideerInvoer === 'function') { const reden = p.valideerInvoer(b); if (reden) return res.status(400).json({ error: 'ongeldig', code: reden }); }
                 const ruw = Object.assign({}, bronnen.find((x) => x.provider === p.id) || {}, { provider: p.id });
                 if (b.url !== undefined) ruw.url = b.url;
                 for (const k of p.velden || []) if (b[k] !== undefined) ruw[k] = b[k];
@@ -613,7 +614,7 @@ const server = http.createServer(async (req, res) => {
           const tekst = typeof req.body.csv === 'string' ? req.body.csv : '';
           if (!tekst.trim()) return res.status(400).json({ error: 'leeg', code: 'geen_bestand' });
           if (Buffer.byteLength(tekst, 'utf8') > _inv.MAX_UPLOAD_BYTES) return res.status(413).json({ error: 'te groot', code: 'bestand_te_groot' });
-          const f = require('../api/_voorraad-providers/feed').parseFeed(tekst, 'auto', '');
+          let f; try { f = require('../api/_voorraad-providers/feed').parseFeed(tekst, 'auto', ''); } catch (_) { return res.status(400).json({ error: 'onleesbaar', code: 'bestand_onleesbaar' }); }
           if (!f.voertuigen.length) return res.status(400).json({ error: 'leeg', code: 'bestand_leeg' });
           return res.status(200).json({ ok: true, upload: { provider: p.id, ok: true, aantal: f.voertuigen.length, ongeldig: f.ongeldig, aangemaakt: 0, bijgewerkt: 0, verkocht: 0, dalingGeblokkeerd: false, verdwenenAantal: 0 } });
         }

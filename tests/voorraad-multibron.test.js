@@ -419,7 +419,7 @@ const stand = () => JSON.parse(klanten.DEALERA.fields['Inventory State'] || '{}'
 
   console.log('\nPlatformen die (nog) niet kunnen: bewaren en synchroniseren');
   {
-    for (const id of ['marktplaats', 'tweedehands', 'vroom', 'meta', 'heycar']) {
+    for (const id of ['marktplaats', 'tweedehands', 'vroom', 'heycar']) {
       const o = await inv.bewaarProvider('DEALERA', { provider: id, url: 'https://x.example/f' });
       ck(id + ': kan niet bewaard worden', o.ok === false && o.reden === 'provider_niet_beschikbaar', o);
     }

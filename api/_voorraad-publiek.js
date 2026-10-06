@@ -7,6 +7,7 @@
  *   GET /api/inventory/CODE?facets=1        alleen de filterwaarden
  *   GET /api/inventory/CODE/V12             een wagen, op code...
  *   GET /api/inventory/CODE/bmw-x5-v12      ...of op slug
+ *   GET /api/inventory/CODE/meta.csv        catalogusfeed voor Meta (CSV, api/_voorraad-providers/meta-feed.js)
  *
  * Via de rewrite naar api/form.js?__voorraad=1: form.js is al de publieke,
  * rate-gelimiteerde ingang (het leadformulier, de websiteassistent), dus hij
@@ -254,6 +255,8 @@ async function dealer(code) {
     if (!rec) return { onbekend: true };
     const f = rec.fields || {};
     return {
+      /* Alleen om de Meta-feed te kunnen bouwen: de ruwe bronlijst, hier nog niet gesaneerd. */
+      bronRuw: f['Inventory Source'],
       actief: f.Active !== false,
       dealer: _vertical.isDealership(f),
       clientName: String(f['Client Name'] || '').trim().slice(0, 120),
@@ -289,6 +292,29 @@ function stuur(res, status, body, cache) {
   return res.status(status).json(body);
 }
 
+/* De feed van deze dealer voor Meta. Dezelfde regels als de rest: alleen een
+   actieve dealer, alleen publieke wagens, en een dealer die Meta niet (volledig)
+   instelde krijgt dezelfde 404 als een onbekende code. */
+const META_BESTAND = 'meta.csv';
+function metaFeed(res, alle, ctx, d) {
+  let meta = null;
+  try {
+    const _inv = require('./_inventaris');
+    let ruw = d.bronRuw;
+    if (typeof ruw === 'string') ruw = JSON.parse(ruw);
+    const item = _inv.saneerBron(ruw && typeof ruw === 'object' ? ruw : {}).bronnen.find((b) => b.provider === 'meta' && b.enabled !== false);
+    if (item) meta = item.meta;
+  } catch (_) { meta = null; }
+  const feed = require('./_voorraad-providers/meta-feed');
+  if (!meta || feed.ontbreekt(meta).length) return stuur(res, 404, { code: 'not_found' });
+  const r = feed.bouw(alle, { code: ctx.code, clientName: ctx.clientName, meta });
+  res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+  res.setHeader('Cache-Control', CACHE);
+  res.setHeader('X-Robots-Tag', 'noindex');
+  res.setHeader('Content-Disposition', 'inline; filename="meta-' + ctx.code.toLowerCase() + '.csv"');
+  return res.status(200).send(r.csv);
+}
+
 async function handler(req, res) {
   /* Openbare, alleen-lezen gegevens, zonder cookies: elke oorsprong mag lezen.
      Een dealerwebsite op zijn eigen domein moet dit kunnen ophalen. */
@@ -320,6 +346,9 @@ async function handler(req, res) {
   }
   const ctx = { code, clientName: d.clientName };
   const q = req.query || {};
+
+  /* ── De catalogusfeed voor Meta (CSV) ── */
+  if (wagen.toLowerCase() === META_BESTAND) return metaFeed(res, alle, ctx, d);
 
   /* ── Een wagen ── */
   if (wagen) {
@@ -360,5 +389,5 @@ async function handler(req, res) {
 
 module.exports = {
   handler,
-  _test: { slug, codeUitSlug, publiekeStatus, naarPubliek, jsonLd, facetten, filterEnSorteer, padDelen, jaarUit, CACHE },
+  _test: { slug, codeUitSlug, publiekeStatus, naarPubliek, jsonLd, facetten, filterEnSorteer, padDelen, jaarUit, CACHE, metaFeed },
 };

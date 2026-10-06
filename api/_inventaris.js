@@ -208,6 +208,11 @@ function saneerBron(ruw) {
     if (b && !bronnen.some((x) => x.provider === b.provider)) bronnen.push(b);
     if (bronnen.length >= MAX_BRONNEN) break;
   }
+  /* Een publiceerkanaal (Meta) hoort achteraan: de eerste bron van de lijst is
+     de bron van de oude platte velden en van de vlakke toestand van voor de
+     meerbronnenvorm. */
+  const alleenPub = (b) => Boolean(registry.get(b.provider) && registry.get(b.provider).alleenPubliceren);
+  bronnen.sort((a, b) => Number(alleenPub(a)) - Number(alleenPub(b)));
   const actief = bronnen.filter(draaibaarBron);
   /* 'feed' = de voorraad staat (ook) in een ander systeem en kan dus achterlopen.
      Een bron die alleen inloggegevens bewaart en nog niet kan lezen telt niet:
@@ -224,7 +229,7 @@ function saneerBron(ruw) {
     },
     bewaarDagen: getal(o.bewaarDagen, STANDAARD_BEWAAR_DAGEN, 1, 365),
     bronnen,
-    legacyProvider: registry.get(String(o.legacyProvider || '')) ? String(o.legacyProvider) : (bronnen[0] ? bronnen[0].provider : 'feed'),
+    legacyProvider: registry.get(String(o.legacyProvider || '')) ? String(o.legacyProvider) : ((bronnen.find((b) => registry.kanSyncen(registry.get(b.provider))) || bronnen[0] || {}).provider || 'feed'),
     /* Wagens die de dealer zelf verwijderde: de sync maakt ze niet opnieuw aan.
        Altijd bewaard, ook als er nu geen bron actief is: dezelfde bron kan
        morgen weer aan. */
@@ -778,11 +783,13 @@ function providerKaart(p, b, st) {
   const upload = Boolean(b) && isUploadBron(b);
   /* Wat "verbonden" betekent hangt van het soort koppeling af: inloggegevens,
      een klantnummer, een adres -- of een eerder geuploade export. */
-  const geconfigureerd = Boolean(b) && (registry.vraagtCredentials(p) ? Boolean(b.credentials)
+  const geconfigureerd = Boolean(b) && (typeof p.isGeconfigureerd === 'function' ? p.isGeconfigureerd(b)
+    : registry.vraagtCredentials(p) ? Boolean(b.credentials)
     : p.auth === 'customer_id' ? Boolean(b.customerId)
     : (Boolean(b.url) || upload));
-  return {
+  return Object.assign({
     id: p.id, label: p.label, status: p.status, auth: p.auth,
+    alleenPubliceren: p.alleenPubliceren === true,
     adresSoort: p.adresSoort || 'feed',
     /* i18n-sleutels voor de kaart: een eigen wachttekst en een uitleg per platform. */
     wachtSleutel: p.status === 'FEED_REQUIRED' ? (p.wachtSleutel || 'ig.wacht') : '',
@@ -809,7 +816,24 @@ function providerKaart(p, b, st) {
     verwijderd: Number.isFinite(s.removed) ? s.removed : null,
     foutCode: s.lastErrorCode || '',
     foutSleutel: s.lastErrorCode ? (s.lastErrorKey || 'ig.fout.' + s.lastErrorCode) : '',
-  };
+  }, typeof p.kaartExtra === 'function' ? p.kaartExtra(b) : {});
+}
+
+/* De Meta-kaart krijgt het feedadres (alleen als adres en coordinaten er zijn) en,
+   als de wagens meegegeven zijn, wat er in de feed zit en wat er waarom uit
+   blijft. Het adres bevat de projectcode, die al in elke publieke link staat. */
+function verrijkMeta(kaarten, projectCode, voertuigen, clientName) {
+  const metaFeed = require('./_voorraad-providers/meta-feed');
+  return kaarten.map((k) => {
+    if (k.auth !== 'catalog_feed' || !k.meta) return k;
+    const klaar = k.geconfigureerd;
+    const uit = Object.assign({}, k, { feedUrl: klaar ? metaFeed.feedUrl(projectCode) : '' });
+    if (klaar && Array.isArray(voertuigen)) {
+      const r = metaFeed.bouw(voertuigen, { code: projectCode, clientName, meta: k.meta });
+      uit.feedTelling = { inFeed: r.inFeed, weggelaten: r.weggelaten, redenen: r.redenen, gereserveerd: r.gereserveerd };
+    }
+    return uit;
+  });
 }
 
 /** Wat het dashboard ziet. Geen tokens, geen vingerafdrukken, geen feed-URL-geheimen. */
@@ -860,11 +884,17 @@ async function status(projectCode) {
 async function providersOverzicht(projectCode) {
   const { rec, bron, staat } = await lees(projectCode);
   if (!rec) return { ok: false, reden: 'geen_klantrecord' };
-  return {
-    ok: true,
-    bewaarDagen: bron.bewaarDagen,
-    providers: registry.lijst().map((p) => providerKaart(p, bron.bronnen.find((x) => x.provider === p.id) || null, bronStaatVan(staat, bron, p.id))),
-  };
+  let kaarten = registry.lijst().map((p) => providerKaart(p, bron.bronnen.find((x) => x.provider === p.id) || null, bronStaatVan(staat, bron, p.id)));
+  /* De telling voor Meta kost een voertuigenlijst; alleen als Meta klaar staat, en zonder telling als dat mislukt. */
+  let voertuigen = null;
+  if (kaarten.some((k) => k.auth === 'catalog_feed' && k.geconfigureerd)) {
+    try {
+      const _v = require('./_vehicles');
+      if (await _v.available()) voertuigen = await _v.list(projectCode, { inclusiefGearchiveerd: true });
+    } catch (e) { console.warn('[voorraad] Meta-telling mislukt:', e && e.message); }
+  }
+  kaarten = verrijkMeta(kaarten, projectCode, voertuigen, String((rec.fields && rec.fields['Client Name']) || '').trim());
+  return { ok: true, bewaarDagen: bron.bewaarDagen, providers: kaarten };
 }
 
 /**
@@ -985,6 +1015,10 @@ async function bewaarProvider(projectCode, invoer) {
     } else {
       /* COMING_SOON en DISABLED: er is niets om te bewaren. */
       if (!registry.kanBewaren(p)) return { ok: false, reden: 'provider_niet_beschikbaar' };
+      if (typeof p.valideerInvoer === 'function') {
+        const reden = p.valideerInvoer(inv);
+        if (reden) return { ok: false, reden };
+      }
       const bestaand = bronnen.find((b) => b.provider === p.id);
       const ruw = Object.assign({}, bestaand || {}, { provider: p.id });
       for (const k of ['url', 'formaat', 'verdwenen', 'enabled'].concat(p.velden || [])) if (inv[k] !== undefined) ruw[k] = inv[k];
@@ -1016,7 +1050,7 @@ async function bewaarProvider(projectCode, invoer) {
       if (registry.vraagtCredentials(p) && !item.credentials) return { ok: false, reden: 'geen_gegevens' };
       const plek = bronnen.findIndex((b) => b.provider === p.id);
       if (plek >= 0) bronnen[plek] = item; else bronnen.push(item);
-      if (legacyProvider === undefined) legacyProvider = bronnen[0].provider;
+      if (legacyProvider === undefined && registry.kanSyncen(p)) legacyProvider = p.id;
       /* Een gewijzigd adres of nieuwe gegevens: opnieuw vergelijken. */
       if (nieuweStaat.bronnen && nieuweStaat.bronnen[p.id]) nieuweStaat.bronnen = Object.assign({}, nieuweStaat.bronnen, { [p.id]: Object.assign({}, nieuweStaat.bronnen[p.id], { feedHash: '' }) });
       nieuweStaat.feedHash = '';
@@ -1024,7 +1058,7 @@ async function bewaarProvider(projectCode, invoer) {
   }
   const bron = saneerBron({ bronnen, bewaarDagen, legacyProvider, drempels: huidig.drempels, uitgesloten: huidig.uitgeslotenAlle });
   await schrijf(rec.id, { [F_SOURCE]: JSON.stringify(naarOpslag(bron)), [F_STATE]: JSON.stringify(nieuweStaat) });
-  return { ok: true, ...weergave(nieuweStaat, bron), providers: registry.lijst().map((p) => providerKaart(p, bron.bronnen.find((x) => x.provider === p.id) || null, bronStaatVan(nieuweStaat, bron, p.id))) };
+  return { ok: true, ...weergave(nieuweStaat, bron), providers: verrijkMeta(registry.lijst().map((p) => providerKaart(p, bron.bronnen.find((x) => x.provider === p.id) || null, bronStaatVan(nieuweStaat, bron, p.id))), projectCode, null, '') };
 }
 
 /**
@@ -1185,6 +1219,7 @@ module.exports = {
   controleer, sync, syncUpload, status, bewaarBron, bewaarProvider, providersOverzicht, sluitUit, sluitUitAdvertenties, vertrouwenVoor,
   momentopname, hercontroleer, beoordeelVoorVerzenden, promptNotitie, genoemdIn, genoemdeMomentopnames, meldVoorraadAlsNodig, meldBronAlsNodig,
   // voor tests
+  verrijkMeta,
   _test: {
     noemtGetal, hashVan, probeNative, klantnummerBezet, isInternIp, syncBronnen, saneerBronItem, providerKaart, vorigeVan, bronStaatVan, isUploadBron,
     parseCsv: feedModule.parseCsv, parseJson: feedModule.parseJson, parseXml: feedModule.parseXml,

@@ -3300,7 +3300,7 @@ module.exports = _errors.vangAf(async function handler(req, res) {
           uit = await _inventaris.bewaarProvider(projectCode, {
             provider: body.provider, url: body.url, formaat: body.formaat, verdwenen: body.verdwenen, enabled: body.enabled,
             credentials: body.credentials, verwijder: body.verwijder, bewaarDagen: body.bewaarDagen,
-            customerId: body.customerId, mobileSellerId: body.mobileSellerId,
+            customerId: body.customerId, mobileSellerId: body.mobileSellerId, meta: body.meta,
           });
           /* De reden is een kort woord; het scherm vertaalt hem (ig.err.<reden>). */
           if (uit && uit.ok === false && uit.reden && uit.reden !== 'geen_klantrecord') {

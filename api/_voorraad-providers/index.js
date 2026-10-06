@@ -18,7 +18,7 @@
  *                      (inventory-upload)? Een bron zonder adres van zo'n platform is
  *                      een upload-bron: de geplande sync slaat hem over.
  *   velden             (optioneel) extra velden van de bron naast url/formaat, bv. customerId
- *   auth               none | feed_url | api_key | basic | customer_id | partner | csv
+ *   auth               none | feed_url | api_key | basic | customer_id | partner | csv | catalog_feed
  *   kentReservering    weet het platform van "gereserveerd"? (zo niet, dan
  *                      draait de sync een reservering van de dealer niet terug)
  *   capabilities       { lezen, publiceren, leads } -- wat Helvaro NU kan, niet
@@ -40,10 +40,11 @@ const feed = require('./feed').provider;
 const autoscout24 = require('./autoscout24').provider;
 const autoscout24Api = require('./autoscout24-api').provider;
 const mobileDe = require('./mobile-de').provider;
+const meta = require('./meta').provider;
 const { maakAanvraag, maakNietBeschikbaar, maakHandmatig } = require('./aanvragen');
 
 const STATUSSEN = Object.freeze(['ACTIVE', 'BETA', 'COMING_SOON', 'FEED_REQUIRED', 'MANUAL', 'DISABLED']);
-const AUTHTYPES = Object.freeze(['none', 'feed_url', 'api_key', 'basic', 'customer_id', 'partner', 'csv']);
+const AUTHTYPES = Object.freeze(['none', 'feed_url', 'api_key', 'basic', 'customer_id', 'partner', 'csv', 'catalog_feed']);
 const SYNCBAAR = Object.freeze(['ACTIVE', 'BETA', 'MANUAL']);
 const BEWAARBAAR = Object.freeze(['ACTIVE', 'BETA', 'MANUAL', 'FEED_REQUIRED']);
 
@@ -66,8 +67,9 @@ const LIJST = [
      export, dan loopt die via het gewone feedpad. */
   maakHandmatig({ id: 'gocar', label: 'Gocar.be', auth: 'csv', uploadBaar: true, uitlegSleutel: 'ig.uitleg.gocar' }),
   /* Meta: de automotive-catalogusfeed is een PUBLICEERkanaal (voorraad naar
-     Meta), geen bron. */
-  maakNietBeschikbaar({ id: 'meta', label: 'Meta (Facebook/Instagram)', status: 'COMING_SOON', auth: 'partner' }),
+     Meta), geen bron: status ACTIVE maar lezen=false, dus nooit gesynchroniseerd
+     en nooit van invloed op verkocht. Zie ./meta.js en ./meta-feed.js. */
+  meta,
   /* wijkopenautos.be / AUTO1.com KOOPT wagens van particulieren; AUTO1.com
      Remarketing laat dealers inruilwagens B2B verkopen via een partner-API.
      Geen voorraadbron. Activatie vraagt een partnerovereenkomst met AUTO1. */
@@ -81,7 +83,9 @@ const PROVIDERS = Object.freeze(LIJST.reduce((o, p) => { o[p.id] = Object.freeze
 /** De provider bij een id, of null. */
 function get(id) { return Object.prototype.hasOwnProperty.call(PROVIDERS, id) ? PROVIDERS[id] : null; }
 function lijst() { return LIJST.slice(); }
-function kanSyncen(p) { return Boolean(p) && SYNCBAAR.indexOf(p.status) !== -1; }
+/* Een publiceerkanaal (capabilities.lezen false, zoals Meta) is nooit een bron,
+   ook niet met status ACTIVE. */
+function kanSyncen(p) { return Boolean(p) && SYNCBAAR.indexOf(p.status) !== -1 && !(p.capabilities && p.capabilities.lezen === false); }
 function kanBewaren(p) { return Boolean(p) && BEWAARBAAR.indexOf(p.status) !== -1; }
 /** Kan de dealer voor dit platform een exportbestand uploaden? */
 function kanUploaden(p) { return Boolean(p) && p.uploadBaar === true && kanSyncen(p); }
