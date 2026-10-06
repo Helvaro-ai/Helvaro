@@ -128,6 +128,7 @@ const tabel = (t) => { const [k, ...rest] = parseCsv(t); return rest.map((r) => 
     const ids = rijen.map((x) => x.vehicle_id).sort();
     ck('alleen beschikbaar en gereserveerd, publiek, niet gearchiveerd, met alle verplichte velden', ids.join() === 'V1,V10,V2,V7', ids);
     ck('weggelaten met reden: foto, prijs, jaar', r1.weggelaten === 3 && r1.redenen.foto === 1 && r1.redenen.prijs === 1 && r1.redenen.jaar === 1, r1);
+    ck('de weggelaten wagens staan met code en reden in een lijst, zodat de dealer ze kan aanvullen', Array.isArray(r1.ontbrekend) && r1.ontbrekend.length === 3 && r1.ontbrekend.every((w) => w.code && w.reden), r1.ontbrekend);
     ck('zonder eigen advertentielink: de aanvraagpagina van Helvaro voor die wagen', rijen.find((x) => x.vehicle_id === 'V10').url === 'https://app.helvaro.pro/start/DEALER1/V10');
     const v1 = rijen.find((x) => x.vehicle_id === 'V1');
     ck('prijs "52900 EUR"', v1.price === '52900 EUR', v1.price);
@@ -219,6 +220,7 @@ const tabel = (t) => { const [k, ...rest] = parseCsv(t); return rest.map((r) => 
     ck('de bevestiging bij ontkoppelen noemt het platform en het aantal wagens', /ig\.ontkoppel\.titel', \{ platform: p\.label \}/.test(mod) && /ig\.ontkoppel\.aantal/.test(mod));
     ck('het platform staat in de tekst van de ontkoppelvraag', /\{platform\}/.test(w['ig.ontkoppel.vraag']) && /\{platform\}/.test(w['ig.ontkoppel.titel']));
     ck('AutoScout24 (API) zonder activatie: wacht-tekst in plaats van een werkend uitziend formulier', /ig\.pending\./.test(mod) && /ig\.veld\.klantnummerLater/.test(mod) && /ig\.knop\.bewaarLater/.test(mod));
+    ck('de lijst met aan te vullen wagens opent het bestaande bewerkvenster', /data-ig-actie="bewerk"/.test(mod) && /actie === 'bewerk' && typeof openPandModal === 'function'\) openPandModal\(id\)/.test(mod) && w['ig.meta.aanvullen']);
     ck('"Binnenkort" en "Niet beschikbaar" staan er alleen zonder eigen uitleg', /uitleg \|\| '<div class="settings-label-sub">' \+ escHtml\(tr\('ig\.binnenkort'\)\)/.test(mod));
   }
 

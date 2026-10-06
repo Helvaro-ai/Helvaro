@@ -132,6 +132,18 @@ function igMetaStatus(p) {
         + escHtml(redenen.map(function (r) { return (T_DICT['ig.meta.reden.' + r] !== undefined ? tr('ig.meta.reden.' + r) : r) + ': ' + t.redenen[r]; }).join(' · ')) + '</div>';
     }
     if (t.gereserveerd) h += '<div class="settings-label-sub">' + escHtml(tr('ig.meta.gereserveerd', { n: t.gereserveerd })) + '</div>';
+    /* Welke wagens eruit vallen, met een knop naar het bestaande bewerkvenster:
+       zo vult de dealer bv. de kleur aan die het AutoScout24-profiel niet meegeeft. */
+    var lijst = Array.isArray(t.ontbrekend) ? t.ontbrekend : [];
+    if (lijst.length) {
+      h += '<details class="ig-gids" style="margin-top:6px"><summary>' + escHtml(tr('ig.meta.aanvullen', { n: t.weggelaten })) + '</summary><div style="margin-top:6px">';
+      lijst.forEach(function (w) {
+        var reden = T_DICT['ig.meta.reden.' + w.reden] !== undefined ? tr('ig.meta.reden.' + w.reden) : w.reden;
+        h += '<div class="settings-row" style="padding:4px 0"><div class="settings-label-sub">' + escHtml(w.code + ' · ' + (w.naam || '') + ' · ' + reden) + '</div>'
+          + '<button type="button" class="inv-sync" data-ig-actie="bewerk" data-ig="' + escHtml(w.code) + '">' + escHtml(tr('btn.bewerken')) + '</button></div>';
+      });
+      h += '</div></details>';
+    }
   }
   return h;
 }
@@ -409,6 +421,7 @@ function igKlik(ev) {
   else if (actie === 'sync') igSync(id, false);
   else if (actie === 'upload') igUploadKies(id);
   else if (actie === 'ontkoppel') igOntkoppel(id);
+  else if (actie === 'bewerk' && typeof openPandModal === 'function') openPandModal(id);
   else if (actie === 'dagen') igDagen();
   else if (actie === 'kopieer') igKopieer();
 }

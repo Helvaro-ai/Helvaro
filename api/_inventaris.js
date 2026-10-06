@@ -830,7 +830,7 @@ function verrijkMeta(kaarten, projectCode, voertuigen, clientName) {
     const uit = Object.assign({}, k, { feedUrl: klaar ? metaFeed.feedUrl(projectCode) : '' });
     if (klaar && Array.isArray(voertuigen)) {
       const r = metaFeed.bouw(voertuigen, { code: projectCode, clientName, meta: k.meta });
-      uit.feedTelling = { inFeed: r.inFeed, weggelaten: r.weggelaten, redenen: r.redenen, gereserveerd: r.gereserveerd };
+      uit.feedTelling = { inFeed: r.inFeed, weggelaten: r.weggelaten, redenen: r.redenen, gereserveerd: r.gereserveerd, ontbrekend: r.ontbrekend || [] };
     }
     return uit;
   });

@@ -202,19 +202,26 @@ function maakRij(v, ctx) {
  * De hele feed.
  * @param {object[]} voertuigen  uit api/_vehicles.js (kan ook gearchiveerde bevatten)
  * @param {{code:string, clientName:string, meta:object}} ctx
- * @returns {{csv:string, inFeed:number, weggelaten:number, redenen:object, gereserveerd:number}}
+ * @returns {{csv:string, inFeed:number, weggelaten:number, redenen:object, gereserveerd:number, ontbrekend:object[]}}
  */
 function bouw(voertuigen, ctx) {
   const meta = (ctx && ctx.meta) || {};
   const rijen = [];
   const redenen = {};
+  /* Welke wagens eruit vielen, zodat de dealer ze kan aanvullen (bv. een kleur
+     die het AutoScout24-profiel niet meegeeft). Kort gehouden voor het scherm. */
+  const ontbrekend = [];
   let weggelaten = 0, gereserveerd = 0, maxFotos = 1;
   for (const v of (voertuigen || [])) {
     if (!v || v.gearchiveerd || v.publiek === false) continue;
     const s = _vehicles.normStatus(v.status);
     if (s !== 'beschikbaar' && s !== 'gereserveerd') continue;
     const r = maakRij(v, ctx);
-    if (r.reden) { weggelaten++; redenen[r.reden] = (redenen[r.reden] || 0) + 1; continue; }
+    if (r.reden) {
+      weggelaten++; redenen[r.reden] = (redenen[r.reden] || 0) + 1;
+      if (ontbrekend.length < 50 && v.code) ontbrekend.push({ code: v.code, naam: [v.merk, v.model].filter(Boolean).join(' ').slice(0, 80), reden: r.reden });
+      continue;
+    }
     if (s === 'gereserveerd') gereserveerd++;
     maxFotos = Math.max(maxFotos, r.aantalFotos);
     rijen.push(r.rij);
@@ -238,7 +245,7 @@ function bouw(voertuigen, ctx) {
     const vol = Object.assign({}, rij, dealer);
     regels.push(kolommen.map((k) => csvVeld(vol[k])).join(','));
   }
-  return { csv: regels.join('\r\n') + '\r\n', inFeed: rijen.length, weggelaten, redenen, gereserveerd };
+  return { csv: regels.join('\r\n') + '\r\n', inFeed: rijen.length, weggelaten, redenen, gereserveerd, ontbrekend };
 }
 
 /** Het adres van de feed zoals de dealer het in Commerce Manager plakt. */
