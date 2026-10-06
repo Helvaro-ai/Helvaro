@@ -235,7 +235,7 @@ function igKaart(p) {
   }
 
   return '<div class="settings-row" data-ig-kaart="' + id + '" style="align-items:flex-start;flex-wrap:wrap;gap:10px">'
-    + '<div style="flex:1;min-width:200px"><div class="settings-label">' + escHtml(p.label) + ' ' + igBadge(p) + '</div>' + sub + '</div>'
+    + '<div style="flex:1;min-width:200px"><div class="settings-label">' + escHtml(igLabel(p)) + ' ' + igBadge(p) + '</div>' + sub + '</div>'
     + '<div class="mail-knoppen">' + knoppen + '</div>'
     + (open ? igForm(p) : '')
     + igMeldHtml(p.id)

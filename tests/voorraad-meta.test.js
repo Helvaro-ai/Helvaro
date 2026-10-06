@@ -224,6 +224,10 @@ const tabel = (t) => { const [k, ...rest] = parseCsv(t); return rest.map((r) => 
     ck('"Binnenkort" en "Niet beschikbaar" staan er alleen zonder eigen uitleg', /uitleg \|\| '<div class="settings-label-sub">' \+ escHtml\(tr\('ig\.binnenkort'\)\)/.test(mod));
   }
 
+  {
+    const mod2 = require('fs').readFileSync(BASE + 'api/_dash/integraties.js', 'utf8');
+    ck('de kaartnaam is vertaald (igLabel), niet de vaste Engelse naam', /settings-label">' \+ escHtml\(igLabel\(p\)\)/.test(mod2) && !/escHtml\(p\.label\)/.test(mod2));
+  }
   console.log(`\n${pass} geslaagd, ${fail} mislukt`);
   process.exit(fail ? 1 : 0);
 })();
