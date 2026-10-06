@@ -122,6 +122,7 @@ const CSV1 = 'id;make;model;price;mileage\nG1;BMW;X5;50000;40000\nG2;Audi;A4;300
     ck('het bron-id is het id uit het bestand (de eerste bron is de oude bron)', vanA().every((v) => /^G[1-4]$/.test(v.fields['Source Record ID'])), vanA().map((v) => v.fields['Source Record ID']));
     ck('en de advertenties hebben platform gocar met de sleutel van de dealer', listingsA().length === 4 && listingsA().every((l) => l.fields['Listing Key'].startsWith('DEALERA|gocar|')), listingsA().map((l) => l.fields['Listing Key']));
     ck('het antwoord zegt wat er gebeurde', r.upload.aantal === 4 && r.upload.aangemaakt === 4 && r.upload.verkocht === 0 && r.upload.dalingGeblokkeerd === false, r.upload);
+    ck('zonder eerder verwijderde wagens: niets overgeslagen', r.upload.overgeslagen === 0, r.upload);
     ck('de bron is een upload-bron: gocar zonder adres', bron().bronnen.length === 1 && bron().bronnen[0].provider === 'gocar' && !bron().bronnen[0].url, bron());
     ck('dealer B is niet aangeraakt', vanB().length === 1 && vanB()[0].fields.Price === 50000 && db.vehicle_listings.find((l) => l.id === 'recL0').fields.Status === 'ACTIVE');
     const kaart = (await inv.providersOverzicht('DEALERA')).providers.find((x) => x.id === 'gocar');
@@ -355,6 +356,16 @@ const CSV1 = 'id;make;model;price;mileage\nG1;BMW;X5;50000;40000\nG2;Audi;A4;300
     }
     ck('en de sleutels die de module gebruikt bestaan in vier talen', (() => { const sleutels = new Set(); const re = /\b(?:tr|igTekst)\(\s*'([a-zA-Z0-9_.\-]+)'/g; let m; while ((m = re.exec(mod))) if (m[1].slice(-1) !== '.') sleutels.add(m[1]); return ['nl', 'fr', 'en', 'de'].every((t) => [...sleutels].every((k) => i18n.woordenboek(t)[k])); })());
     ck('de dashboardgrens van 22.000 regels blijft heel', dash.split('\n').length < 22000, dash.split('\n').length);
+  }
+
+  console.log('\nUpload: een eerder verwijderde wagen komt niet terug, en het scherm zegt dat');
+  {
+    /* Op dit punt is 'feed' de oude bron, dus een gocar-wagen heet gocar:<id>. */
+    await inv.sluitUit('DEALERA', 'gocar:G9');
+    const r = await inv.syncUpload('DEALERA', { provider: 'gocar', tekst: 'id;make;model;price\nG9;Tesla;Model 3;40000\nG10;Kia;Ceed;20000\n', bevestigDaling: true, door: 'test', ...snel });
+    const invBron = require('fs').readFileSync(BASE + 'api/_inventaris.js', 'utf8');
+    ck('verwijderen sluit ook uit bij een dealer met alleen een upload-bron (type native)', (invBron.match(/bron\.type !== 'feed' && !\(bron\.bronnen \|\| \[\]\)\.length/g) || []).length === 2);
+    ck('een eerder verwijderde wagen in het bestand telt als overgeslagen', r && r.upload && r.upload.overgeslagen === 1, r && r.upload);
   }
 
   global.fetch = echteFetch;

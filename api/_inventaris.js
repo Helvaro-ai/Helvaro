@@ -702,6 +702,14 @@ async function sync(projectCode, { door = 'systeem', trigger = 'handmatig', beve
       foutSleutel: genorm ? genorm.sleutel : '',
       aantal: upload.feed.voertuigen.length,
       ongeldig: upload.feed.ongeldig || 0,
+      /* Wagens die de dealer eerder zelf verwijderde, komen niet terug. Het
+         scherm zegt dat erbij, anders lijkt "1 wagen ingelezen, 0 nieuw" stuk. */
+      overgeslagen: (() => {
+        const weg = new Set((bron.uitgeslotenAlle || []).map(String));
+        if (!weg.size) return 0;
+        const _s = require('./_voorraad-sync');
+        return upload.feed.voertuigen.filter((f) => weg.has(_s.bronIdVoor(upload.provider, f.bronId, bron.legacyProvider))).length;
+      })(),
       aangemaakt: resultaat ? resultaat.aangemaakt || 0 : 0,
       bijgewerkt: resultaat ? resultaat.bijgewerkt || 0 : 0,
       verkocht: resultaat ? resultaat.verkocht || 0 : 0,
@@ -907,7 +915,9 @@ async function sluitUit(projectCode, bronId) {
   if (!id) return { ok: false, reden: 'geen_bronid' };
   const { rec, bron } = await lees(projectCode);
   if (!rec) return { ok: false, reden: 'geen_klantrecord' };
-  if (bron.type !== 'feed') return { ok: true, overgeslagen: true };
+  /* Elke dealer met een bron, ook een upload-bron (die telt als 'native' voor de
+     versheid, maar een volgend bestand zou de wagen wel terugzetten). */
+  if (bron.type !== 'feed' && !(bron.bronnen || []).length) return { ok: true, overgeslagen: true };
   const nieuw = saneerBron(Object.assign({}, bron, { uitgesloten: (bron.uitgeslotenAlle || []).concat(id) }));
   await schrijf(rec.id, { [F_SOURCE]: JSON.stringify(naarOpslag(nieuw)) });
   return { ok: true };
@@ -949,7 +959,7 @@ async function sluitUitAdvertenties(projectCode, rijen) {
   const { rec, bron } = await lees(tenant);
   if (!rec) return { ok: false, reden: 'geen_klantrecord' };
   const eigen = (Array.isArray(rijen) ? rijen : []).filter((l) => l && l.projectCode === tenant && l.provider && l.externalId);
-  if (!eigen.length || bron.type !== 'feed') return { ok: true, overgeslagen: true };
+  if (!eigen.length || (bron.type !== 'feed' && !(bron.bronnen || []).length)) return { ok: true, overgeslagen: true };
   const _s = require('./_voorraad-sync');
   const ids = eigen.map((l) => _s.bronIdVoor(l.provider, l.externalId, bron.legacyProvider));
   const nieuw = saneerBron(Object.assign({}, bron, { uitgesloten: (bron.uitgeslotenAlle || []).concat(ids) }));

@@ -215,7 +215,7 @@ const tabel = (t) => { const [k, ...rest] = parseCsv(t); return rest.map((r) => 
     }
     ck('de kaart heeft per fout een zichtbare melding (inv-fout, role=alert) en de toast', /role="' \+ \(m\.type === 'error' \? 'alert'/.test(mod) && /function igFout\(id, e\)[\s\S]*igMeld\(id, 'error', z\)[\s\S]*toast\(z, 'error'\)/.test(mod));
     ck('upload: de bestandsinvoer wordt leeggemaakt zodat hetzelfde bestand opnieuw werkt', /el\.value = ''/.test(mod.slice(mod.indexOf('function igBestand'))));
-    ck('upload: succes en elke fout geven een melding', /igKlaar\(id, tr\(Number\(u\.aantal\) === 1/.test(mod) && /igFout\(id, e\)/.test(mod.slice(mod.indexOf('async function igUpload'))));
+    ck('upload: succes en elke fout geven een melding', /var klaarTekst = tr\(Number\(u\.aantal\) === 1[\s\S]*ig\.upload\.overgeslagen[\s\S]*igKlaar\(id, klaarTekst\)/.test(mod) && /igFout\(id, e\)/.test(mod.slice(mod.indexOf('async function igUpload'))));
     ck('foutcodes van de server hebben een tekst (bestand_leeg, bestand_onleesbaar, slot_mislukt, unavailable, meta_*)', ['bestand_leeg', 'bestand_onleesbaar', 'slot_mislukt', 'unavailable', 'meta_breedtegraad', 'meta_lengtegraad', 'meta_telefoon', 'meta_pagina', 'bestand_te_groot'].every((c) => w['ig.err.' + c]));
     ck('de bevestiging bij ontkoppelen noemt het platform en het aantal wagens', /ig\.ontkoppel\.titel', \{ platform: p\.label \}/.test(mod) && /ig\.ontkoppel\.aantal/.test(mod));
     ck('het platform staat in de tekst van de ontkoppelvraag', /\{platform\}/.test(w['ig.ontkoppel.vraag']) && /\{platform\}/.test(w['ig.ontkoppel.titel']));

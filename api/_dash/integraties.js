@@ -379,7 +379,9 @@ async function igUpload(id, tekst, bevestig) {
       igMeld(id, 'error', z);
       toast(z, 'error');
     } else {
-      igKlaar(id, tr(Number(u.aantal) === 1 ? 'ig.upload.klaar.een' : 'ig.upload.klaar', { aantal: u.aantal || 0, nieuw: u.aangemaakt || 0, verkocht: u.verkocht || 0 }));
+      var klaarTekst = tr(Number(u.aantal) === 1 ? 'ig.upload.klaar.een' : 'ig.upload.klaar', { aantal: u.aantal || 0, nieuw: u.aangemaakt || 0, verkocht: u.verkocht || 0 });
+      if (Number(u.overgeslagen) > 0) klaarTekst += ' ' + tr('ig.upload.overgeslagen', { n: u.overgeslagen });
+      igKlaar(id, klaarTekst);
     }
   } catch (e) {
     igFout(id, e);
