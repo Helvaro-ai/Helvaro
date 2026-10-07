@@ -107,7 +107,10 @@ function wizLandStandaard() {
 function wizSplitsTel(opgeslagen, standaard) {
   var ruw = String(opgeslagen || '').trim();
   if (!ruw) return { land: standaard, nationaal: '' };
-  if (!/^(\+|00)/.test(ruw)) return { land: standaard, nationaal: ruw };
+  /* Achter de vaste landcode (+32) hoort het nummer zonder nationale 0, net als
+     op het leadformulier: "+32 0466..." zag eruit als een fout. */
+  var zonderNul = function (land, nr) { return WIZ_MET_NUL.indexOf(land) !== -1 ? String(nr).replace(/^0+/, '') : String(nr); };
+  if (!/^(\+|00)/.test(ruw)) return { land: standaard, nationaal: zonderNul(standaard, ruw) };
   var cijfers = ruw.replace(/[^0-9]/g, '');
   if (ruw.charAt(0) !== '+') cijfers = cijfers.replace(/^00/, '');
   for (var len = 3; len >= 1; len--) {
@@ -120,7 +123,7 @@ function wizSplitsTel(opgeslagen, standaard) {
     }
     if (gevonden) {
       var rest = cijfers.slice(len);
-      return { land: gevonden, nationaal: (WIZ_MET_NUL.indexOf(gevonden) !== -1 && rest ? '0' : '') + rest };
+      return { land: gevonden, nationaal: rest };
     }
   }
   return { land: standaard, nationaal: ruw };

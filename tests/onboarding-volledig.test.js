@@ -197,17 +197,17 @@ console.log('\n— telefoonnummers: samenstellen, splitsen, prefill —');
 
   /* Prefill: een opgeslagen nummer terug in land + nationaal deel. */
   const s1 = kloon(c.wizSplitsTel('+32470123456', 'BE'));
-  ck('+32470123456 -> BE + 0470123456', s1.land === 'BE' && s1.nationaal === '0470123456', s1);
+  ck('+32470123456 -> BE + 470123456 (zonder 0, achter de vaste +32)', s1.land === 'BE' && s1.nationaal === '470123456', s1);
   const s2 = kloon(c.wizSplitsTel('+31612345678', 'BE'));
-  ck('+31.. -> NL', s2.land === 'NL' && s2.nationaal === '0612345678', s2);
+  ck('+31.. -> NL', s2.land === 'NL' && s2.nationaal === '612345678', s2);
   const s3 = kloon(c.wizSplitsTel('+390612345678', 'BE'));
   ck('+39.. -> IT zonder erbij verzonnen 0', s3.land === 'IT' && s3.nationaal === '0612345678', s3);
   const s4 = kloon(c.wizSplitsTel('0032 470 12 34 56', 'NL'));
-  ck('0032.. wordt ook herkend', s4.land === 'BE' && s4.nationaal === '0470123456', s4);
+  ck('0032.. wordt ook herkend', s4.land === 'BE' && s4.nationaal === '470123456', s4);
   const s5 = kloon(c.wizSplitsTel('+1 415 555 0100', 'CA'));
   ck('+1 kiest het land van de dealer als dat +1 heeft', s5.land === 'CA', s5);
   const s6 = kloon(c.wizSplitsTel('0470 12 34 56', 'NL'));
-  ck('een nummer zonder + blijft zoals getypt, in het land van de dealer', s6.land === 'NL' && s6.nationaal === '0470 12 34 56', s6);
+  ck('een nummer zonder + komt in het land van de dealer, zonder nationale 0', s6.land === 'NL' && s6.nationaal === '470 12 34 56', s6);
   ck('leeg -> leeg veld in het land van de dealer', JSON.stringify(kloon(c.wizSplitsTel('', 'BE'))) === JSON.stringify({ land: 'BE', nationaal: '' }), null);
   ck('splitsen en weer samenstellen geeft hetzelfde nummer',
     ['+32470123456', '+31612345678', '+390612345678', '+442079460958', '+14155550100'].every((n) => {
@@ -240,7 +240,7 @@ console.log('\n— de stap meldingen: prefill, validatie, wat er opgeslagen word
   w.els['wizard-uren'] = w.mkEl();
   w.ctx.wizMeldingenTeken(titel, sub, body);
   ck('titel en subtitel komen uit de vertaling', titel.textContent === i18n.t('nl', 'wiz.mel.t') && sub.textContent === i18n.t('nl', 'wiz.mel.s'), titel.textContent);
-  ck('het nummer is voorgevuld, met de 0 zoals een Belg het kent', w.els['wizard-mel-nr'].value === '0470123456', w.els['wizard-mel-nr'].value);
+  ck('het nummer is voorgevuld, zonder 0 achter de vaste +32 (zoals op het leadformulier)', w.els['wizard-mel-nr'].value === '470123456', w.els['wizard-mel-nr'].value);
   ck('de werkuren zijn voorgevuld, Nederlands weer als ma-vr', w.els['wizard-uren'].value === 'ma-vr 9-18', w.els['wizard-uren'].value);
   ck('de HTML bevat het telefoonveld, het uren-veld en de voorbeeld-chips',
     /id="wizard-mel-nr"/.test(body.innerHTML) && /id="wizard-uren"/.test(body.innerHTML)
@@ -412,7 +412,7 @@ async function rest() {
       autoReplyTpl: 'Hallo {naam}, ik ben {ai} van {bedrijf}. Waarmee kan ik helpen?' };
     const w = bouw({ taal: 'nl', config });
     const html1 = w.ctx.wizTestHtml();
-    ck('het testnummer is voorgevuld met het meldingsnummer', w.ctx.wizTestState.land === 'BE' && w.ctx.wizTestState.nat === '0470123456', kloon(w.ctx.wizTestState));
+    ck('het testnummer is voorgevuld met het meldingsnummer', w.ctx.wizTestState.land === 'BE' && w.ctx.wizTestState.nat === '470123456', kloon(w.ctx.wizTestState));
     ck('en het land staat geselecteerd', /<option value="32" data-land="BE" selected>/.test(html1), null);
     ck('renderen verstuurt niets (alleen een klik doet dat)', w.log.fetch.length === 0, w.log.fetch.length);
 
