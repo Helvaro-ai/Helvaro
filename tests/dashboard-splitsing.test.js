@@ -268,8 +268,11 @@ function render(lang) {
 /* 2026-10-03: tweede herontwerp van het inlogpodium (formulier gecentreerd,
    kop boven het beeld, diavoorstelling zonder timer of animatie, pauzeknop weg).
    -1.099 bytes. Vorige waarden: 446606 bytes / 11d84a20e8b0a159. */
-const CSS_BYTES = 459109;
-const CSS_SHA   = '80758abd3fcf3cd7';
+/* 2026-10-07: onboarding-wizard volledig (telefoonveld, urenchips, klaar-checklist
+   met testbericht): +2.295 bytes, alleen .wiz-tel/.wiz-chip/.wiz-test-regels.
+   Vorige waarden: 459109 bytes / 80758abd3fcf3cd7. */
+const CSS_BYTES = 461404;
+const CSS_SHA   = '08d46d0d6a0d78ac';
 
 (async () => {
   console.log('\n  het CSS-blok is precies wat er uit dashboard.js kwam');

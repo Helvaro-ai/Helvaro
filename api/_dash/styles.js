@@ -10403,6 +10403,27 @@ summary.ap-tpl-header:focus-visible { outline: 2px solid var(--accent); outline-
 }
 .wiz-kaart-knop:hover { border-color: var(--accent-c); background: rgba(var(--accent-rgb), 0.10); }
 .wiz-code { display: block; margin-top: 10px; padding: 10px 12px; border-radius: var(--r-xs); background: var(--bg); border: 1px solid var(--border); font-size: 0.7667rem; word-break: break-all; color: var(--text-primary, var(--text)); }
+/* Meldingen en uren, en het testbericht op Klaar (api/_dash/wizard-volledig.js) */
+.wiz-tel { display: flex; align-items: center; width: 100%; box-sizing: border-box; min-height: 46px; background: var(--bg); border: 1px solid var(--border-strong); border-radius: var(--r-sm); transition: border-color .15s ease, box-shadow .15s ease; }
+.wiz-tel:hover { border-color: var(--accent-c); }
+.wiz-tel:focus-within { border-color: var(--accent-c); box-shadow: 0 0 0 3px rgba(var(--accent-rgb), 0.22); }
+.wiz-tel-land { position: relative; display: flex; align-items: center; gap: 6px; align-self: stretch; padding: 0 10px 0 14px; border-right: 1px solid var(--border); color: var(--text-muted); cursor: pointer; }
+.wiz-tel-land:focus-within { outline: 2px solid var(--accent-c); outline-offset: -2px; }
+.wiz-tel-vlag { font-size: 1.25rem; line-height: 1; }
+.wiz-tel-land select { position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0; cursor: pointer; font-size: 1rem; border: 0; }
+.wiz-tel-prefix { padding-left: 12px; white-space: nowrap; font-size: 0.9667rem; color: var(--text-primary, var(--text)); }
+.wiz-tel input { flex: 1 1 auto; min-width: 0; border: 0; background: transparent; box-shadow: none; outline: none; padding: 11px 14px 11px 8px; font: inherit; font-size: 0.9667rem; color: var(--text-primary, var(--text)); }
+.wiz-chips { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
+.wiz-chip { padding: 6px 12px; border-radius: var(--r-full); border: 1px solid var(--border-strong); background: transparent; color: var(--text-primary, var(--text)); font: inherit; font-size: 0.8667rem; cursor: pointer; }
+.wiz-chip:hover { border-color: var(--accent-c); }
+.wiz-chip[aria-pressed="true"] { border-color: var(--accent-c); background: rgba(var(--accent-rgb), 0.10); }
+.wiz-klaar-rij { flex-wrap: wrap; }
+.wiz-klaar-detail { display: block; font-size: 0.8rem; color: var(--text-muted); }
+.wiz-klaar-rij .wiz-kaart-knop { margin-top: 0; padding: 5px 12px; }
+.wiz-test { margin-top: 24px; padding-top: 18px; border-top: 1px solid var(--border); }
+.wiz-test-uit { min-height: 20px; margin-top: 10px; font-size: 0.8667rem; line-height: 1.5; color: var(--text-muted); }
+.wiz-test-uit.is-ok { color: var(--success-ink); }
+.wiz-test-uit.is-fout { color: var(--error-ink); }
 
 /* Klaar */
 .wiz-link { user-select: all; -webkit-user-select: all; word-break: break-all; padding: 12px 14px; margin: 0 0 20px; background: var(--bg); border: 1px solid var(--border-strong); border-radius: var(--r-sm); font-size: 0.9rem; color: var(--text-primary, var(--text)); }

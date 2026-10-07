@@ -30,6 +30,7 @@ const _help       = require('./_dash/help');     // de helpartikelen, vier talen
 const _persona    = require('./_dash/persona-sjablonen'); // voorbeeldteksten, vier talen
 const _agenda     = require('./_dash/agenda');     // de agenda, client-side
 const _integraties = require('./_dash/integraties'); // Instellingen: integraties (automotive), client-side
+const _wizardVol  = require('./_dash/wizard-volledig'); // wizard: meldingen/uren, voorraadbronnen, klaar-checklist, client-side
 const _vsync      = require('./_voorraad-sync');          // BEWAAR_DAGEN: één bron voor de 14 dagen
 const _faroUI = require('./_faro/ui');
 
@@ -10618,6 +10619,9 @@ ${_agenda.js()}
 /* Integraties: automotive (Instellingen) staat in api/_dash/integraties.js. */
 ${_integraties.js()}
 
+/* Onboarding-wizard (meldingen, uren, klaar-checklist) staat in api/_dash/wizard-volledig.js. */
+${_wizardVol.js()}
+
 /* ── Custom Calendly booking modal ──────────────────────────── */
 const calBookState = {
   date:          '',        // YYYY-MM-DD
@@ -12203,7 +12207,7 @@ async function startDashboard(skipRefresh = false) {
    dan WAT de assistent nodig heeft om te boeken en juist te antwoorden
    (agenda, en voor dealers de voorraad). Klaar toont een checklist met de
    echte status van elk onderdeel, niet een belofte. */
-var WIZARD_STAPPEN = ['intro', 'regio', 'markt', 'bedrijf', 'ai', 'kanalen', 'koppelingen', 'klaar'];
+var WIZARD_STAPPEN = ['intro', 'regio', 'markt', 'bedrijf', 'ai', 'meldingen', 'kanalen', 'koppelingen', 'klaar'];
 var _wizStatus = { whatsapp: null, email: null, website: null, agenda: null, voorraad: null };
 var WIZARD_MASCOTTE = {
   intro:   '/faro/falcon-idle.webp',
@@ -12211,6 +12215,7 @@ var WIZARD_MASCOTTE = {
   markt:   '/faro/falcon-thinking.webp',
   bedrijf: '/faro/falcon-thinking.webp',
   ai:      '/faro/falcon-generating.webp',
+  meldingen: '/faro/falcon-idle.webp',
   kanalen: '/faro/falcon-idle.webp',
   koppelingen: '/faro/falcon-thinking.webp',
   klaar:   '/faro/falcon-success.webp'
@@ -12463,8 +12468,10 @@ async function wizardVolgende() {
     }
   }
 
+  if (stap === 'meldingen' && !(await wizMeldingenBewaar(knop, fout))) return;
+
   if (stap === 'klaar') { wizardSluit(true); return; }
-  wizardGa(1);
+  wizardGa(wizVolgendeDelta());
 }
 
 /* ── WhatsApp: wat is er echt waar ────────────────────────────────────────
@@ -12755,6 +12762,8 @@ function wizardTeken() {
     return;
   }
 
+  if (stap === 'meldingen') { wizMeldingenTeken(titel, sub, body); return; }
+
   function kaartHtml(id, naam, optioneel) {
     return '<div class="wiz-kaart">'
       + '<div class="wiz-kaart-kop"><span class="wiz-kaart-naam">' + escHtml(naam)
@@ -12774,6 +12783,7 @@ function wizardTeken() {
       document.getElementById('wiz-wa-uitleg').textContent = tr('wiz.wa.dealer');
       document.getElementById('wiz-wa-badge').textContent = tr('wiz.wa.dealer.badge');
       _wizStatus.whatsapp = true;
+      wizWaDealerKnop();
     } else {
       wizardWhatsAppStatus();
     }
@@ -12788,7 +12798,7 @@ function wizardTeken() {
     var dealerK = (typeof isDealer === 'function') && isDealer();
     body.innerHTML = kaartHtml('gcal', tr('set.gcal'), false) + (dealerK ? kaartHtml('voorraad', tr('inv.titel'), false) : '');
     wizardAgendaStatus();
-    if (dealerK) wizardVoorraadStatus();
+    if (dealerK) { wizardVoorraadStatus(); wizKoppelingenExtra(); }
     return;
   }
 
@@ -12802,24 +12812,8 @@ function wizardTeken() {
   var dealer = (typeof isDealer === 'function') && isDealer();
   var volgende = dealer ? tr('wiz.klaar.dealer') : tr('wiz.klaar.gcal');
   if (!_wizKlaarGeladen) { _wizKlaarGeladen = true; wizardKlaarVerversen(dealer); }
-  var rijen = [['whatsapp', 'WhatsApp'], ['agenda', tr('set.gcal')], ['email', tr('conv.kanaal.email')], ['website', tr('widget.titel')]];
-  if (dealer) rijen.push(['voorraad', tr('inv.titel')]);
-  var lijst = rijen.map(function (r) {
-    var st = _wizStatus[r[0]];
-    var ok = st === true;
-    return '<li class="wiz-klaar-rij">'
-      + '<span aria-hidden="true" class="wiz-klaar-bol' + (ok ? ' is-aan' : '') + '"></span>'
-      + '<span class="wiz-klaar-naam">' + escHtml(r[1]) + '</span>'
-      + '<span class="wiz-klaar-status">' + escHtml(tr(ok ? 'wiz.klaar.aan' : (st === false ? 'wiz.klaar.later' : 'wiz.klaar.onbekend'))) + '</span></li>';
-  }).join('');
-
-  body.innerHTML =
-      '<div class="wiz-link">'
-    + (link ? escHtml(link) : escHtml(tr('wiz.klaar.link'))) + '</div>'
-    + '<div class="wiz-kopje">' + escHtml(tr('wiz.klaar.lijst')) + '</div>'
-    + '<ul class="wiz-klaar-lijst">' + lijst + '</ul>'
-    + '<p class="wiz-volgende">'
-    + escHtml(volgende) + '</p>';
+  body.innerHTML = wizKlaarHtml(dealer, link, volgende);
+  wizKlaarBind(body);
 }
 
 /* De checklist op Klaar leest de ECHTE status, ook als de wizard daar na een

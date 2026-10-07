@@ -1268,9 +1268,11 @@ module.exports = _errors.vangAf(async function handler(req, res) {
         const wantsCountryUpdate = body.country !== undefined
           && !!_regio.land(String(body.country || '').trim().toUpperCase());
         if (body.workingHours   !== undefined) {
-          // Lightweight format validation. Must match 'days hours' or be empty
+          // Lightweight format validation. Must match 'days hours' or be empty.
+          // Twee letters per dag mag: 'ma-vr 9-18' is wat het scherm zelf als
+          // voorbeeld geeft, en dat werd tot 2026-10-07 stil NIET bewaard.
           const v = String(body.workingHours).trim().toLowerCase().slice(0, 60);
-          if (v === '' || /^[a-z]{3,9}\s*[-–]\s*[a-z]{3,9}\s+\d{1,2}(?::\d{2})?\s*[-–]\s*\d{1,2}(?::\d{2})?$/.test(v)) {
+          if (v === '' || /^[a-zà-ü]{2,9}\s*[-–]\s*[a-zà-ü]{2,9}\s+\d{1,2}(?::\d{2})?\s*[-–]\s*\d{1,2}(?::\d{2})?$/.test(v)) {
             u.fldq5oIqw5MG8fKhc = v;
           }
         }

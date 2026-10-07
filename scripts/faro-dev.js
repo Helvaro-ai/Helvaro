@@ -69,6 +69,9 @@ const _convo = (leadMsgs, ourMsgs, lastLeadAgoDays) => {
    Zelfde vorm als api/_vehicles.js teruggeeft; zie vanRecord() daar. */
 let _gekozenVertical = 'vastgoed';
 let _gekozenSector = 'real_estate';
+/* Wizard 'meldingen': wat config-save meekreeg, zodat de volgende config-get het teruggeeft. */
+let _wizardVelden = {};
+const _testBerichten = [];   // wat de 'test-message'-stub kreeg (er gaat lokaal niets echt weg)
 let _gekozenStijl = '';
 const _formStijl = require('../api/_form-stijl');
 
@@ -705,7 +708,13 @@ const server = http.createServer(async (req, res) => {
             vertical: _gekozenVertical, sector: _gekozenSector,
             reportEmail: 'sarah@immodelva.be', language: 'nl', replyInLeadLanguage: true,
             formStyle: _formStijl.saneer(_gekozenStijl),
+            country: 'BE', ..._wizardVelden,
           });
+        /* Lokaal gaat er NOOIT iets naar WhatsApp: dit antwoordt zoals de echte
+           route na een geslaagde verzending en onthoudt wat hij kreeg. */
+        case 'test-message':
+          _testBerichten.push({ phone: req.body.phone, message: req.body.message });
+          return res.status(200).json({ ok: true, sentTo: String(req.body.phone || '').replace(/[^0-9]/g, ''), via: req.body.via || 'vrij' });
         case 'config-save':
           /* De gekozen markt onthouden, zodat een volgende config-get hem
              teruggeeft. Zonder dit is de rondgang "kiezen -> opslaan -> scherm
@@ -713,6 +722,9 @@ const server = http.createServer(async (req, res) => {
              waarop de marktkeuze stuk bleek te zijn. */
           if (req.body.vertical) _gekozenVertical = req.body.vertical;
           if (req.body.sector)   _gekozenSector   = req.body.sector;
+          for (const veld of ['notifyPhone', 'workingHours', 'waAlertOff', 'language', 'country']) {
+            if (req.body[veld] !== undefined) _wizardVelden[veld] = req.body[veld];
+          }
           /* Stijl & merk: zelfde rondgang (opslaan -> voorbeeld ververst). */
           if (req.body.formStyle !== undefined) _gekozenStijl = _formStijl.serialiseer(req.body.formStyle);
           return res.status(200).json({ ok: true });
