@@ -36,6 +36,14 @@
  * (gebruikHandoff). Naar e-mail: alleen als de dealer een mailbox koppelde;
  * dan krijgt de klant een mail uit die mailbox en loopt het gesprek daar verder.
  * Het token staat alleen gehasht in de tabel 'handoffs'.
+ *
+ * ── Verkoopmodus (alleen projectcode HELVARO) ───────────────────────────────
+ * Op helvaro.pro zelf praat dezelfde assistent over Helvaro in plaats van over
+ * wagens: eigen prompt uit api/_helvaro-feiten.js, geen voorraad en geen
+ * voertuigkaartjes, geen WhatsApp/e-mail-doorsturen, geen vrije momenten uit de
+ * agenda. Bij een verzoek om een demo komt er een knop (`acties`) naar de
+ * boekingspagina. Een nieuwe lead gaat als mail naar hello@helvaro.pro. Elke
+ * andere tenant merkt hier niets van: alles hangt aan verkoopModus(dealer).
  */
 
 const crypto = require('crypto');
@@ -44,6 +52,7 @@ const _gesprekken = require('./_gesprekken');
 const _klant = require('./_klant');
 const _vehicles = require('./_vehicles');
 const _inventaris = require('./_inventaris');
+const _helvaro = require('./_helvaro-feiten');
 
 const CLIENTS_TABLE = 'tblPidTrwGRzRt4LZ';
 const F_PROJECT = 'fldN4dL0bGgfBOXwM';
@@ -52,6 +61,9 @@ const F_WA_PNID = 'fldbrhlSrsmlJwcYr';
 const MAX_TEKENS = 600;
 const MAX_BEURTEN = 30;
 const HANDOFF_DAGEN = 7;
+
+/** De enige tenant met een verkoopassistent: Helvaro zelf. */
+function verkoopModus(dealer) { return Boolean(dealer) && dealer.projectCode === _helvaro.PROJECT_CODE; }
 
 class AssistentFout extends Error {
   constructor(msg, code, status) { super(msg); this.code = code; this.status = status || 400; }
@@ -251,8 +263,9 @@ async function beurt({ siteKey, sessie, tekst, context = {}, origin, ip }) {
   if (!bericht) throw new AssistentFout('Leeg bericht.', 'leeg');
   const dealer = await controleerToegang({ siteKey, origin, ip, sessie });
   const t = dealer.projectCode;
+  const verkoop = verkoopModus(dealer);
 
-  const { gesprek } = await _gesprekken.vindOfMaak(t, { kanaal: 'website', thread: 'web:' + sessie, onderwerp: 'Website', voertuig: String(context.voertuig || '').slice(0, 20) });
+  const { gesprek } = await _gesprekken.vindOfMaak(t, { kanaal: 'website', thread: 'web:' + sessie, onderwerp: 'Website', voertuig: verkoop ? '' : String(context.voertuig || '').slice(0, 20) });
   if (gesprek.controle !== 'AI_ACTIVE') {
     await _gesprekken.voegToe(t, gesprek, { sleutel: 'web-in:' + sessie + ':' + Date.now(), richting: 'in', auteur: 'bezoeker', tekst: bericht, meta: { pagina: String(context.pagina || '').slice(0, 300) } });
     return { gesprekId: gesprek.id, antwoord: '', overgenomen: true, kaarten: [], vraagContact: false };
@@ -263,7 +276,7 @@ async function beurt({ siteKey, sessie, tekst, context = {}, origin, ip }) {
   /* Credits: één afschrijving per gesprek (zoals WhatsApp), idempotent op de
      referentie. Nooit blokkerend -- een bezoeker zonder antwoord is een
      verloren koper; de harde bovengrens zit in het creditsysteem zelf. */
-  if (!eerder.length) {
+  if (!eerder.length && !verkoop) {
     try {
       const credits = require('./_credits');
       credits.recordUsage(t, credits.FEATURES.WHATSAPP_CONVERSATION, { credits: credits.WEIGHTS[credits.FEATURES.WHATSAPP_CONVERSATION], reference: `web:${gesprek.id}`, meta: { kanaal: 'website' } }).catch(() => {});
@@ -271,6 +284,8 @@ async function beurt({ siteKey, sessie, tekst, context = {}, origin, ip }) {
   }
 
   await _gesprekken.voegToe(t, gesprek, { sleutel: 'web-in:' + sessie + ':' + eerder.length, richting: 'in', auteur: 'bezoeker', tekst: bericht, meta: { pagina: String(context.pagina || '').slice(0, 300) } });
+
+  if (verkoop) return verkoopAntwoord({ t, gesprek, eerder, bericht, sessie, taal: context.taal });
 
   const [voorraad, vertrouwen] = await Promise.all([
     _vehicles.list(t, { alleenPubliek: true }).catch(() => []),
@@ -318,11 +333,74 @@ async function beurt({ siteKey, sessie, tekst, context = {}, origin, ip }) {
   return { gesprekId: gesprek.id, antwoord, kaarten, vraagContact, handoffs: { whatsapp: Boolean(await whatsappNummer(dealer)), email: dealer.mailbox } };
 }
 
+/* ── Verkoopmodus: het antwoord op helvaro.pro ─────────────────────────── */
+
+async function verkoopAntwoord({ t, gesprek, eerder, bericht, sessie, taal }) {
+  const lang = _helvaro.normTaal(taal);
+  const wilDemo = _helvaro.demoIntentie(bericht);
+  const _ai = require('./_ai');
+  const berichten = eerder.slice(-12).map((b) => ({ role: b.richting === 'in' ? 'user' : 'assistant', content: String(b.tekst || '').slice(0, 1200) }));
+  berichten.push({ role: 'user', content: bericht });
+  let antwoord = '';
+  try {
+    const uit = await _ai.generateText({
+      task: _ai.TASKS.CUSTOMER_QUESTION,
+      ctx: { projectCode: t, userId: 'website-assistent' },
+      system: _helvaro.systeemPrompt({ taal: lang, demoKnop: wilDemo }),
+      messages: berichten,
+      maxTokens: 350,
+    });
+    antwoord = String((uit && uit.text) || '').trim();
+  } catch (e) {
+    console.warn('[assistent] model faalde:', e && e.code, e && e.message);
+  }
+  if (!antwoord) antwoord = _helvaro.fallbackTekst(lang);
+
+  /* De server beslist over knop en contactkaartje, nooit het model. */
+  const acties = wilDemo ? _helvaro.veiligeActies([_helvaro.demoActie(lang)]) : [];
+  const heeftContact = Boolean(gesprek.klantId || gesprek.leadId);
+  const vraagContact = !heeftContact && (wilDemo || _helvaro.contactIntentie(bericht));
+  await _gesprekken.voegToe(t, gesprek, { sleutel: 'web-uit:' + sessie + ':' + eerder.length, richting: 'uit', auteur: 'ai', tekst: antwoord, status: 'verzonden', verzonden: new Date().toISOString(), meta: { acties: acties.length } });
+  return { gesprekId: gesprek.id, antwoord, kaarten: [], acties, vraagContact, handoffs: { whatsapp: false, email: false } };
+}
+
+/** HTML-veilig: naam, e-mail en vragen komen van een anonieme bezoeker. */
+function esc(v) { return String(v == null ? '' : v).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;'); }
+
+/** Mail aan hello@helvaro.pro bij een NIEUWE lead via de verkoopassistent. Faalt nooit hard. */
+async function meldVerkoopLead({ gesprek, naam, email, telefoon, toestemming, origin }) {
+  try {
+    const lijst = await _gesprekken.berichten(_helvaro.PROJECT_CODE, gesprek.id).catch(() => []);
+    const verloop = lijst.slice(-8).map((b) => (b.richting === 'in' ? 'Bezoeker: ' : 'Assistent: ') + String(b.tekst || '').slice(0, 400));
+    const html = '<p>Er is een nieuwe lead binnengekomen via de assistent op helvaro.pro.</p>'
+      + '<table cellpadding="4">'
+      + '<tr><td><b>Naam</b></td><td>' + esc(naam || '-') + '</td></tr>'
+      + '<tr><td><b>E-mail</b></td><td>' + esc(email || '-') + '</td></tr>'
+      + '<tr><td><b>Telefoon</b></td><td>' + esc(telefoon || '-') + '</td></tr>'
+      + '<tr><td><b>Toestemming</b></td><td>' + (toestemming === true ? 'ja, om contact op te nemen' : 'niet aangevinkt') + '</td></tr>'
+      + '<tr><td><b>Pagina</b></td><td>' + esc(origin || 'helvaro.pro') + '</td></tr></table>'
+      + '<p><b>Gesprek</b></p><p>' + (verloop.length ? verloop.map(esc).join('<br>') : '(nog geen berichten)') + '</p>'
+      + '<p>De lead staat ook in het dashboard (project HELVARO, bron Website-assistent).</p>';
+    const stuur = require('./_mailer').sendMail({
+      to: _helvaro.CONTACT_MAIL, subject: 'Nieuwe lead via helvaro.pro: ' + (naam || email || telefoon || 'bezoeker'),
+      html, replyTo: email || undefined,
+    });
+    /* Een hangende SMTP-verbinding mag het antwoord aan de bezoeker niet ophouden. */
+    const uit = await Promise.race([stuur, new Promise((r) => setTimeout(() => r({ ok: false, error: 'time-out' }), 8000))]);
+    if (!uit || !uit.ok) console.warn('[assistent] verkooplead-mail niet verstuurd:', uit && uit.error);
+    return Boolean(uit && uit.ok);
+  } catch (e) {
+    console.warn('[assistent] verkooplead-mail faalde:', e && e.message);
+    return false;
+  }
+}
+
 /* ── Contact ───────────────────────────────────────────────────────────── */
 
 async function contact({ siteKey, sessie, email, telefoon, naam, toestemming, origin, ip }) {
   const dealer = await controleerToegang({ siteKey, origin, ip, sessie });
   const t = dealer.projectCode;
+  const verkoop = verkoopModus(dealer);
   const e = _klant.normEmail(email);
   const p = _klant.normTelefoon(telefoon);
   if (!e && !p) throw new AssistentFout('Geef een e-mailadres of een telefoonnummer.', 'geen_contact');
@@ -334,7 +412,7 @@ async function contact({ siteKey, sessie, email, telefoon, naam, toestemming, or
     const basis = {
       fldbk0LVNckOU0bqA: String(naam || '').slice(0, 100), fld6YaitW0lMqHUrd: p,
       fldSmczuyUJd26HLe: t, fld8mkrEWcyq7mUip: 'new', fldGoerozqdea4BfU: 'Website-assistent', fldR0r13EU4RwrtvH: nu,
-      fldoLRI5W12ThTls7: JSON.stringify({ _v: 1, notes: [], tasks: [], calls: [], consent: { given: toestemming === true, ts: nu, via: 'website_assistent' } }),
+      fldoLRI5W12ThTls7: JSON.stringify({ _v: 1, notes: verkoop ? await verkoopNotitie(t, gesprek, nu, origin) : [], tasks: [], calls: [], consent: { given: toestemming === true, ts: nu, via: 'website_assistent' } }),
     };
     let r = await at('tbliukTnDAbEDcZmt', { method: 'POST', body: { typecast: true, fields: Object.assign({ Email: e, Channels: 'website' }, basis) } });
     if (!r.ok && r.status === 422) r = await at('tbliukTnDAbEDcZmt', { method: 'POST', body: { typecast: true, fields: basis } });
@@ -354,7 +432,20 @@ async function contact({ siteKey, sessie, email, telefoon, naam, toestemming, or
       }).catch(() => {});
     } catch (x) { /* melding is bijzaak */ }
   }
+  if (verkoop) {
+    if (!gesprek.leadId) await meldVerkoopLead({ gesprek, naam: String(naam || '').slice(0, 100), email: e, telefoon: p, toestemming, origin });
+    /* Geen "kies een moment": de vrije momenten in de agenda zijn die van een dealer. */
+    return { ok: true, geenMomenten: true };
+  }
   return { ok: true };
+}
+
+/** Wat de bezoeker vroeg, als eerste notitie op de lead (alleen verkoopmodus). */
+async function verkoopNotitie(t, gesprek, nu, origin) {
+  const lijst = await _gesprekken.berichten(t, gesprek.id).catch(() => []);
+  const vragen = lijst.filter((b) => b.richting === 'in').slice(-3).map((b) => String(b.tekst || '').slice(0, 200));
+  const tekst = 'Via de assistent op ' + (hostVan(origin) || 'helvaro.pro') + (vragen.length ? '. Vroeg: ' + vragen.join(' | ') : '.');
+  return [{ id: 'web-bron', text: tekst, ts: nu }];
 }
 
 /* ── Doorsturen ────────────────────────────────────────────────────────── */
@@ -362,6 +453,7 @@ async function contact({ siteKey, sessie, email, telefoon, naam, toestemming, or
 async function handoff({ siteKey, sessie, doel, origin, ip }) {
   const dealer = await controleerToegang({ siteKey, origin, ip, sessie });
   const t = dealer.projectCode;
+  if (verkoopModus(dealer)) throw new AssistentFout('Doorsturen is hier niet beschikbaar.', 'niet_beschikbaar', 409);
   if (doel !== 'whatsapp' && doel !== 'email') throw new AssistentFout('Onbekend kanaal.', 'bad_target');
   const { gesprek } = await _gesprekken.vindOfMaak(t, { kanaal: 'website', thread: 'web:' + sessie, onderwerp: 'Website' });
   const lijst = await _gesprekken.berichten(t, gesprek.id);
@@ -406,6 +498,7 @@ async function leadVanGesprek(t, sessie) {
 
 async function momenten({ siteKey, sessie, origin, ip }) {
   const dealer = await controleerToegang({ siteKey, origin, ip, sessie });
+  if (verkoopModus(dealer)) return { momenten: [] };
   await leadVanGesprek(dealer.projectCode, sessie);
   const uit = await require('./_webboeking').vrijeMomenten(dealer.projectCode, { max: 8 });
   return { momenten: uit.momenten };
@@ -414,6 +507,7 @@ async function momenten({ siteKey, sessie, origin, ip }) {
 async function boekMoment({ siteKey, sessie, start, voertuig, origin, ip }) {
   const dealer = await controleerToegang({ siteKey, origin, ip, sessie });
   const t = dealer.projectCode;
+  if (verkoopModus(dealer)) throw new AssistentFout('Boeken gaat via de knop "Plan een demo".', 'niet_beschikbaar', 409);
   const { gesprek, naam, telefoon } = await leadVanGesprek(t, sessie);
   const wb = require('./_webboeking');
   let uit;
@@ -535,9 +629,10 @@ async function handler(req, res) {
     if (body.action === 'book') return res.status(200).json(await boekMoment(Object.assign(args, { start: body.start, voertuig: body.vehicle })));
     if (body.action === 'config') {
       const d = await controleerToegang(args);
+      if (verkoopModus(d)) return res.status(200).json({ naam: d.naam, modus: 'verkoop', handoffs: { whatsapp: false, email: false } });
       return res.status(200).json({ naam: d.naam, handoffs: { whatsapp: Boolean(await whatsappNummer(d)), email: d.mailbox } });
     }
-    return res.status(200).json(await beurt(Object.assign(args, { tekst: body.message, context: { voertuig: body.vehicle, pagina: body.page } })));
+    return res.status(200).json(await beurt(Object.assign(args, { tekst: body.message, context: { voertuig: body.vehicle, pagina: body.page, taal: body.lang } })));
   } catch (e) {
     if (e instanceof AssistentFout) return res.status(e.status).json({ error: e.message, code: e.code });
     if (e && e.code === 'geen_tabel') return res.status(503).json({ error: 'De assistent wordt nog ingericht.', code: 'geen_tabel' });
@@ -550,5 +645,5 @@ module.exports = {
   handler, beurt, contact, handoff, gebruikHandoff, refUit, nieuweSiteKey, domeinen, dealerBijSleutel, momenten, boekMoment,
   widgetInstellingen, bewaarWidget,
   AssistentFout, SITE_KEY,
-  _test: { hostVan, herkomstToegestaan, intentie, zoekVoorraad, genoemd, kaart, hashToken, reset: () => _cache.clear() },
+  _test: { hostVan, herkomstToegestaan, intentie, zoekVoorraad, genoemd, kaart, hashToken, verkoopModus, SYSTEEM, reset: () => _cache.clear() },
 };

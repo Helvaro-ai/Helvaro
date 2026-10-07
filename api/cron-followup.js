@@ -296,6 +296,11 @@ module.exports = _errors.vangAf(async function handler(req, res) {
       // lead on behalf of a client whose service has stopped. See
       // isServiceStoppedForProject()'s header for the fail-open contract.
       const projectCodeForPlan = lead.fields['fldSmczuyUJd26HLe'] || lead.fields['Project Code'] || '';
+      /* Leads van de verkoopassistent op helvaro.pro (project HELVARO) krijgen nooit
+         een automatische WhatsApp-nudge: de tekst hieronder is voor een lead die een
+         bericht naar een dealer stuurde, en de bezoeker gaf toestemming voor contact
+         door het team, niet voor een sjabloon. Het team belt of mailt zelf. */
+      if (projectCodeForPlan === 'HELVARO') continue;
       if (await isServiceStoppedForProject(AIRTABLE_TOKEN, BASE_ID, projectCodeForPlan, planCache)) {
         console.log(`[cron-followup] lead ${maskPhone(phone)} — klant ${projectCodeForPlan} plan gestopt, automatische follow-up overgeslagen`);
         continue;
