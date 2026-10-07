@@ -331,6 +331,10 @@ function verzoenAlles(bestaand, listings, bronnen, opties = {}) {
     for (const f of S.voertuigen) {
       if (!f || !f.bronId) continue;
       const invoer = Object.assign({}, f, { bron: 'feed', bronId: bronIdVoor(P, f.bronId, legacy), gesynct: nu });
+      /* Een kleur die de bron zelf niet leverde maar uit de advertentielink is
+         afgeleid (waarden.kleurUitLink) mag een bestaande wagen alleen aanvullen. */
+      const kleurAfgeleid = f.kleurAfgeleid === true;
+      delete invoer.kleurAfgeleid;
 
       const eigen = lk.get(lkSleutel(P, f.bronId));
       let oud = eigen ? (byCode.get(eigen.vehicleCode) || null) : null;
@@ -369,6 +373,12 @@ function verzoenAlles(bestaand, listings, bronnen, opties = {}) {
       aangeraakt.add(oud.code);
 
       let wijzigingen = VERGELIJK.filter((k) => f[k] !== undefined && !gelijk(f[k], oud[k]));
+      /* Afgeleide kleur: nooit over een kleur heen die er al staat (de dealer
+         vulde hem in, of een betrouwbaardere bron deed het). */
+      if (kleurAfgeleid && String(oud.kleur || '').trim()) {
+        wijzigingen = wijzigingen.filter((k) => k !== 'kleur');
+        delete invoer.kleur;
+      }
       let nieuweStatus = vehicles.normStatus(f.status);
       const oudeStatus = vehicles.normStatus(oud.status);
       /* Een bron die geen reserveringen kent (AutoScout24 toont alleen "te

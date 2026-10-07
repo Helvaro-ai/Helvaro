@@ -23,9 +23,11 @@
  *
  * ── Wanneer het draait ──────────────────────────────────────────────────────
  *   • admin-mode 'ops-schema' (droogloop standaard, commit:true om te schrijven)
- *   • de dagelijkse cron
- *   • lui, één keer per instantie, zodra een engine-module een ontbrekende
- *     tabel tegenkomt (zelfherstellend na een deploy op een verse base)
+ *   • de dagelijkse cron, EERST en afgewacht met een tijdslimiet (ensureMetTijd)
+ *   • de uurlijkse voorraadcron, één keer per instantie, afgewacht (ensureEenmaal)
+ *   • lui (ensureLui), zodra een engine-module een ontbrekende tabel tegenkomt.
+ *     Fire-and-forget en dus GEEN garantie: Vercel bevriest de functie zodra
+ *     hij antwoordt (zo bleef vehicle_listings in productie weg).
  */
 
 const TIMEOUT_MS = 10000;
@@ -151,6 +153,19 @@ function plan(tabellenMeta) {
   return uit;
 }
 
+/* Waarom het NIET lukte, in het log. Tot 2026-10-07 gaf ensure() dit alleen
+   terug in het verslag, en de lazy aanroeper (ensureLui) gooide dat weg: een
+   token zonder schemarechten bleef daardoor onzichtbaar en vehicle_listings
+   werd nooit aangemaakt. */
+function meldReden(verslag) {
+  if (verslag.reden === 'geen_schemarechten') {
+    console.error('[schema] geen_schemarechten: de Airtable-token mag het schema niet lezen of schrijven (' + (verslag.fouten[0] || '') + '). '
+      + 'Geef hem schema.bases:read en schema.bases:write, of maak de ontbrekende tabellen met de hand aan (admin ops-schema toont welke).');
+  } else if (verslag.reden === 'meta_onbereikbaar') {
+    console.warn('[schema] meta_onbereikbaar: ' + (verslag.fouten[0] || 'geen antwoord') + ' -- volgende run opnieuw');
+  }
+}
+
 /**
  * Maak aan wat ontbreekt. commit:false (standaard) = alleen het plan.
  * Geeft altijd een verslag terug, gooit nooit.
@@ -163,6 +178,7 @@ async function ensure({ commit = false } = {}) {
   catch (e) {
     verslag.reden = (e.status === 401 || e.status === 403) ? 'geen_schemarechten' : 'meta_onbereikbaar';
     verslag.fouten.push(String(e.message).slice(0, 200));
+    meldReden(verslag);
     return verslag;
   }
   const p = plan(lijst);
@@ -178,7 +194,7 @@ async function ensure({ commit = false } = {}) {
       verslag.aangemaakt.push('tabel ' + t.naam);
     } catch (e) {
       verslag.fouten.push(`tabel ${t.naam}: ${String(e.message).slice(0, 160)}`);
-      if (e.status === 401 || e.status === 403) { verslag.reden = 'geen_schemarechten'; return verslag; }
+      if (e.status === 401 || e.status === 403) { verslag.reden = 'geen_schemarechten'; meldReden(verslag); return verslag; }
     }
   }
   for (const v of p.nieuweVelden) {
@@ -187,7 +203,7 @@ async function ensure({ commit = false } = {}) {
       verslag.aangemaakt.push(`veld ${v.label}.${v.veld.name}`);
     } catch (e) {
       verslag.fouten.push(`veld ${v.label}.${v.veld.name}: ${String(e.message).slice(0, 160)}`);
-      if (e.status === 401 || e.status === 403) { verslag.reden = 'geen_schemarechten'; return verslag; }
+      if (e.status === 401 || e.status === 403) { verslag.reden = 'geen_schemarechten'; meldReden(verslag); return verslag; }
     }
   }
   verslag.ok = verslag.fouten.length === 0;
@@ -196,15 +212,55 @@ async function ensure({ commit = false } = {}) {
   return verslag;
 }
 
-/* Lui en zelfherstellend: hoogstens één poging per tien minuten per instantie. */
+/**
+ * ensure() met een tijdslimiet, voor de crons. Die moeten AFWACHTEN (een
+ * migratie die niet afgewacht wordt, wordt bevroren zodra de functie antwoordt)
+ * maar mogen er niet aan blijven hangen. Na de limiet komt er een verslag met
+ * reden 'tijd_op'; het werk loopt nog even door op de achtergrond en is
+ * idempotent, dus de volgende run maakt af wat ontbreekt.
+ * Gooit nooit.
+ */
+async function ensureMetTijd({ commit = true, ms = 20000 } = {}) {
+  let klok;
+  const tijdOp = new Promise((ok) => {
+    klok = setTimeout(() => ok({ ok: false, commit, aangemaakt: [], fouten: [], plan: null, reden: 'tijd_op' }), Math.max(1000, ms));
+  });
+  try {
+    const v = await Promise.race([ensure({ commit }), tijdOp]);
+    if (v.reden === 'tijd_op') console.warn('[schema] tijd_op na ' + ms + ' ms: de migratie loopt door op de achtergrond; de volgende run maakt af wat ontbreekt');
+    return v;
+  } catch (e) {
+    console.error('[schema] mislukt:', e && e.message);
+    return { ok: false, commit, aangemaakt: [], fouten: [String(e && e.message).slice(0, 200)], plan: null, reden: 'fout' };
+  } finally { clearTimeout(klok); }
+}
+
+/* Eén keer per instantie (de uurcron): na een geslaagde run is dit een no-op;
+   na een mislukte hoogstens eens per tien minuten opnieuw. */
+let _eenmaal = null;
+let _eenmaalVolgende = 0;
+async function ensureEenmaal({ ms = 15000 } = {}) {
+  if (_eenmaal) return _eenmaal;
+  if (Date.now() < _eenmaalVolgende) return { ok: false, commit: true, aangemaakt: [], fouten: [], plan: null, reden: 'wacht' };
+  const v = await ensureMetTijd({ commit: true, ms });
+  if (v.ok) _eenmaal = Object.assign({}, v, { hergebruikt: true, aangemaakt: [] });
+  else _eenmaalVolgende = Date.now() + 10 * 60 * 1000;
+  return v;
+}
+function _resetEenmaal() { _eenmaal = null; _eenmaalVolgende = 0; }
+
+/* Lui en zelfherstellend: hoogstens één poging per tien minuten per instantie.
+   LET OP: fire-and-forget. Op Vercel wordt de functie bevroren zodra hij
+   antwoordt, dus dit is een bonus voor een langlopende aanvraag en GEEN
+   garantie; de crons (ensureMetTijd / ensureEenmaal) zijn de betrouwbare weg. */
 let _laatstePoging = 0;
 let _lopend = null;
 function ensureLui() {
   if (_lopend) return _lopend;
   if (Date.now() - _laatstePoging < 10 * 60 * 1000) return Promise.resolve(null);
   _laatstePoging = Date.now();
-  _lopend = ensure({ commit: true }).catch(() => null).finally(() => { _lopend = null; });
+  _lopend = ensure({ commit: true }).catch((e) => { console.error('[schema] lui mislukt:', e && e.message); return null; }).finally(() => { _lopend = null; });
   return _lopend;
 }
 
-module.exports = { TABELLEN, EXTRA_VELDEN, plan, ensure, ensureLui, configured };
+module.exports = { TABELLEN, EXTRA_VELDEN, plan, ensure, ensureMetTijd, ensureEenmaal, ensureLui, configured, _resetEenmaal };

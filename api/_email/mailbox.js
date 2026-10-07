@@ -37,6 +37,7 @@ const _gcal = require('../_gcal');
 const _email = require('./index');
 const _gesprekken = require('../_gesprekken');
 const _klant = require('../_klant');
+const _platformlead = require('./platformlead');   // aanvragen van AutoScout24, 2dehands, Marktplaats, mobile.de
 
 const CLIENTS_TABLE = 'tblPidTrwGRzRt4LZ';
 const F_PROJECT = 'fldN4dL0bGgfBOXwM';
@@ -262,21 +263,41 @@ function naamUit(van) {
   return m ? m[1].trim().slice(0, 100) : '';
 }
 
-async function maakLead(projectCode, m, naam) {
+/**
+ * `extra` (alleen voor platformaanvragen, zie platformlead.js): { bron, email,
+ * listing:{provider,externalId}, property, notitie, laatsteBericht }. Zonder
+ * extra is dit precies de lead van een gewone mail.
+ */
+async function maakLead(projectCode, m, naam, extra = {}) {
   const nu = new Date().toISOString();
+  /* Gewone mail: de afzender. Platformaanvraag (extra.email is gezet, ook als ''):
+     alleen het antwoordadres van de koper -- nooit het no-reply van het platform. */
+  const email = extra.email !== undefined ? extra.email : m.vanAdres;
+  /* Platformaanvraag: de wagen (property) en een notitie met herkomst staan, net
+     als bij het formulier, in de Notities-blob. */
+  const blob = { _v: 1, notes: [], tasks: [], calls: [], consent: { given: false, ts: nu, via: 'inbound_email' } };
+  if (extra.notitie) blob.notes.push({ id: 'n_' + Date.now(), text: String(extra.notitie).slice(0, 2000), ts: nu });
+  if (extra.property) blob.property = String(extra.property).toUpperCase();
+  if (extra.email) blob.email = extra.email;
   const basis = {
     fldbk0LVNckOU0bqA: naam || '',
     fldSmczuyUJd26HLe: projectCode,
     fld8mkrEWcyq7mUip: 'new',
-    fldGoerozqdea4BfU: 'E-mail',
+    fldGoerozqdea4BfU: extra.bron || 'E-mail',
     fldR0r13EU4RwrtvH: nu,
-    fldoLRI5W12ThTls7: JSON.stringify({ _v: 1, notes: [], tasks: [], calls: [], consent: { given: false, ts: nu, via: 'inbound_email' } }),
-    'Last Message': String(m.tekst || '').slice(0, 500),
+    fldoLRI5W12ThTls7: JSON.stringify(blob),
+    'Last Message': String(extra.laatsteBericht || m.tekst || '').slice(0, 500),
   };
-  let r = await at('tbliukTnDAbEDcZmt', { method: 'POST', body: { typecast: true, fields: Object.assign({ 'Email': m.vanAdres, 'Channels': 'email' }, basis) } });
+  const optioneel = { 'Channels': 'email' };
+  if (email) optioneel.Email = email;
+  if (extra.listing && extra.listing.provider) {
+    optioneel['Listing Provider'] = extra.listing.provider;
+    if (extra.listing.externalId) optioneel['Listing ID'] = extra.listing.externalId;
+  }
+  let r = await at('tbliukTnDAbEDcZmt', { method: 'POST', body: { typecast: true, fields: Object.assign({}, optioneel, basis) } });
   if (!r.ok && r.status === 422) {
-    /* 'Email'/'Channels' bestaan nog niet op Leads (schema-migratie loopt):
-       de lead zelf is belangrijker dan die twee velden. */
+    /* 'Email'/'Channels'/'Listing ...' bestaan nog niet op Leads (schema-migratie
+       loopt): de lead zelf is belangrijker dan die velden. */
     try { require('../_schema').ensureLui(); } catch (e) { /* optioneel */ }
     r = await at('tbliukTnDAbEDcZmt', { method: 'POST', body: { typecast: true, fields: basis } });
   }
@@ -297,8 +318,14 @@ async function verwerk(ctx, m, deps) {
   if (await _gesprekken.bestaatBericht(ctx.projectCode, sleutel)) return { actie: 'dubbel' };
   if ((m.labelIds || []).some((l) => l === 'SENT' || l === 'DRAFT')) return { actie: 'eigen' };
 
-  const naam = naamUit(m.van);
-  const klantUit = await _klant.resolve(ctx.projectCode, { email: m.vanAdres, naam, kanaal: 'email', bron: 'E-mail' });
+  /* Een aanvraag van een autoplatform (AutoScout24, 2dehands, Marktplaats,
+     mobile.de)? Dan is de koper NIET de afzender (een no-reply van het
+     platform) maar het antwoordadres in de mail; zie platformlead.js. Alleen
+     voor een leesbare mailbox: bij 'alleen versturen' wordt er niets gelezen. */
+  const plat = (prov(ctx.provider).nietLezen) ? null : _platformlead.herken(m, { eigenAdres: ctx.adres });
+  const kopers = plat ? plat.contact.email : m.vanAdres;
+  const naam = plat ? plat.contact.naam : naamUit(m.van);
+  const klantUit = await _klant.resolve(ctx.projectCode, { email: kopers, naam, kanaal: 'email', bron: plat ? plat.platform.bron : 'E-mail' });
   const { gesprek, nieuw } = await _gesprekken.vindOfMaak(ctx.projectCode, {
     kanaal: 'email', thread: (ctx.provider || 'gmail') + ':' + m.threadId, klantId: klantUit && klantUit.klant ? klantUit.klant.id : '', onderwerp: m.onderwerp,
   });
@@ -314,16 +341,27 @@ async function verwerk(ctx, m, deps) {
       if (b.status === 'verzonden') laatsteUitMs = laatsteUitMs == null ? Date.now() - t : Math.min(laatsteUitMs, Date.now() - t);
     }
   }
-  const analyse = _email.analyseer(m, {
-    eigenAdres: ctx.adres,
-    bekendeKlant: Boolean(!nieuw || (klantUit && !klantUit.nieuw)),
+  const bekendeKlant = Boolean(!nieuw || (klantUit && !klantUit.nieuw));
+  /* Voor een platformaanvraag telt het antwoordadres van de koper als afzender:
+     het no-reply van het platform zou de gewone regels 'automatisch' laten
+     noemen. De harde stops (eigen mail, Auto-Submitted, factuur, lusbewaking)
+     gelden gewoon (platformlead.beoordeel). */
+  let analyse = _email.analyseer(plat ? Object.assign({}, m, { vanAdres: plat.contact.email || '' }) : m, {
+    eigenAdres: ctx.adres, bekendeKlant,
     aiAntwoordenRecent: aiRecent, laatsteUitgaandMs: laatsteUitMs,
   });
+  if (plat) analyse = _platformlead.beoordeel(plat, analyse, { bekendeKlant });
+  const platformLead = Boolean(plat) && analyse.maaktLead;
 
   const opgeslagen = await _gesprekken.voegToe(ctx.projectCode, gesprek, {
-    sleutel, richting: 'in', auteur: 'klant', van: m.van, aan: m.aan, cc: m.cc, onderwerp: m.onderwerp,
+    sleutel, richting: 'in', auteur: 'klant',
+    /* Platformaanvraag: de koper als afzender, zodat Beantwoorden naar hem gaat en niet naar het no-reply. */
+    van: platformLead && _platformlead.vanVoor(plat) ? _platformlead.vanVoor(plat) : m.van,
+    aan: m.aan, cc: m.cc, onderwerp: m.onderwerp,
     tekst: m.tekst, externId: m.id, thread: m.threadId, rfcId: m.rfcId, antwoordOp: m.antwoordOp,
-    referenties: m.referenties, aangemaakt: m.datum, meta: { classificatie: analyse.classificatie, reden: analyse.reden, bijlagen: (m.bijlagen || []).slice(0, 10) },
+    referenties: m.referenties, aangemaakt: m.datum,
+    meta: Object.assign({ classificatie: analyse.classificatie, reden: analyse.reden, bijlagen: (m.bijlagen || []).slice(0, 10) },
+      platformLead ? { platform: plat.platform.bron, platformVan: m.vanAdres, zonderContact: !plat.contact.email } : {}),
   });
   if (opgeslagen.dubbel) return { actie: 'dubbel' };
 
@@ -331,7 +369,13 @@ async function verwerk(ctx, m, deps) {
   /* Over welke wagen gaat het? Zelfde herkenning als WhatsApp (AutoScout24-
      link of -nummer, dan merk + model). Eén keer per gesprek; daarna gebruiken
      concept en automatisch antwoord de ECHTE voorraadgegevens van die wagen. */
-  if (!gesprek.voertuig && ['lead', 'klant'].includes(analyse.classificatie)) {
+  let platformVoertuig = null;
+  if (platformLead && !gesprek.voertuig) {
+    /* Platformaanvraag: alleen de exacte linkroutes (aanbodnummer, advertentie-URL,
+       Listing URL) van DEZE dealer. Geen gok op merk en model uit de tekst. */
+    platformVoertuig = await _platformlead.koppelVoertuig(ctx.projectCode, plat);
+    if (platformVoertuig) { markering.voertuig = platformVoertuig.voertuig.code; gesprek.voertuig = platformVoertuig.voertuig.code; }
+  } else if (!platformLead && !gesprek.voertuig && ['lead', 'klant'].includes(analyse.classificatie)) {
     try {
       const _vehicles = require('../_vehicles');
       const uitkomst = await require('../_autoscout').herken(_vehicles, ctx.projectCode, `${m.onderwerp || ''} ${m.tekst || ''}`);
@@ -339,10 +383,22 @@ async function verwerk(ctx, m, deps) {
     } catch (e) { /* zonder voertuig gaat het gewoon verder */ }
   }
   let leadId = gesprek.leadId;
-  if (analyse.maaktLead && !leadId) {
+  let nieuweLead = false, afgemeld = false;
+  if (analyse.maaktLead && !leadId && platformLead) {
+    /* Eén open lead per persoon; afgemeld = geen lead, geen notitie, geen antwoord. */
+    const uit = await _platformlead.zorgVoorLead(ctx.projectCode, plat, m, platformVoertuig && platformVoertuig.voertuig, platformVoertuig && platformVoertuig.listing, maakLead);
+    afgemeld = uit.afgemeld;
+    if (uit.leadId) {
+      leadId = uit.leadId;
+      markering.leadId = uit.leadId;
+      nieuweLead = uit.nieuw;
+      if (klantUit && klantUit.klant) _klant.koppelLead(ctx.projectCode, uit.leadId, { email: kopers, naam, kanaal: 'email' }).catch(() => {});
+    }
+  } else if (analyse.maaktLead && !leadId) {
     const lead = await maakLead(ctx.projectCode, m, naam);
     if (lead && lead.id) {
       leadId = lead.id;
+      nieuweLead = true;
       markering.leadId = lead.id;
       if (klantUit && klantUit.klant) _klant.koppelLead(ctx.projectCode, lead.id, { email: m.vanAdres, naam, kanaal: 'email' }).catch(() => {});
     }
@@ -354,7 +410,7 @@ async function verwerk(ctx, m, deps) {
      een gesprek dat een verkoper overnam (die wacht daarop). Niet voor elke
      mail -- een melding die bij alles afgaat, leert je ze te negeren. Eén
      keer per bericht: de dedup hierboven laat een bericht maar één keer door. */
-  const pushSleutel = markering.leadId ? 'push.mail.lead' : (analyse.classificatie === 'klant' && gesprek.controle === 'HUMAN_TAKEOVER' ? 'push.mail.antwoord' : '');
+  const pushSleutel = nieuweLead ? 'push.mail.lead' : (analyse.classificatie === 'klant' && gesprek.controle === 'HUMAN_TAKEOVER' ? 'push.mail.antwoord' : '');
   if (pushSleutel) {
     try {
       require('../_push').stuurVertaald({
@@ -364,13 +420,14 @@ async function verwerk(ctx, m, deps) {
       }).catch(() => {});
     } catch (e) { /* melding is bijzaak */ }
   }
-  log(ctx.projectCode, 'email_received', { gesprekId: gesprek.id, classificatie: analyse.classificatie, reden: analyse.reden }, leadId);
+  log(ctx.projectCode, 'email_received', Object.assign({ gesprekId: gesprek.id, classificatie: analyse.classificatie, reden: analyse.reden },
+    platformLead ? { platform: plat.platform.bron, voertuig: platformVoertuig ? platformVoertuig.voertuig.code : '', afgemeld } : {}), leadId);
 
-  if (ctx.autoAntwoord && analyse.magAutoAntwoord && gesprek.controle === 'AI_ACTIVE' && deps && deps.autoAntwoord) {
+  if (ctx.autoAntwoord && analyse.magAutoAntwoord && !afgemeld && gesprek.controle === 'AI_ACTIVE' && deps && deps.autoAntwoord) {
     try { await deps.autoAntwoord(ctx, gesprek, opgeslagen.bericht); }
     catch (e) { console.warn('[mail] automatisch antwoord overgeslagen:', e && e.message); }
   }
-  return { actie: analyse.classificatie, lead: Boolean(markering.leadId) };
+  return { actie: analyse.classificatie, lead: nieuweLead };
 }
 
 async function sync(projectCode, { door = 'dashboard', trigger = 'handmatig' } = {}) {
@@ -514,6 +571,8 @@ async function verstuurAntwoord(projectCode, gesprekId, { tekst, onderwerp, idem
   const lijst = await _gesprekken.berichten(projectCode, gesprekId);
   const laatsteIn = lijst.filter((b) => b.richting === 'in').pop();
   if (!laatsteIn) throw new MailboxFout('Geen klantmail om op te antwoorden.', 'geen_ontvanger');
+  /* Een platformaanvraag zonder antwoordadres: de afzender is het no-reply van het platform. */
+  if (laatsteIn.meta && laatsteIn.meta.zonderContact) throw new MailboxFout('Deze aanvraag kwam zonder antwoordadres. Reageer via het platform zelf.', 'geen_ontvanger');
   const aan = (String(laatsteIn.van).match(/<([^>]+)>/) || [null, laatsteIn.van])[1].trim();
   const volledig = ctx.handtekening ? `${body}\n\n${ctx.handtekening}` : body;
   const messageId = `<helvaro.${crypto.createHash('sha256').update(projectCode + ':' + sleutel).digest('hex').slice(0, 24)}@helvaro.pro>`;

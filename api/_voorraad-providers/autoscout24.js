@@ -15,6 +15,7 @@
 const crypto = require('crypto');
 const { MAX_FEED_BYTES } = require('./feed');
 const { normaliseer } = require('./fouten');
+const { kleurUitLink } = require('./waarden');
 
 /* ── AutoScout24-dealerpagina ──────────────────────────────────────────────
  * De dealer geeft het adres van zijn eigen verkopersprofiel
@@ -91,6 +92,10 @@ function mapAutoscout(l, origin) {
     .map((u) => String(u).replace(/\/\d{2,4}x\d{2,4}\.webp$/, '/720x540.webp'))
     .filter((u) => /^https:\/\/prod\.pictures\.autoscout24\.net\/\S{8,400}$/.test(u)).slice(0, 20);
   const link = l.url && /^\/[\w\-/]+$/.test(String(l.url)) ? origin + l.url : undefined;
+  /* Het verkopersprofiel levert geen kleur; de slug van de advertentielink soms
+     wel (zie kleurUitLink). Afgeleid, dus gemarkeerd: de sync vult hem alleen
+     aan waar de wagen nog geen kleur heeft. */
+  const kleur = link ? kleurUitLink(link, v.make, v.model) : undefined;
   return {
     bronId: String(l.id).trim().toLowerCase().slice(0, 120),
     /* Het advertentie-id IS het AutoScout-nummer: zo herkent de koppeling met
@@ -105,6 +110,7 @@ function mapAutoscout(l, origin) {
     transmissie: tekstVan(v.transmissionType) ? tekstVan(v.transmissionType).toLowerCase() : undefined,
     kw: v.powerInKw && Number.isFinite(Number(v.powerInKw.raw)) ? Number(v.powerInKw.raw) : undefined,
     carrosserie: tekstVan(v.bodyType),
+    ...(kleur ? { kleur, kleurAfgeleid: true } : {}),
     link, fotos,
     /* AutoScout24 toont alleen wat te koop staat. Aanwezig = beschikbaar;
        verkocht = verdwenen (de gewone verdwijnregel, met de dalingsbeveiliging).

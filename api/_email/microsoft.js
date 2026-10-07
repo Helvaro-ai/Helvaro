@@ -123,7 +123,7 @@ function adresVan(r) {
 }
 
 async function haal(accessToken, id) {
-  const d = await api(accessToken, `/me/messages/${encodeURIComponent(id)}?$select=id,conversationId,internetMessageId,subject,from,toRecipients,ccRecipients,receivedDateTime,body,internetMessageHeaders,hasAttachments`, {
+  const d = await api(accessToken, `/me/messages/${encodeURIComponent(id)}?$select=id,conversationId,internetMessageId,subject,from,replyTo,toRecipients,ccRecipients,receivedDateTime,body,internetMessageHeaders,hasAttachments`, {
     headers: { Prefer: 'outlook.body-content-type="text"' },
   });
   const kop = {};
@@ -145,6 +145,7 @@ async function haal(accessToken, id) {
     rfcId: String(d.internetMessageId || '').trim(),
     antwoordOp: String(kop['in-reply-to'] || '').trim(), referenties: String(kop.references || '').trim(),
     van, vanAdres: String((d.from && d.from.emailAddress && d.from.emailAddress.address) || '').toLowerCase(),
+    antwoordAan: String((Array.isArray(d.replyTo) && d.replyTo[0] && d.replyTo[0].emailAddress && d.replyTo[0].emailAddress.address) || '').toLowerCase(),
     aan: (d.toRecipients || []).map(adresVan).join(', '), cc: (d.ccRecipients || []).map(adresVan).join(', '),
     onderwerp: String(d.subject || ''), datum: d.receivedDateTime || new Date().toISOString(),
     tekst: gmail._test.zonderCitaat(volledig).slice(0, 20000), volledigeTekst: volledig.slice(0, 50000), bijlagen,

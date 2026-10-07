@@ -201,6 +201,26 @@ module.exports = _errors.vangAf(async function handler(req, res) {
   const ago7d  = new Date(now - 7 * 24 * 60 * 60 * 1000).toISOString();
 
   try {
+    /* ── Schema van de automotive engine ─────────────────────────────────────
+       Additief en idempotent (api/_schema.js): maakt ontbrekende tabellen en
+       velden aan, raakt nooit bestaande data. Eén meta-aanroep als alles er al
+       is.
+
+       EERST, en AFGEWACHT, met een tijdslimiet. Dit stond eerder achter de
+       opvolging, herinneringen en de leerlus: een run die daar op de
+       functielimiet (300 s) strandde, kwam er nooit. De lazy variant
+       (ensureLui, fire-and-forget bij een 404) werd bovendien bevroren zodra
+       de functie antwoordde, dus vehicle_listings werd in productie nooit
+       aangemaakt. Zonder schemarechten op de token staat dat nu in het log
+       ('[schema] geen_schemarechten') en in het cronverslag. */
+    let schemaResult = null;
+    try {
+      const v = await require('./_schema').ensureMetTijd({ commit: true, ms: 25000 });
+      schemaResult = { ok: v.ok, aangemaakt: v.aangemaakt.length, reden: v.reden || undefined };
+    } catch (e) {
+      console.error('[cron-followup] schema mislukt:', e && e.message);
+    }
+
     /* De opvolging zelf zat als enige taak NIET in een eigen try/catch: één
        Airtable-timeout (15 sep, "aborted due to timeout") vloog naar de
        buitenste catch en alles daarna -- herinneringen, retentie, trial,
@@ -563,18 +583,6 @@ module.exports = _errors.vangAf(async function handler(req, res) {
       });
     }
 
-    /* ── Schema van de automotive engine ─────────────────────────────────────
-       Additief en idempotent (api/_schema.js): maakt ontbrekende tabellen en
-       velden aan, raakt nooit bestaande data. Eén meta-aanroep als alles er al
-       is. Zonder schemarechten op de token: gelogd, verder niets. */
-    let schemaResult = null;
-    try {
-      const v = await require('./_schema').ensure({ commit: true });
-      schemaResult = { ok: v.ok, aangemaakt: v.aangemaakt.length, reden: v.reden || undefined };
-    } catch (e) {
-      console.error('[cron-followup] schema mislukt:', e && e.message);
-    }
-
     /* ── Mailboxen ophalen (api/_email/mailbox.js) ──────────────────────────
        Het dashboard haalt mail op bij openen en verversen; dit is het vangnet
        voor een dag waarop niemand kijkt. Hoogstens 25 dealers per run, elk
@@ -681,6 +689,12 @@ async function runVoorraad(now, { budgetS = 180, trigger = 'dagelijks', archiver
   const _inventaris = require('./_inventaris');
   const _vsync = require('./_voorraad-sync');
   const uit = { dealers: 0, gesynct: 0, syncMislukt: 0, gearchiveerd: 0, klokGestart: 0, overgeslagen: 0 };
+  /* De uurrun is de plek waar vehicle_listings nodig is. Eén keer per instantie,
+     afgewacht en met een tijdslimiet: een fire-and-forget migratie wordt
+     bevroren zodra deze functie antwoordt (zie het schemablok in de dagrun).
+     Mislukt het, dan loopt de sync gewoon door zoals voor de tabel bestond. */
+  try { await require('./_schema').ensureEenmaal({ ms: 15000 }); }
+  catch (e) { console.warn('[cron-followup] schema (uurrun):', e && e.message); }
   let offset = '';
   const dealers = [];
   for (let ronde = 0; ronde < 5; ronde++) {

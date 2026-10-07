@@ -1,7 +1,8 @@
 /*
  * Nep-Airtable in het geheugen voor tests. Begrijpt de formules die
  * api/_klant.js, api/_gesprekken.js en api/_email/mailbox.js gebruiken:
- * AND/OR/NOT, {Veld}="x", LOWER({Veld})="x", LEFT({Veld}, n)="x".
+ * AND/OR/NOT, {Veld}="x", LOWER({Veld})="x", LEFT({Veld}, n)="x",
+ * FIND("x", LOWER({Veld}&"")) (waar als de tekst erin staat).
  * Installeert zichzelf als global.fetch; niet-Airtable-adressen gaan naar
  * `andere(url, opts)`.
  */
@@ -35,6 +36,8 @@ function evalueer(expr, f) {
   }
   let m = expr.match(/^IS_(AFTER|BEFORE)\(\{([^}]+)\}, "([^"]*)"\)$/);
   if (m) { const v = Date.parse(f[m[2]] || ''), g = Date.parse(m[3]); return Number.isFinite(v) && (m[1] === 'AFTER' ? v > g : v < g); }
+  m = expr.match(/^FIND\("((?:[^"\\]|\\.)*)", LOWER\(\{([^}]+)\}&""\)\)$/);
+  if (m) return String(f[m[2]] || '').toLowerCase().indexOf(unesc(m[1]).toLowerCase()) !== -1;
   m = expr.match(/^LOWER\(\{([^}]+)\}\)="((?:[^"\\]|\\.)*)"$/);
   if (m) return String(f[m[1]] || '').toLowerCase() === unesc(m[2]);
   m = expr.match(/^LEFT\(\{([^}]+)\}, (\d+)\)="((?:[^"\\]|\\.)*)"$/);

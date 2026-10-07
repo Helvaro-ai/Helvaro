@@ -7566,7 +7566,7 @@ function renderResultaten(d) {
         </div>
         <div class="empty-title">\${escHtml(tr(periodeLeeg ? 'res.leegPeriode' : 'leeg.resultaten'))}</div>
         <div class="empty-desc">\${escHtml(tr(periodeLeeg ? 'res.leegPeriodeDesc' : 'res.leegDesc'))}</div>
-        \${periodeLeeg ? resultatenLeegKnoppen() : emptyStateCta()}
+        \${periodeLeeg ? resultatenLeegKnoppen() : leegVolgendeStap()}
       </div>
     \`;
     return;
@@ -14856,6 +14856,18 @@ function renderAnalyse() {
     \`).join('');
   }
 
+  /* Nog geen enkele lead: een trechter van vijf lege balken zegt niets. Dezelfde
+     lege staat als op Resultaten, met de ene volgende stap. */
+  if (funnelEl && !total) {
+    funnelEl.innerHTML = '<div class="empty-state">'
+      + '<div class="empty-state-illustration" style="width:88px;height:88px;font-size:32px">'
+      + '<svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="var(--blue-bright)" stroke-width="1.8"><path d="M18 20V10M12 20V4M6 20v-6"/></svg></div>'
+      + '<div class="empty-title">' + escHtml(tr('an.leegTitel')) + '</div>'
+      + '<div class="empty-desc">' + escHtml(tr('an.leegDesc')) + '</div>'
+      + leegVolgendeStap()
+      + '</div>';
+  }
+
   // Source performance table
   const sourceMap = {};
   leads.forEach(l => {
@@ -18254,6 +18266,14 @@ function resultatenLeegKnoppen() {
   return '<div style="display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-top:14px">'
     + '<button class="btn-icon btn-primary-sm" onclick="resultatenAlleTijd()">' + escHtml(tr('res.toonAlles')) + '</button>'
     + '<button class="btn-icon" onclick="navigateTo(&quot;analyse&quot;)">' + escHtml(tr('res.naarAnalyse')) + '</button>'
+    + '</div>';
+}
+
+/* De ene volgende stap op een inzichtscherm zonder data (Resultaten, Analyse):
+   naar Setup, waar de formulierlink en het kanaal staan. Eén knop. */
+function leegVolgendeStap() {
+  return '<div style="display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-top:14px">'
+    + '<button class="btn-icon btn-primary-sm" onclick="navigateTo(&quot;formulier&quot;)">' + escHtml(tr('leeg.naarSetup')) + '</button>'
     + '</div>';
 }
 

@@ -71,7 +71,10 @@ async function roep(query, auth) {
     ck('met dezelfde sync als de knop, gemarkeerd als uurlijks', syncs[0] && syncs[0].trigger === 'uurlijks' && syncs[0].door === 'cron', syncs[0]);
     ck('er wordt NIET gearchiveerd', archief.length === 0, archief);
     ck('twee dealers geteld (de makelaar niet)', r.body && r.body.voorraad && r.body.voorraad.dealers === 2, r.body);
-    ck('geen enkele andere taak: alleen Client Config gelezen', oproepen.every((u) => u.includes('tblPidTrwGRzRt4LZ')), oproepen.filter((u) => !u.includes('tblPidTrwGRzRt4LZ')));
+    /* De uurrun wacht eerst het schema af (api/_schema.js ensureEenmaal: de
+       meta-API); verder alleen Client Config. Geen leads, geen opvolging. */
+    ck('geen enkele andere taak: alleen Client Config gelezen (en het schema)', oproepen.every((u) => u.includes('tblPidTrwGRzRt4LZ') || /\/meta\/bases\/[^/]+\/tables/.test(u)), oproepen.filter((u) => !u.includes('tblPidTrwGRzRt4LZ') && !/\/meta\/bases\//.test(u)));
+    ck('het schema is eerst aan de beurt (voor de dealerlijst)', /\/meta\/bases\//.test(oproepen[0] || ''), oproepen[0]);
   }
 
   console.log('\nde dagrun-helft (runVoorraad met archiveren)');

@@ -196,6 +196,26 @@ async function haalBijlage(accessToken, berichtId, bijlageId) {
   return String(d.data || '');
 }
 
+/** De hrefs uit het html-deel van een mail (htmlNaarTekst gooit ze weg). Alleen http(s), hoogstens 40. */
+function linksUit(payload) {
+  let html = '';
+  const loop = (deel, diepte) => {
+    if (!deel || diepte > 8 || html) return;
+    const isBijlage = deel.filename && deel.filename.length > 0;
+    if (!isBijlage && deel.body && deel.body.data && String(deel.mimeType || '').toLowerCase() === 'text/html') html = b64url(deel.body.data);
+    for (const p of deel.parts || []) loop(p, diepte + 1);
+  };
+  loop(payload, 0);
+  const uit = [];
+  const re = /\bhref\s*=\s*(?:"([^"]+)"|'([^']+)')/gi;
+  let m;
+  while ((m = re.exec(html)) !== null && uit.length < 40) {
+    const u = (m[1] || m[2] || '').replace(/&amp;/g, '&').trim();
+    if (/^https?:\/\//i.test(u) && uit.indexOf(u) === -1) uit.push(u);
+  }
+  return uit;
+}
+
 function adres(v) {
   const m = String(v || '').match(/<([^>]+)>/);
   return (m ? m[1] : String(v || '')).trim().toLowerCase();
@@ -211,6 +231,9 @@ function parseBericht(d) {
     antwoordOp: String(kop['in-reply-to'] || '').trim(),
     referenties: String(kop.references || '').trim(),
     van: decodeerKop(kop.from || ''), vanAdres: adres(kop.from),
+    /* Reply-To: bij een platformaanvraag staat de koper (of zijn relay-adres) hier. */
+    antwoordAan: String(kop['reply-to'] || '').trim() ? adres(String(kop['reply-to']).split(',')[0]) : '',
+    links: linksUit(d.payload),
     aan: decodeerKop(kop.to || ''), cc: decodeerKop(kop.cc || ''),
     onderwerp: decodeerKop(kop.subject || ''),
     datum: d.internalDate ? new Date(Number(d.internalDate)).toISOString() : new Date().toISOString(),
