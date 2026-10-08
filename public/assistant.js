@@ -35,7 +35,8 @@
   if (!script) return;
   var SITE = script.getAttribute('data-site') || '';
   if (!/^hv_site_[a-f0-9]{24}$/.test(SITE)) { console.warn('[helvaro] ongeldige data-site'); return; }
-  var API = (script.getAttribute('data-api') || 'https://app.helvaro.pro') + '/api/assistant';
+  /* De sleutel ook in het adres: het OPTIONS-voorverzoek van de browser heeft geen body. */
+  var API = (script.getAttribute('data-api') || 'https://app.helvaro.pro') + '/api/assistant?site=' + encodeURIComponent(script.getAttribute('data-site') || '');
   var voertuig = script.getAttribute('data-vehicle') || '';
   var VERKOOP = script.getAttribute('data-mode') === 'sales';
   var LINKS = script.getAttribute('data-position') === 'left';

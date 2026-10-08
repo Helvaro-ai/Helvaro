@@ -40,5 +40,15 @@ ck('het voorraadblok noemt transmissie, carrosserie, inschrijving en kleur, en "
 ck('de regels verbieden raden en zelf om gegevens vragen', /Raad nooit\./.test(bron) && /zeg niet "laat je gegevens achter"/.test(bron));
 ck('een verkochte wagen krijgt geen kaartje', /\['verkocht', 'uit aanbod'\]\.indexOf\(_vehicles\.normStatus\(v\.status\)\) === -1/.test(bron));
 
+console.log('\nCORS: de browser mag de vraag ook echt sturen');
+{
+  const bron2 = fs.readFileSync(BASE + 'api/_assistent.js', 'utf8');
+  const widget = fs.readFileSync(BASE + 'public/assistant.js', 'utf8');
+  ck('de voorcontrole (OPTIONS, zonder body) krijgt een Allow-Origin voor een https-herkomst', /if \(req\.method === 'OPTIONS'\) \{\s*if \(\/\^https:/.test(bron2) && /Access-Control-Max-Age/.test(bron2));
+  ck('de echte POST krijgt Allow-Origin alleen voor een domein van die dealer', /if \(dealer && herkomstToegestaan\(origin, dealer\.domeinen\)\)/.test(bron2));
+  ck('de widget zet de sleutel ook in het adres', /\/api\/assistant\?site=' \+ encodeURIComponent/.test(widget));
+  /* Echt draaien: een OPTIONS zonder body van een vreemde site en een POST van een vreemde site. */
+}
+
 console.log(`\n${pass} ok, ${fail} fout`);
 process.exit(fail ? 1 : 0);

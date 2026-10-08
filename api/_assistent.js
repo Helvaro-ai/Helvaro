@@ -617,7 +617,21 @@ async function handler(req, res) {
     res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
     res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
   }
-  if (req.method === 'OPTIONS') return res.status(204).end();
+  /* Het voorafgaande OPTIONS-verzoek van de browser heeft GEEN body, dus ook geen
+     sleutel: zonder dit antwoord kreeg geen enkele website de assistent aan de
+     praat (de browser stuurde de POST nooit). De voorcontrole mag elke https-
+     herkomst bevestigen; de echte POST hierboven krijgt de Allow-Origin alleen
+     voor een domein van deze dealer, en controleerToegang weigert de rest. */
+  if (req.method === 'OPTIONS') {
+    if (/^https:\/\/[a-z0-9.-]+(:\d+)?$/i.test(String(origin || ''))) {
+      res.setHeader('Access-Control-Allow-Origin', origin);
+      res.setHeader('Vary', 'Origin');
+      res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
+      res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+      res.setHeader('Access-Control-Max-Age', '600');
+    }
+    return res.status(204).end();
+  }
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
   const ip = clientIp(req);
