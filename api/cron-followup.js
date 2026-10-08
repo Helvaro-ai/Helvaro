@@ -301,6 +301,16 @@ module.exports = _errors.vangAf(async function handler(req, res) {
          bericht naar een dealer stuurde, en de bezoeker gaf toestemming voor contact
          door het team, niet voor een sjabloon. Het team belt of mailt zelf. */
       if (projectCodeForPlan === 'HELVARO') continue;
+      /* Toestemming voor WhatsApp. Het leadformulier vraagt die uitdrukkelijk
+         ("... mij via WhatsApp contacteert"); de websiteassistent vraagt alleen of
+         het team contact mag opnemen (consent.via 'website_assistent'). Zo'n lead,
+         of een lead die geen toestemming gaf, krijgt geen automatisch WhatsApp-
+         sjabloon: dat zou een bericht zijn waar hij niet om vroeg (AVG). Het team
+         neemt zelf contact op, zoals beloofd. */
+      if (geenWhatsAppToestemming(lead.fields['fldoLRI5W12ThTls7'] || lead.fields['Notities'])) {
+        console.log(`[cron-followup] lead ${maskPhone(phone)} — geen toestemming voor WhatsApp (website-assistent of geweigerd), automatische nudge overgeslagen`);
+        continue;
+      }
       if (await isServiceStoppedForProject(AIRTABLE_TOKEN, BASE_ID, projectCodeForPlan, planCache)) {
         console.log(`[cron-followup] lead ${maskPhone(phone)} — klant ${projectCodeForPlan} plan gestopt, automatische follow-up overgeslagen`);
         continue;
@@ -1211,6 +1221,15 @@ async function runSignupSignalsRetention(airtableToken, baseId, now = new Date()
 // Every automated LEAD-facing send in this cron must consult this first: an
 // automated message landing on top of a human mid-conversation is precisely
 // what the takeover feature exists to prevent.
+/** Gaf deze lead GEEN toestemming voor een WhatsApp-bericht? (Notities-JSON, consent) */
+function geenWhatsAppToestemming(notities) {
+  let o = null;
+  try { o = typeof notities === 'string' ? JSON.parse(notities) : notities; } catch (_) { return false; }
+  const c = o && o.consent;
+  if (!c || typeof c !== 'object') return false;
+  return c.given === false || c.via === 'website_assistent';
+}
+
 function isAiPaused(raw) {
   const trimmed = raw ? String(raw).trim() : '';
   if (!trimmed.startsWith('{')) return false;
@@ -2846,3 +2865,4 @@ module.exports.runMediaRetentionPurge = runMediaRetentionPurge;
 module.exports.anonymizedAtMs = anonymizedAtMs;
 module.exports.retentiePurgeCutoffMs = retentiePurgeCutoffMs;
 
+module.exports.geenWhatsAppToestemming = geenWhatsAppToestemming;
