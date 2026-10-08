@@ -181,9 +181,11 @@ console.log('\n— vier talen —');
     TALEN.every((t) => /AutoScout24/.test(i18n.t(t, 'wiz.wa.dealer')) && /WhatsApp/.test(i18n.t(t, 'wiz.wa.dealer'))), null);
   ck('de oude "Niets in te stellen" is weg (het was niet de hele waarheid)',
     TALEN.every((t) => !/Niets in te stellen|Nothing to set up|Rien à configurer|Nichts einzurichten/.test(i18n.t(t, 'wiz.wa.dealer.badge'))), null);
-  ck('de bronnenlijst noemt alle vijf de bronnen in elke taal',
-    TALEN.every((t) => ['AutoScout24', 'mobile.de', '2dehands/Marktplaats'].every((w) => i18n.t(t, 'wiz.voorraad.bronnen').indexOf(w) !== -1)
-      && /feed|flux/i.test(i18n.t(t, 'wiz.voorraad.bronnen'))), null);
+  ck('de bronnenlijst noemt elke actieve bron in elke taal (geen "gecertificeerde partner" meer)',
+    TALEN.every((t) => ['AutoScout24', 'mobile.de', 'Marktplaats', 'Gocar', 'Vroom', 'heycar'].every((w) => i18n.t(t, 'wiz.voorraad.bronnen').indexOf(w) !== -1)
+      && /2dehands|2ememain/.test(i18n.t(t, 'wiz.voorraad.bronnen'))
+      && /feed|flux/i.test(i18n.t(t, 'wiz.voorraad.bronnen'))
+      && !/gecertificeerde|certifi|zertifiziert/i.test(i18n.t(t, 'wiz.voorraad.bronnen'))), null);
   /* De rail kent elke stap; geen stap zonder label (zelfde eis als welkom-wizard.test.js). */
   ck('elke stap heeft een raillabel en een gidszin in vier talen',
     STAPPEN.every((st) => TALEN.every((t) => i18n.t(t, 'wiz.rail.' + st) !== 'wiz.rail.' + st && i18n.t(t, 'wiz.gids.' + st) !== 'wiz.gids.' + st)), null);

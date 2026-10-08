@@ -171,9 +171,11 @@ async function wizWaKaart(dealer) {
 
   if (t.soort === 'eigen') {
     var n = (es && es.nummer) || {};
-    var op = n.number ? tr('wiz.wa.eigen.op', { nr: n.number }) : tr('wiz.wa.eigen.opGeen');
+    /* De naam hoort bij het nummer, niet achter de laatste zin. */
+    var op = n.number ? tr('wiz.wa.eigen.op', { nr: n.number + (n.name ? ' (' + n.name + ')' : '') })
+      : tr('wiz.wa.eigen.opGeen') + (n.name ? ' (' + n.name + ')' : '');
     wizBadge('wa', tr('wiz.wa.eigen.badge'), 'var(--success-ink, #15803d)');
-    wizUitleg('wa', op + (n.name ? ' (' + n.name + ')' : ''));
+    wizUitleg('wa', op);
     wizWaExtra(wizWaAlinea(tr('wiz.wa.sjab.' + t.sjablonen)));
     return t;
   }
