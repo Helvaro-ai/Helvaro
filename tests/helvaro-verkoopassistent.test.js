@@ -117,7 +117,7 @@ async function draaiWidget(antwoordVanServer, tekst) {
 
   console.log('\nprompt: alleen feiten, geen dealerflow');
   const p = H.systeemPrompt({ taal: 'fr', demoKnop: true });
-  ck('opent met de rol op helvaro.pro', /^Je bent de assistent van Helvaro op helvaro\.pro/.test(p));
+  ck('opent met de rol: Faro, de assistent van Helvaro op helvaro.pro', /^Je bent Faro, de assistent van Helvaro, op helvaro\.pro/.test(p));
   ck('alleen antwoorden uit FEITEN + "dat zoek ik na"', /ALLEEN op basis van het blok FEITEN/.test(p) && /dat zoek ik na/.test(p));
   ck('kort: hoogstens 4 zinnen', /hoogstens 4 zinnen/.test(p));
   ck('talen nl/fr/en/de/es + paginataal', /\(nl, fr, en, de of es\)/.test(p) && /pagina: fr/.test(p));
@@ -132,7 +132,7 @@ async function draaiWidget(antwoordVanServer, tekst) {
   ck('prijzen kloppen met de site (incl. btw)', /Starter: €249,99/.test(f) && /Growth[^\n]*€499/.test(f) && /Scale: vanaf €799/.test(f) && /3\.000 credits/.test(f) && /10\.000 credits/.test(f) && /20\.000 credits/.test(f) && /incl\. btw/.test(f));
   ck('maandelijks opzegbaar, credits blijven bij overstap', /maandelijks opzegbaar/.test(f) && /Credits blijven behouden bij een overstap/.test(f));
   ck('wat het NIET doet staat erin (korting, inruilbedrag, telefoon)', /Niet onderhandelen/.test(f) && /Geen inruilbedrag/.test(f) && /Geen telefonie/.test(f));
-  ck('stand van zaken eerlijk (e-mail in ontwikkeling, CRM gepland)', /In ontwikkeling[^\n]*e-mail/.test(f) && /Gepland[^\n]*CRM/.test(f));
+  ck('stand van zaken eerlijk (AutoScout24 werkt, e-mail wacht op Google, CRM gepland)', /Voorraad uit AutoScout24: werkt/.test(f) && /E-mail: in de laatste fase[^\n]*verificatie door Google/.test(f) && /Gepland[^\n]*CRM/.test(f));
   ck('demo: 20 minuten, gratis', /20 minuten, is gratis/.test(f));
 
   console.log('\nverkoopmodus alleen voor HELVARO');
@@ -157,7 +157,7 @@ async function draaiWidget(antwoordVanServer, tekst) {
   ck('verkoopModus: alleen HELVARO', A._test.verkoopModus({ projectCode: 'HELVARO' }) === true && A._test.verkoopModus({ projectCode: 'P1' }) === false && A._test.verkoopModus({ projectCode: 'helvaro' }) === false && A._test.verkoopModus(null) === false);
 
   let r = await A.beurt(Object.assign({ sessie: 'sessie-hhhhhhhhhhhh1', tekst: 'Wat kost Starter?', context: { taal: 'nl' } }, baseH));
-  ck('HELVARO: eigen prompt, geen voorraadblok, geen voorraadopvraag', /^Je bent de assistent van Helvaro op helvaro\.pro/.test(gezien.system) && !/VOORRAAD/.test(gezien.system) && listAangeroepen === 0, gezien.system.slice(0, 80));
+  ck('HELVARO: eigen prompt, geen voorraadblok, geen voorraadopvraag', /^Je bent Faro, de assistent van Helvaro, op helvaro\.pro/.test(gezien.system) && !/VOORRAAD/.test(gezien.system) && listAangeroepen === 0, gezien.system.slice(0, 80));
   ck('HELVARO: geen voertuigkaartjes, ook al noemt het antwoord een wagen', Array.isArray(r.kaarten) && r.kaarten.length === 0);
   ck('HELVARO: geen demoknop bij een prijsvraag', Array.isArray(r.acties) && r.acties.length === 0 && r.vraagContact === false);
   ck('HELVARO: geen WhatsApp/e-mail-doorsturen aangeboden', r.handoffs.whatsapp === false && r.handoffs.email === false);

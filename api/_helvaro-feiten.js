@@ -129,7 +129,10 @@ const FEITEN = [
   '',
   '## Kanalen en koppelingen (stand van zaken)',
   '- Live: website (één script op de bestaande site), WhatsApp (één vast zakelijk nummer voor het hele bedrijf, niet de privételefoon van één verkoper), voorraad via een bestand of de feed die het autobedrijf al gebruikt, Google Agenda.',
-  '- In ontwikkeling (staat nog niet bij een klant): e-mail (aanvragen uit de algemene mailbox lezen en beantwoorden), voorraad via een rechtstreekse koppeling.',
+  '- Voorraad uit AutoScout24: werkt. Het autobedrijf plakt het adres van zijn openbare AutoScout24-verkopersprofiel in Helvaro; Helvaro leest de wagens daar elk uur in (prijs, kilometerstand, bouwjaar, uitvoering, brandstof, transmissie, foto\'s). Verkochte wagens verdwijnen vanzelf, met een beveiliging zodat een storing bij AutoScout24 nooit alles op verkocht zet.',
+  '- Andere voorraadbronnen: de feed van de eigen website of het DMS (CSV, JSON of XML), een exportbestand uploaden, en de voorraad die via een partner (bv. Hexon) op 2dehands, Marktplaats of Gocar staat. mobile.de via de officiële Seller API (het autobedrijf vraagt die toegang aan bij mobile.de). Staat dezelfde wagen op meerdere platformen, dan wordt het één wagen in Helvaro.',
+  '- Meta (Facebook/Instagram): Helvaro maakt van de voorraad een autocatalogus voor advertenties op Facebook en Instagram.',
+  '- E-mail: in de laatste fase. De Gmail-koppeling is gebouwd en wacht op de verificatie door Google; daarna worden aanvragen die AutoScout24, 2dehands, Marktplaats of mobile.de per mail doorsturen een lead bij de juiste wagen. Outlook/Microsoft 365 volgt.',
   '- Gepland (er ligt nog niets): koppeling met het CRM van het bedrijf. Autobedrijven bepalen de volgorde.',
   '- Telefoon doet Helvaro niet: de telefoon blijft van het autobedrijf.',
   '- Om te starten nodig: een voorraadbestand of feed, toegang tot de website om één regel te plaatsen, een zakelijk WhatsApp-nummer (of Helvaro regelt er een), en een agenda die gelezen mag worden (of de afspraken zelf regelen).',
@@ -149,6 +152,7 @@ const FEITEN = [
   '- Faro stelt ook content voor uit de voorraad (bijvoorbeeld een bericht over een nieuw binnengekomen wagen); dat onderdeel is nog in ontwikkeling. Er wordt niets geplaatst zonder dat het autobedrijf het gelezen heeft.',
   '',
   '## Prijzen (alle bedragen incl. btw, per maand, maandelijks opzegbaar, geen setup-kosten)',
+  '- Over de prijs van Helvaro zelf: vaste prijzen per plan, geen kortingscodes. Wel 14 dagen gratis uitproberen en maandelijks opzegbaar. Voor een grotere groep of bijzondere situatie: het team bekijkt dat in een demo.',
   '- 14 dagen gratis uitproberen, geen kaartgegevens nodig, stoppen kan wanneer je wil.',
   '- Starter: €249,99 per maand. 3.000 credits per maand (ongeveer 150 gesprekken met kopers). 1 agent. Reactie binnen 30 seconden, 24/7; automatische kwalificatie met score; afspraken in Google Agenda; eigen naam en stijl voor de agent; eigen formulier met deelbare link; real-time dashboard; actielogboek.',
   '- Growth (meest gekozen): €499 per maand. 10.000 credits per maand (ongeveer 500 gesprekken). Alles van Starter plus 3 agents, visualisatie-agent, spreekt 40 talen automatisch, CSV-exports naar elk CRM, prioriteit support (SLA onder 4 uur), vaste accountmanager, wekelijkse rapportage.',
@@ -173,7 +177,7 @@ const FEITEN = [
 function systeemPrompt({ taal, demoKnop } = {}) {
   const t = normTaal(taal);
   return [
-    'Je bent de assistent van Helvaro op helvaro.pro, de website van Helvaro zelf. Je beantwoordt vragen van bezoekers (meestal eigenaars of verkopers van een autobedrijf) over Helvaro.',
+    'Je bent Faro, de assistent van Helvaro, op helvaro.pro (de website van Helvaro zelf). Stel je voor als Faro als iemand vraagt wie je bent. Je beantwoordt vragen van bezoekers (meestal eigenaars of verkopers van een autobedrijf) over Helvaro.',
     'Regels:',
     '- Antwoord ALLEEN op basis van het blok FEITEN hieronder. Staat iets niet in FEITEN, zeg dan kort dat je dat laat nakijken en dat het team (' + CONTACT_MAIL + ') het beantwoordt ("dat zoek ik na"). Raad nooit.',
     '- Antwoord kort: hoogstens 4 zinnen, vriendelijk en concreet, zonder opsommingen of opmaak.',

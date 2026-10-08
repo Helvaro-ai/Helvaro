@@ -39,41 +39,47 @@
   var API = (script.getAttribute('data-api') || 'https://app.helvaro.pro') + '/api/assistant?site=' + encodeURIComponent(script.getAttribute('data-site') || '');
   var voertuig = script.getAttribute('data-vehicle') || '';
   var VERKOOP = script.getAttribute('data-mode') === 'sales';
+  /* Een gezicht bij de assistent (data-avatar). Alleen een https-afbeelding van
+     helvaro.pro of app.helvaro.pro; in de verkoopmodus standaard Faro, de valk. */
+  var AVATAR = (function () {
+    var u = script.getAttribute('data-avatar') || (VERKOOP ? 'https://helvaro.pro/assets/faro/falcon-idle.webp' : '');
+    return /^https:\/\/(app\.)?helvaro\.pro\/[\w\-\/.]+\.(webp|png|jpe?g|svg)$/i.test(u) ? u : '';
+  })();
   var LINKS = script.getAttribute('data-position') === 'left';
 
   var TAAL = (document.documentElement.lang || navigator.language || 'nl').slice(0, 2).toLowerCase();
   var D = {
     nl: { mTitel: 'Wil je meteen een moment kiezen?', mSub: 'Vrije momenten bij ons. Het team bevestigt je afspraak.', mGeboekt: 'Staat genoteerd: ', mGeen: 'Er zijn nu geen vrije momenten online; het team belt je om er een te prikken.', mNee: 'Later', open: 'Stel je vraag', titel: 'Online assistent', sub: 'Antwoordt meteen, het team volgt op', ph: 'Typ je vraag…', stuur: 'Stuur', sluit: 'Sluiten',
       welkom: 'Hallo! Zoek je een bepaalde wagen, of heb je een vraag over er één? Ik kijk het voor je na in onze voorraad.',
-      vOpen: 'Stel je vraag', vTitel: 'Helvaro-assistent', vSub: 'Antwoordt meteen op je vragen over Helvaro', vWelkom: 'Hallo! Ik beantwoord je vragen over Helvaro: wat het doet, hoe het werkt en wat het kost. Waar ben je benieuwd naar?',
+      vOpen: 'Chat met Faro', vTitel: 'Faro', vSub: 'Van Helvaro · antwoordt meteen', vWelkom: 'Hoi, ik ben Faro van Helvaro! Ik beantwoord je vragen over Helvaro: wat het doet, hoe het werkt en wat het kost. Waar ben je benieuwd naar?',
       fout: 'Er ging even iets mis. Probeer het opnieuw.', bezig: 'Aan het typen…', ai: 'Je praat met een AI-assistent. Het team leest mee.',
       cTitel: 'Zal het team je contacteren?', cSub: 'Een e-mailadres óf telefoonnummer is genoeg. Niets verplicht.', cNaam: 'Naam (optioneel)', cMail: 'E-mailadres', cTel: 'Telefoon',
       cOk: 'Doorsturen', cNee: 'Nee, bedankt', cToestemming: 'Ik ga akkoord dat het team me hierover contacteert.', cBedankt: 'Bedankt! Het team neemt snel contact op.', cLeeg: 'Vul een e-mailadres of telefoonnummer in.',
       wa: 'Verder op WhatsApp', mail: 'Verder via e-mail', beschikbaar: 'beschikbaar', status: { gereserveerd: 'gereserveerd', verkocht: 'verkocht', 'uit aanbod': 'niet meer beschikbaar', onbekend: 'status nakijken' }, bekijk: 'Bekijk', km: 'km' },
     fr: { mTitel: 'Voulez-vous choisir un moment tout de suite ?', mSub: 'Nos créneaux libres. L’équipe confirme votre rendez-vous.', mGeboekt: 'C’est noté : ', mGeen: 'Aucun créneau libre en ligne pour le moment ; l’équipe vous appelle pour en fixer un.', mNee: 'Plus tard', open: 'Posez votre question', titel: 'Assistant en ligne', sub: 'Répond tout de suite, l’équipe assure le suivi', ph: 'Votre question…', stuur: 'Envoyer', sluit: 'Fermer',
       welkom: 'Bonjour ! Vous cherchez une voiture précise ou avez une question sur l’une d’elles ? Je regarde dans notre stock.',
-      vOpen: 'Posez votre question', vTitel: 'Assistant Helvaro', vSub: 'Répond tout de suite à vos questions sur Helvaro', vWelkom: 'Bonjour ! Je réponds à vos questions sur Helvaro : ce que ça fait, comment ça marche et ce que ça coûte. Qu’aimeriez-vous savoir ?',
+      vOpen: 'Discuter avec Faro', vTitel: 'Faro', vSub: 'De Helvaro · répond tout de suite', vWelkom: 'Bonjour, je suis Faro de Helvaro ! Je réponds à vos questions sur Helvaro : ce que ça fait, comment ça marche et combien ça coûte. Qu’aimeriez-vous savoir ?',
       fout: 'Un souci est survenu. Réessayez.', bezig: 'En train d’écrire…', ai: 'Vous parlez avec un assistant IA. L’équipe suit la conversation.',
       cTitel: 'L’équipe peut-elle vous contacter ?', cSub: 'Une adresse e-mail ou un numéro suffit. Rien d’obligatoire.', cNaam: 'Nom (facultatif)', cMail: 'E-mail', cTel: 'Téléphone',
       cOk: 'Envoyer', cNee: 'Non merci', cToestemming: 'J’accepte que l’équipe me contacte à ce sujet.', cBedankt: 'Merci ! L’équipe vous contacte rapidement.', cLeeg: 'Indiquez une adresse e-mail ou un numéro.',
       wa: 'Continuer sur WhatsApp', mail: 'Continuer par e-mail', beschikbaar: 'disponible', status: { gereserveerd: 'réservée', verkocht: 'vendue', 'uit aanbod': 'plus disponible', onbekend: 'statut à vérifier' }, bekijk: 'Voir', km: 'km' },
     en: { mTitel: 'Want to pick a time right away?', mSub: 'Our free slots. The team confirms your appointment.', mGeboekt: 'Booked: ', mGeen: 'No free slots online right now; the team will call you to arrange one.', mNee: 'Later', open: 'Ask a question', titel: 'Online assistant', sub: 'Answers right away, the team follows up', ph: 'Type your question…', stuur: 'Send', sluit: 'Close',
       welkom: 'Hi! Looking for a particular car, or have a question about one? I’ll check our stock for you.',
-      vOpen: 'Ask a question', vTitel: 'Helvaro assistant', vSub: 'Answers your questions about Helvaro right away', vWelkom: 'Hi! I answer your questions about Helvaro: what it does, how it works and what it costs. What would you like to know?',
+      vOpen: 'Chat with Faro', vTitel: 'Faro', vSub: 'From Helvaro · answers right away', vWelkom: 'Hi, I’m Faro from Helvaro! I answer your questions about Helvaro: what it does, how it works and what it costs. What would you like to know?',
       fout: 'Something went wrong. Please try again.', bezig: 'Typing…', ai: 'You are chatting with an AI assistant. The team reads along.',
       cTitel: 'Shall the team contact you?', cSub: 'An email address or a phone number is enough. Nothing is required.', cNaam: 'Name (optional)', cMail: 'Email', cTel: 'Phone',
       cOk: 'Send', cNee: 'No thanks', cToestemming: 'I agree that the team may contact me about this.', cBedankt: 'Thanks! The team will be in touch shortly.', cLeeg: 'Enter an email address or a phone number.',
       wa: 'Continue on WhatsApp', mail: 'Continue by email', beschikbaar: 'available', status: { gereserveerd: 'reserved', verkocht: 'sold', 'uit aanbod': 'no longer available', onbekend: 'status being checked' }, bekijk: 'View', km: 'km' },
     de: { mTitel: 'Möchtest du gleich einen Termin wählen?', mSub: 'Unsere freien Zeiten. Das Team bestätigt deinen Termin.', mGeboekt: 'Eingetragen: ', mGeen: 'Gerade keine freien Zeiten online; das Team ruft dich an, um einen zu finden.', mNee: 'Später', open: 'Frage stellen', titel: 'Online-Assistent', sub: 'Antwortet sofort, das Team meldet sich', ph: 'Deine Frage…', stuur: 'Senden', sluit: 'Schließen',
       welkom: 'Hallo! Suchst du ein bestimmtes Auto oder hast du eine Frage dazu? Ich schaue in unserem Bestand nach.',
-      vOpen: 'Frage stellen', vTitel: 'Helvaro-Assistent', vSub: 'Beantwortet sofort deine Fragen zu Helvaro', vWelkom: 'Hallo! Ich beantworte deine Fragen zu Helvaro: was es kann, wie es funktioniert und was es kostet. Was möchtest du wissen?',
+      vOpen: 'Mit Faro chatten', vTitel: 'Faro', vSub: 'Von Helvaro · antwortet sofort', vWelkom: 'Hallo, ich bin Faro von Helvaro! Ich beantworte deine Fragen zu Helvaro: was es macht, wie es funktioniert und was es kostet. Was möchtest du wissen?',
       fout: 'Da ist etwas schiefgelaufen. Bitte erneut versuchen.', bezig: 'Schreibt…', ai: 'Du chattest mit einem KI-Assistenten. Das Team liest mit.',
       cTitel: 'Soll sich das Team melden?', cSub: 'Eine E-Mail-Adresse oder Telefonnummer reicht. Nichts ist Pflicht.', cNaam: 'Name (optional)', cMail: 'E-Mail', cTel: 'Telefon',
       cOk: 'Senden', cNee: 'Nein, danke', cToestemming: 'Ich bin einverstanden, dass das Team mich dazu kontaktiert.', cBedankt: 'Danke! Das Team meldet sich bald.', cLeeg: 'Gib eine E-Mail-Adresse oder Telefonnummer ein.',
       wa: 'Weiter auf WhatsApp', mail: 'Weiter per E-Mail', beschikbaar: 'verfügbar', status: { gereserveerd: 'reserviert', verkocht: 'verkauft', 'uit aanbod': 'nicht mehr verfügbar', onbekend: 'Status wird geprüft' }, bekijk: 'Ansehen', km: 'km' },
     es: { mTitel: '¿Quieres elegir un momento ahora mismo?', mSub: 'Nuestros huecos libres. El equipo confirma tu cita.', mGeboekt: 'Anotado: ', mGeen: 'Ahora no hay huecos libres en línea; el equipo te llamará para fijar uno.', mNee: 'Más tarde', open: 'Haz tu pregunta', titel: 'Asistente en línea', sub: 'Responde al instante, el equipo hace el seguimiento', ph: 'Escribe tu pregunta…', stuur: 'Enviar', sluit: 'Cerrar',
       welkom: '¡Hola! ¿Buscas un coche concreto o tienes una pregunta sobre alguno? Lo miro en nuestro stock.',
-      vOpen: 'Haz tu pregunta', vTitel: 'Asistente de Helvaro', vSub: 'Responde al instante a tus preguntas sobre Helvaro', vWelkom: '¡Hola! Respondo a tus preguntas sobre Helvaro: qué hace, cómo funciona y cuánto cuesta. ¿Qué te gustaría saber?',
+      vOpen: 'Chatea con Faro', vTitel: 'Faro', vSub: 'De Helvaro · responde al instante', vWelkom: '¡Hola, soy Faro de Helvaro! Respondo tus preguntas sobre Helvaro: qué hace, cómo funciona y cuánto cuesta. ¿Qué te gustaría saber?',
       fout: 'Algo ha salido mal. Inténtalo de nuevo.', bezig: 'Escribiendo…', ai: 'Estás hablando con un asistente de IA. El equipo sigue la conversación.',
       cTitel: '¿Puede el equipo contactarte?', cSub: 'Basta con un correo o un teléfono. Nada es obligatorio.', cNaam: 'Nombre (opcional)', cMail: 'Correo electrónico', cTel: 'Teléfono',
       cOk: 'Enviar', cNee: 'No, gracias', cToestemming: 'Acepto que el equipo me contacte al respecto.', cBedankt: '¡Gracias! El equipo se pondrá en contacto pronto.', cLeeg: 'Indica un correo electrónico o un teléfono.',
@@ -106,6 +112,7 @@
     ':host{all:initial}',
     '*{box-sizing:border-box;font-family:Inter,system-ui,-apple-system,"Segoe UI",sans-serif}',
     '.knop{position:fixed;right:20px;bottom:20px;z-index:2147483000;display:flex;align-items:center;gap:8px;padding:12px 18px;min-height:48px;border:1px solid #2A2A2A;border-radius:999px;background:#1A1A1A;color:#F4E7C8;font-size:15px;font-weight:600;cursor:pointer;box-shadow:0 8px 24px rgba(0,0,0,.28);transition:transform .12s ease-out}',
+    '.av{width:30px;height:30px;border-radius:50%;object-fit:cover;background:#2A2A2A;flex:none;display:block}.knop .av{width:34px;height:34px;margin:-6px 0 -6px -10px}.kop .av{width:36px;height:36px}',
     '.knop:active{transform:scale(.97)}.knop:focus-visible{outline:2px solid #E8D7B1;outline-offset:3px}',
     '.venster{position:fixed;right:20px;bottom:84px;z-index:2147483000;width:min(380px,calc(100vw - 32px));height:min(600px,calc(100vh - 110px));display:none;flex-direction:column;background:#121212;color:#F4E7C8;border:1px solid #2A2A2A;border-radius:18px;overflow:hidden;box-shadow:0 18px 48px rgba(0,0,0,.4)}',
     '.venster.open{display:flex}',
@@ -153,11 +160,14 @@
   function el(tag, cls, tekst) { var e = document.createElement(tag); if (cls) e.className = cls; if (tekst != null) e.textContent = tekst; return e; }
 
   var knop = el('button', 'knop'); knop.type = 'button'; knop.setAttribute('aria-expanded', 'false');
-  knop.appendChild(document.createTextNode('\u{1F4AC} ' + TT('open')));
+  function avatarEl() { var i = el('img', 'av'); i.src = AVATAR; i.alt = ''; i.setAttribute('aria-hidden', 'true'); i.onerror = function () { i.remove(); }; return i; }
+  if (AVATAR) { knop.appendChild(avatarEl()); knop.appendChild(document.createTextNode(TT('open'))); }
+  else knop.appendChild(document.createTextNode('\u{1F4AC} ' + TT('open')));
   if (LINKS) knop.classList.add('l');
   var venster = el('div', 'venster'); if (LINKS) venster.classList.add('l'); venster.setAttribute('role', 'dialog'); venster.setAttribute('aria-label', TT('titel'));
   var kop = el('div', 'kop'); var kopT = el('div', 'kop-t'); kopT.appendChild(el('b', null, TT('titel'))); var kopSub = el('span', null, TT('sub')); kopT.appendChild(kopSub);
   var sluit = el('button', 'x', '×'); sluit.type = 'button'; sluit.setAttribute('aria-label', TT('sluit'));
+  if (AVATAR) kop.appendChild(avatarEl());
   kop.appendChild(kopT); kop.appendChild(sluit);
   var lijst = el('div', 'lijst'); lijst.setAttribute('aria-live', 'polite');
   var voet = el('form', 'voet'); var invoer = el('div', 'invoer');
