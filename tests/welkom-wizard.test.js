@@ -60,13 +60,13 @@ ck('de WhatsApp-status komt uit dezelfde registry als het interne overzicht',
    /mode: 'wa-readiness'/.test(html), null);
 ck('de agenda kent drie toestanden, niet twee (verlopen token telt niet als gekoppeld)',
    /d\.connected && d\.needsReauth/.test(html), null);
-ck('er staat GEEN WhatsApp-koppelknop zolang Embedded Signup niet aangesloten is',
-   !/wiz-wa-knop/.test(html), null);
+ck('de koppelknop verschijnt alleen als wa-es-status zegt dat Embedded Signup aanstaat (geen knop die op een Meta-fout uitkomt)',
+   /t\.soort === 'koppelbaar'[\s\S]{0,400}wiz-wa-eigen-knop/.test(html) && /beschikbaar \? 'koppelbaar' : 'gedeeld'/.test(html), null);
 ck('bij een fout claimt hij niet dat het klaar is',
-   /badge\.textContent = tr\('wiz\.klaar\.onbekend'\)/.test(html), null);
+   /if \(!klaar\) return \{ badge: tr\('wiz\.klaar\.onbekend'\)/.test(html), null);
 /* 'nl_BE' is een Meta-taalcode. Een klant leest "het Nederlands". */
 ck('de taal wordt met haar eigen naam getoond, niet als Meta-code',
-   /function wizardTaalNaam/.test(html) && /var taal = wizardTaalNaam\(d\.taal\)/.test(html), null);
+   /function wizardTaalNaam/.test(html) && /var taal = wizardTaalNaam\(klaar\.taal\)/.test(html), null);
 ck('de 72 uur wordt hier herhaald', /binnen 72 uur rond/.test(html), null);
 
 /* ── Land en taal ──────────────────────────────────────────────────────────

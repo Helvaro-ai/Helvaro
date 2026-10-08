@@ -31,6 +31,7 @@ const _persona    = require('./_dash/persona-sjablonen'); // voorbeeldteksten, v
 const _agenda     = require('./_dash/agenda');     // de agenda, client-side
 const _integraties = require('./_dash/integraties'); // Instellingen: integraties (automotive), client-side
 const _wizardVol  = require('./_dash/wizard-volledig'); // wizard: meldingen/uren, voorraadbronnen, klaar-checklist, client-side
+const _wizardWa   = require('./_dash/wizard-whatsapp'); // eigen WhatsApp-nummer (gedeelde Embedded Signup-kern), WhatsApp- en Meta-kaart in de wizard, client-side
 const _vsync      = require('./_voorraad-sync');          // BEWAAR_DAGEN: één bron voor de 14 dagen
 const _faroUI = require('./_faro/ui');
 
@@ -10621,6 +10622,8 @@ ${_integraties.js()}
 
 /* Onboarding-wizard (meldingen, uren, klaar-checklist) staat in api/_dash/wizard-volledig.js. */
 ${_wizardVol.js()}
+/* Eigen nummer koppelen (de kern die ook Instellingen gebruikt) en de WhatsApp-/Meta-kaarten staan in api/_dash/wizard-whatsapp.js. */
+${_wizardWa.js()}
 
 /* ── Custom Calendly booking modal ──────────────────────────── */
 const calBookState = {
@@ -12208,7 +12211,7 @@ async function startDashboard(skipRefresh = false) {
    (agenda, en voor dealers de voorraad). Klaar toont een checklist met de
    echte status van elk onderdeel, niet een belofte. */
 var WIZARD_STAPPEN = ['intro', 'regio', 'markt', 'bedrijf', 'ai', 'meldingen', 'kanalen', 'koppelingen', 'klaar'];
-var _wizStatus = { whatsapp: null, email: null, website: null, agenda: null, voorraad: null };
+var _wizStatus = { whatsapp: null, eigenNr: null, email: null, website: null, agenda: null, voorraad: null, meta: null };
 var WIZARD_MASCOTTE = {
   intro:   '/faro/falcon-idle.webp',
   regio:   '/faro/falcon-idle.webp',
@@ -12334,6 +12337,8 @@ function wizardSluit(afgerond) {
   if (el) el.remove();
   document.removeEventListener('keydown', wizardToetsen);
   _wizKlaarGeladen = false;
+  /* Een openstaande "terug naar Klaar" hoort bij deze opening, niet bij de volgende. */
+  wizTerugNaarKlaar = '';
   wizardVergeetStap();
   /* Welcome Done zetten -- ook bij overslaan. De wizard hoort niet elke login
      terug te komen; de checklist neemt het over. Best-effort: lukt het niet,
@@ -12475,54 +12480,14 @@ async function wizardVolgende() {
 }
 
 /* ── WhatsApp: wat is er echt waar ────────────────────────────────────────
-   Er staat hier bewust GEEN koppelknop. Een eigen WhatsApp-nummer koppelen
-   loopt via Meta's Embedded Signup, en dat vraagt Advanced Access op
-   whatsapp_business_management via App Review (Tech Provider). Die goedkeuring
-   is nog niet binnen -- api/_waes.js is compleet maar nergens aangesloten. Een
-   knop die daarop uitkomt geeft de klant een foutmelding van Meta in plaats van
-   een koppeling, en dat is erger dan geen knop.
-
-   Wat de klant WEL moet weten: hij draait op het gedeelde Helvaro-nummer, en
-   zijn berichten moeten per taal door Meta goedgekeurd worden. Die stand komt
-   uit dezelfde registry als het interne overzicht (api/_wa-templates.js), dus
-   wat hij hier leest kan niet afwijken van wat wij zien. */
-async function wizardWhatsAppStatus() {
-  var badge = document.getElementById('wiz-wa-badge');
-  var uitleg = document.getElementById('wiz-wa-uitleg');
-  if (!badge || !uitleg) return;
-  try {
-    var r = await fetch(API_BASE + '/leads', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'x-api-key': state.apiKey },
-      body: JSON.stringify({ mode: 'wa-readiness' })
-    });
-    if (!r.ok) throw hvFout(r);
-    var d = await r.json();
-    var taal = wizardTaalNaam(d.taal);
-
-    if (!d.ondersteund) {
-      badge.textContent = tr('wiz.wa.nietMogelijk');
-      badge.style.color = 'var(--danger-ink, #b91c1c)';
-      uitleg.textContent = tr('wiz.wa.geenTaal', { taal: taal });
-      return;
-    }
-    if (d.klaar) {
-      _wizStatus.whatsapp = true;
-      badge.textContent = tr('st.klaar');
-      badge.style.color = 'var(--success-ink, #15803d)';
-      uitleg.textContent = tr('wiz.wa.klaarSub', { taal: taal });
-      return;
-    }
-    _wizStatus.whatsapp = false;
-    badge.textContent = tr('wiz.wa.bezig');
-    badge.style.color = 'var(--warning-ink, #b45309)';
-    uitleg.textContent = tr('wiz.wa.bezigSub', { taal: taal });
-  } catch (e) {
-    /* Niet doen alsof het klaar is als we het niet weten. */
-    badge.textContent = tr('wiz.klaar.onbekend');
-    uitleg.textContent = tr('wiz.later.dashboard');
-  }
-}
+   De WhatsApp-kaart van de stap 'kanalen' staat in api/_dash/wizard-whatsapp.js
+   (wizWaKaart). Sinds Meta ons als Tech Provider goedkeurde kan de klant hier
+   zijn EIGEN nummer koppelen, met dezelfde Embedded Signup-kern als
+   Instellingen (waesKern). Staat Embedded Signup voor dit account uit, dan
+   blijft er alleen de status van het gedeelde nummer: bij een niet-dealer de
+   sjablonen per taal (zelfde registry als het interne overzicht,
+   api/_wa-templates.js), bij een dealer de uitleg dat de koper het gesprek
+   zelf begint. Geen knop die op een Meta-foutmelding uitkomt. */
 
 /* ── Google Agenda ────────────────────────────────────────────────────────
    Drie toestanden, niet twee. "Er staat een token" is niet hetzelfde als
@@ -12558,6 +12523,8 @@ async function wizardAgendaStatus() {
     var d = await r.json();
 
     if (d && d.connected && d.needsReauth) {
+      /* Een verlopen token telt niet als gekoppeld: op Klaar "later", niet "nog niet gecontroleerd". */
+      _wizStatus.agenda = false;
       badge.textContent = tr('wiz.cal.opnieuw');
       badge.style.color = 'var(--warning-ink, #b45309)';
       uitleg.textContent = tr('wiz.cal.verlopen', { email: d.email ? ' (' + d.email + ')' : '' });
@@ -12779,14 +12746,9 @@ function wizardTeken() {
     titel.textContent = tr('wiz.kan.t');
     sub.textContent = tr('wiz.kan.s');
     body.innerHTML = kaartHtml('wa', 'WhatsApp', false) + kaartHtml('mail', tr('conv.kanaal.email'), true) + kaartHtml('web', tr('widget.titel'), true);
-    if ((typeof isDealer === 'function') && isDealer()) {
-      document.getElementById('wiz-wa-uitleg').textContent = tr('wiz.wa.dealer');
-      document.getElementById('wiz-wa-badge').textContent = tr('wiz.wa.dealer.badge');
-      _wizStatus.whatsapp = true;
-      wizWaDealerKnop();
-    } else {
-      wizardWhatsAppStatus();
-    }
+    var dealerWa = (typeof isDealer === 'function') && isDealer();
+    wizWaKaart(dealerWa);
+    if (dealerWa) wizMailDealerZin();
     wizardMailStatus();
     wizardWebStatus();
     return;
@@ -12796,9 +12758,10 @@ function wizardTeken() {
     titel.textContent = tr('wiz.kopp.t');
     sub.textContent = tr('wiz.kopp.s');
     var dealerK = (typeof isDealer === 'function') && isDealer();
-    body.innerHTML = kaartHtml('gcal', tr('set.gcal'), false) + (dealerK ? kaartHtml('voorraad', tr('inv.titel'), false) : '');
+    body.innerHTML = kaartHtml('gcal', tr('set.gcal'), false)
+      + (dealerK ? kaartHtml('voorraad', tr('inv.titel'), false) + kaartHtml('meta', tr('wiz.meta.t'), true) : '');
     wizardAgendaStatus();
-    if (dealerK) { wizardVoorraadStatus(); wizKoppelingenExtra(); }
+    if (dealerK) { wizardVoorraadStatus(); wizKoppelingenExtra(); wizMetaStatus(); }
     return;
   }
 
@@ -12829,14 +12792,17 @@ async function wizardKlaarVerversen(dealer) {
     vraagJson('/leads', { mode: 'widget-status' }),
     vraagJson('/gcal', { mode: 'status' }),
     dealer ? vraagJson('/leads', { mode: 'inventory-status' }) : Promise.resolve(null),
-    dealer ? Promise.resolve(null) : vraagJson('/leads', { mode: 'wa-readiness' }),
+    vraagJson('/leads', { mode: 'wa-es-status' }),
+    vraagJson('/leads', { mode: 'wa-readiness' }),
+    dealer ? vraagJson('/leads', { mode: 'inventory-providers' }) : Promise.resolve(null),
   ]);
   if (res[0]) _wizStatus.email = res[0].verbonden === true;
   if (res[1]) _wizStatus.website = res[1].aan === true;
   if (res[2]) _wizStatus.agenda = Boolean(res[2].connected && !res[2].needsReauth);
   if (res[3]) _wizStatus.voorraad = (res[3].status === 'HEALTHY' || res[3].status === 'SYNCING') && (res[3].count || 0) > 0;
-  if (dealer) _wizStatus.whatsapp = true;
-  else if (res[4] && typeof res[4].klaar === 'boolean') _wizStatus.whatsapp = res[4].klaar;
+  /* WhatsApp en het eigen nummer: dezelfde afleiding als de kanalenkaart. */
+  wizKlaarWhatsApp(res[4], res[5], dealer);
+  if (dealer) { var meta = wizMetaToestand(res[6]); _wizStatus.meta = meta ? meta.aan : null; }
   if (WIZARD_STAPPEN[_wizardStap] === 'klaar') wizardTeken();
 }
 
@@ -12935,7 +12901,12 @@ async function wizardVoorraadStatus() {
     var ok = d.status === 'HEALTHY' || d.status === 'SYNCING';
     _wizStatus.voorraad = ok && (d.count || 0) > 0;
     wizBadge('voorraad', tr('inv.status.' + d.status), ok ? 'var(--success-ink, #15803d)' : '');
-    wizUitleg('voorraad', (d.count ? tr('inv.aantal', { n: d.count }) + ' · ' : '') + tr(d.count ? 'wiz.voorraad.ok' : 'wiz.voorraad.leeg'));
+    var delen = [];
+    if (d.count) delen.push(tr('inv.aantal', { n: d.count }));
+    var bronnenTekst = wizVoorraadBronnenTekst(d);
+    if (bronnenTekst) delen.push(bronnenTekst);
+    delen.push(tr(d.count ? 'wiz.voorraad.ok' : 'wiz.voorraad.leeg'));
+    wizUitleg('voorraad', delen.join(' · '));
     wizKnop('voorraad', tr(d.count ? 'inv.sync' : 'wiz.voorraad.naar'), function () {
       if (d.count) { voorraadSync(); this.style.display = 'none'; }
       else { wizardSluit(false); navigateTo('panden'); }
@@ -18939,8 +18910,6 @@ async function sendTestMessage() {
    naar 'wa-es-complete', dat token wisselt, abonneert, registreert en opslaat.
    De projectcode komt nooit uit de browser; die staat in de sessie. */
 var _waesStaat = null;
-var _waesSdkKlaar = null;
-var _waesGekozen = null;
 
 async function laadWaes() {
   var rij = document.getElementById('set-waes');
@@ -19035,76 +19004,21 @@ function waesOntkoppelen() {
   });
 }
 
-function waesSdk(appId) {
-  if (_waesSdkKlaar) return _waesSdkKlaar;
-  _waesSdkKlaar = new Promise(function (resolve, reject) {
-    if (window.FB) { resolve(window.FB); return; }
-    window.fbAsyncInit = function () {
-      try { FB.init({ appId: appId, autoLogAppEvents: false, xfbml: false, version: 'v23.0' }); resolve(window.FB); }
-      catch (e) { reject(e); }
-    };
-    var sc = document.createElement('script');
-    sc.src = 'https://connect.facebook.net/en_US/sdk.js';
-    sc.async = true; sc.defer = true; sc.crossOrigin = 'anonymous';
-    sc.onerror = function () { reject(new Error('sdk')); };
-    document.head.appendChild(sc);
-    setTimeout(function () { reject(new Error('sdk-timeout')); }, 15000);
-  });
-  return _waesSdkKlaar;
-}
-
-/* Meta stuurt waba_id + phone_number_id met een postMessage vanuit de popup. */
-window.addEventListener('message', function (event) {
-  if (event.origin !== 'https://www.facebook.com' && event.origin !== 'https://web.facebook.com') return;
-  var data = null;
-  try { data = typeof event.data === 'string' ? JSON.parse(event.data) : event.data; } catch (e) { return; }
-  if (!data || data.type !== 'WA_EMBEDDED_SIGNUP') return;
-  if (data.event === 'FINISH' || data.event === 'FINISH_ONLY_WABA') {
-    _waesGekozen = { wabaId: String((data.data && data.data.waba_id) || ''), phoneNumberId: String((data.data && data.data.phone_number_id) || '') };
-  } else if (data.event === 'CANCEL') {
-    _waesGekozen = { cancelled: true };
-  }
-});
-
+/* De kern van het koppelen (SDK laden, popup, id's afwachten, wa-es-complete)
+   staat in waesKern(), in api/_dash/wizard-whatsapp.js: de wizard gebruikt
+   dezelfde functie en dezelfde message-listener. */
 async function waesKoppelen() {
   var knop = document.getElementById('set-waes-knop');
   var d = _waesStaat;
   if (!knop || !d || !d.beschikbaar) return;
   knop.disabled = true;
   knop.textContent = tr('set.waes.busy');
-  _waesGekozen = null;
-  try {
-    var FBsdk = await waesSdk(d.appId);
-    var antwoord = await new Promise(function (resolve) {
-      FBsdk.login(function (resp) { resolve(resp); }, {
-        config_id: d.configId,
-        response_type: 'code',
-        override_default_response_type: true,
-        extras: { setup: {}, featureType: '', sessionInfoVersion: '3' }
-      });
-    });
-    var code = antwoord && antwoord.authResponse && antwoord.authResponse.code;
-    /* De message met de id's komt soms net na de login-callback. */
-    for (var i = 0; i < 20 && !_waesGekozen; i++) await new Promise(function (r) { setTimeout(r, 150); });
-    if (!code || !_waesGekozen || _waesGekozen.cancelled || !_waesGekozen.wabaId || !_waesGekozen.phoneNumberId) {
-      toast(tr('set.waes.cancelled'), 'info');
-      waesToon(d);
-      return;
-    }
-    var r = await fetch(API_BASE + '/leads', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'x-api-key': state.apiKey },
-      body: JSON.stringify({ mode: 'wa-es-complete', code: code, wabaId: _waesGekozen.wabaId, phoneNumberId: _waesGekozen.phoneNumberId })
-    });
-    var uit = await r.json().catch(function () { return {}; });
-    if (!r.ok) { toast(uit.error || tr('set.waes.failed'), 'error'); waesToon(d); return; }
-    toast(tr('set.waes.done'), 'success');
-    await laadWaes();
-    try { laadWhatsAppInstellingen(true); } catch (e) {}
-  } catch (e) {
-    toast(tr('set.waes.failed'), 'error');
-    waesToon(d);
-  }
+  var r = await waesKern(d);
+  if (r.cancelled) { toast(tr('set.waes.cancelled'), 'info'); waesToon(d); return; }
+  if (!r.ok) { toast(r.error || tr('set.waes.failed'), 'error'); waesToon(d); return; }
+  toast(tr('set.waes.done'), 'success');
+  await laadWaes();
+  try { laadWhatsAppInstellingen(true); } catch (e) {}
 }
 
 var _waInstellingenBezig = false;

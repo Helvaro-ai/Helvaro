@@ -231,6 +231,7 @@ console.log('\n  de zijbalk groepeert op wat iemand zoekt');
 console.log('\n  de onboarding zegt tegen een dealer iets anders');
 {
   const dash = fs.readFileSync(BASE + 'api/dashboard.js', 'utf8')
+               + fs.readFileSync(BASE + 'api/_dash/wizard-whatsapp.js', 'utf8')
                + require(BASE + 'api/_dash/styles.js').css();
   /* Een dealer die te horen krijgt "deel deze link onder je advertenties" doet
      daar niets mee: zijn leads komen van AutoScout24, waar de link al bestaat.
@@ -239,8 +240,8 @@ console.log('\n  de onboarding zegt tegen een dealer iets anders');
   ck('de slotstap kijkt naar de vertical', /var dealer = \(typeof isDealer/.test(dash));
   ck('en heeft een eigen tekst', /tr\('wiz\.klaar\.dealer'\)/.test(dash));
   ck('de koppelingenstap ook', /tr\('wiz\.wa\.dealer'\)/.test(dash));
-  ck('en slaat de sjabloon-controle over voor een dealer',
-    /isDealer\(\)\) \{[\s\S]{0,400}wiz\.wa\.dealer[\s\S]{0,300}\} else \{[\s\S]{0,80}wizardWhatsAppStatus/.test(dash));
+  ck('en slaat de sjabloon-controle over voor een dealer (de dealer-tak in de WhatsApp-kaart)',
+    /if \(dealer\) \{[\s\S]{0,200}tr\('wiz\.wa\.dealer'\)[\s\S]{0,300}\} else \{[\s\S]{0,80}wizWaGedeeldTekst\(klaar\)/.test(dash));
 
   const i18n = require('../api/_i18n');
   for (const k of ['wiz.klaar.dealer', 'wiz.wa.dealer', 'wiz.wa.dealer.badge']) {
@@ -257,7 +258,7 @@ console.log('\n  de onboarding zegt tegen een dealer iets anders');
   /* De makelaarstekst mag NIET verdwenen zijn -- dit is een tak erbij, geen
      vervanging. */
   ck('de makelaarstekst bestaat nog', i18n.t('nl', 'wiz.klaar.gcal').length > 10);
-  ck('en wizardWhatsAppStatus wordt nog aangeroepen', /wizardWhatsAppStatus\(\);/.test(dash));
+  ck('en de WhatsApp-kaart wordt nog getekend (wizWaKaart, met de sjabloonstatus voor niet-dealers)', /wizWaKaart\(dealerWa\);/.test(dash) && /mode: 'wa-readiness'|wizWaVraag\('wa-readiness'\)/.test(dash));
 }
 
 console.log('\n  je kunt later van markt wisselen, en dat verwijdert niets');

@@ -70,9 +70,12 @@ var WIZ_NL_DAG_TERUG = { maa: 'ma', din: 'di', woe: 'wo', don: 'do', vri: 'vr', 
 
 /* Waar elke open regel van de checklist naartoe gaat. 'stap' = terug naar die
    stap van de wizard (en daarna meteen weer naar Klaar); 'sluit' = wizard
-   sluiten en naar die pagina. */
+   sluiten en naar die pagina; 'instel' = wizard sluiten en naar die sectie van
+   Instellingen. */
 var WIZ_FIX = {
   whatsapp: { stap: 'kanalen' },
+  eigennr:  { stap: 'kanalen' },
+  meta:     { instel: 'set-integraties' },
   alerts:   { stap: 'meldingen' },
   uren:     { stap: 'meldingen' },
   agenda:   { stap: 'koppelingen' },
@@ -374,7 +377,16 @@ function wizKlaarRijen(dealer) {
       detail: wizUrenNaarScherm(c.workingHours || '') },
     { id: 'agenda', naam: tr('set.gcal'), st: _wizStatus.agenda, fix: 'wiz.fix.koppel' }
   ];
-  if (dealer) rijen.push({ id: 'voorraad', naam: tr('inv.titel'), st: _wizStatus.voorraad, fix: 'wiz.fix.voorraad' });
+  /* Een eigen nummer is een extraatje, en alleen een rij als Embedded Signup
+     voor dit account aanstaat (of er al een nummer hangt): true/false, anders
+     (nog niet gecontroleerd, of uit) geen rij. */
+  if (_wizStatus.eigenNr === true || _wizStatus.eigenNr === false) {
+    rijen.splice(1, 0, { id: 'eigennr', naam: tr('wiz.klaar.rij.eigenNr'), st: _wizStatus.eigenNr, fix: 'wiz.fix.koppel', optioneel: true });
+  }
+  if (dealer) {
+    rijen.push({ id: 'voorraad', naam: tr('inv.titel'), st: _wizStatus.voorraad, fix: 'wiz.fix.voorraad' });
+    rijen.push({ id: 'meta', naam: tr('wiz.klaar.rij.meta'), st: _wizStatus.meta === undefined ? null : _wizStatus.meta, fix: 'wiz.fix.koppel', optioneel: true });
+  }
   rijen.push({ id: 'email', naam: tr('conv.kanaal.email'), st: _wizStatus.email, fix: 'wiz.fix.koppel', optioneel: true });
   rijen.push({ id: 'website', naam: tr('widget.titel'), st: _wizStatus.website, fix: 'wiz.fix.aanzetten', optioneel: true });
   return rijen;
@@ -444,6 +456,7 @@ function wizFixActie(id) {
   var d = WIZ_FIX[id];
   if (!d) return;
   if (d.sluit) { wizardSluit(false); navigateTo(d.sluit); return; }
+  if (d.instel) { wizNaarInstellingen(d.instel); return; }
   wizTerugNaarKlaar = d.stap;
   wizardGa(WIZARD_STAPPEN.indexOf(d.stap) - _wizardStap);
 }

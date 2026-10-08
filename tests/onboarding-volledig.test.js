@@ -34,6 +34,7 @@ const lees = (p) => fs.readFileSync(path.join(ROOT, p), 'utf8');
 
 const i18n = require('../api/_i18n');
 const modul = require('../api/_dash/wizard-volledig');
+const modulWa = require('../api/_dash/wizard-whatsapp');
 const regio = require('../api/_regio');
 const TALEN = ['nl', 'fr', 'en', 'de'];
 
@@ -48,10 +49,10 @@ dash({ method: 'GET', url: '/dashboard', headers: {} },
 function bouw(opt) {
   opt = opt || {};
   const taal = opt.taal || 'nl';
-  const log = { bewaard: [], sluit: 0, nav: [], fetch: [], scroll: [], ga: [] };
+  const log = { bewaard: [], sluit: 0, nav: [], fetch: [], scroll: [], ga: [], toast: [], listeners: [], knop: [] };
   const els = {};
   const mkEl = (p) => Object.assign({
-    value: '', textContent: '', className: '', disabled: false, hidden: false, innerHTML: '',
+    style: {}, value: '', textContent: '', className: '', disabled: false, hidden: false, innerHTML: '',
     options: [], selectedIndex: 0, offsetParent: {},
     attrs: {},
     addEventListener() {}, focus() {}, scrollIntoView(o) { log.scroll.push(o); },
@@ -74,6 +75,7 @@ function bouw(opt) {
     console, JSON, Intl, Object, String, Number, Math, Date, Array, RegExp, Promise,
     LOCALE: taal === 'nl' ? 'nl-BE' : taal, API_BASE: '/api', state: { apiKey: 'sleutel', clientName: 'Teljo' },
     document: { getElementById: (id) => els[id] || null },
+    window: { FB: opt.FB, addEventListener: (t, f) => { log.listeners.push(f); } },
     setTimeout: (f) => { f(); return 0; },
     escHtml: (x) => String(x).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;'),
     tr: (k, v) => {
@@ -84,22 +86,32 @@ function bouw(opt) {
     },
     fetch: async (url, o) => {
       log.fetch.push({ url, o, body: JSON.parse(o.body) });
-      return opt.fetchAntwoord ? opt.fetchAntwoord() : { ok: true, json: async () => ({ ok: true, sentTo: '32470123456', via: 'vrij' }) };
+      return opt.fetchAntwoord ? opt.fetchAntwoord(JSON.parse(o.body)) : { ok: true, json: async () => ({ ok: true, sentTo: '32470123456', via: 'vrij' }) };
     },
     navigateTo: (p) => log.nav.push(p),
     wizardSluit: () => { log.sluit++; },
     wizardBewaar: async (v) => { if (opt.bewaarFout) throw new Error('mis'); log.bewaard.push(v); return {}; },
     wizKnop: () => {},
+    toast: (m, t) => { log.toast.push([t, m]); },
+    wizardTaalNaam: (c) => String(c || ''),
+    laadWaes: () => {},
   });
   vm.runInContext(
     "var WIZARD_STAPPEN = ['intro','regio','markt','bedrijf','ai','meldingen','kanalen','koppelingen','klaar'];"
     + 'var _wizardStap = 0;'
     + 'var _wizardConfig = ' + JSON.stringify(opt.config === undefined ? { country: 'BE', language: taal } : opt.config) + ';'
-    + "var _wizStatus = { whatsapp: null, email: null, website: null, agenda: null, voorraad: null };"
+    + "var _wizStatus = { whatsapp: null, eigenNr: null, email: null, website: null, agenda: null, voorraad: null, meta: null };"
     + 'function wizardGa(d) { var doel = _wizardStap + d; if (doel < 0 || doel >= WIZARD_STAPPEN.length) return; _wizardStap = doel; __ga.push(doel); }'
     + 'var __ga = [];',
     ctx);
+  /* De kaart-helpers die in dashboard.js staan (wizBadge/wizUitleg), en een wizKnop die onthoudt wat hij kreeg. */
+  vm.runInContext(
+    "function wizBadge(id, t, k) { var b = document.getElementById('wiz-' + id + '-badge'); if (b) { b.textContent = t; b.style.color = k || ''; } }"
+    + "function wizUitleg(id, t) { var u = document.getElementById('wiz-' + id + '-uitleg'); if (u) u.textContent = t; }"
+    + "function wizKnop(id, t, f) { var k = document.getElementById('wiz-' + id + '-knop'); if (!k) return; k.textContent = t; k.style.display = ''; k.onclick = f; }",
+    ctx);
   vm.runInContext(modul.js(), ctx);
+  vm.runInContext(modulWa.js(), ctx);
   return { ctx, log, els, mkEl, telVeld, run: (s) => vm.runInContext(s, ctx) };
 }
 const kloon = (x) => JSON.parse(JSON.stringify(x));
@@ -125,8 +137,11 @@ ck('de module verwijst nergens naar een backtick of dollar-accolade (hij wordt i
     /stap === 'meldingen' && !\(await wizMeldingenBewaar\(knop, fout\)\)/.test(src) && /wizardGa\(wizVolgendeDelta\(\)\)/.test(src), null);
   ck('wizardTeken tekent de stap, de bronnen en de checklist via de module',
     /wizMeldingenTeken\(titel, sub, body\)/.test(src) && /wizKoppelingenExtra\(\)/.test(src) && /wizKlaarHtml\(dealer, link, volgende\)/.test(src), null);
-  ck('de dealer-WhatsApp-uitleg staat nog in de dealer-tak, met de knop erbij',
-    /isDealer\(\)\) \{[\s\S]{0,400}wiz\.wa\.dealer[\s\S]{0,300}wizWaDealerKnop\(\);[\s\S]{0,40}\} else \{[\s\S]{0,80}wizardWhatsAppStatus/.test(src), null);
+  ck('de kanalenstap tekent de WhatsApp-kaart via de module (voor dealers en andere markten) en zet de platformzin op de e-mailkaart voor dealers',
+    /var dealerWa = \(typeof isDealer === 'function'\) && isDealer\(\);\s*wizWaKaart\(dealerWa\);\s*if \(dealerWa\) wizMailDealerZin\(\);/.test(src), null);
+  ck('dashboard.js haalt ook de WhatsApp-module binnen en plakt hem in', /require\('\.\/_dash\/wizard-whatsapp'\)/.test(src) && /\$\{_wizardWa\.js\(\)\}/.test(src), null);
+  ck('de WhatsApp-module verwijst nergens naar een backtick of dollar-accolade', !/`/.test(modulWa.js()) && !/\$\{/.test(modulWa.js()), null);
+  ck('de koppelingenstap tekent de Meta-kaart en laadt de status', /kaartHtml\('meta', tr\('wiz\.meta\.t'\), true\)/.test(src) && /wizMetaStatus\(\);/.test(src), null);
   const regels = src.split('\n').length;
   ck('api/dashboard.js blijft onder de 22.000 regels (' + regels + ')', regels < 22000, regels);
 }
@@ -352,9 +367,17 @@ async function rest() {
     const w = bouw();
     ck('de checklist verwijst elke regel naar een plek',
       JSON.stringify(kloon(w.ctx.WIZ_FIX)) === JSON.stringify({
-        whatsapp: { stap: 'kanalen' }, alerts: { stap: 'meldingen' }, uren: { stap: 'meldingen' }, agenda: { stap: 'koppelingen' },
+        whatsapp: { stap: 'kanalen' }, eigennr: { stap: 'kanalen' }, meta: { instel: 'set-integraties' },
+        alerts: { stap: 'meldingen' }, uren: { stap: 'meldingen' }, agenda: { stap: 'koppelingen' },
         voorraad: { sluit: 'panden' }, email: { stap: 'kanalen' }, website: { stap: 'kanalen' } }), kloon(w.ctx.WIZ_FIX));
     ck('elke doelstap bestaat in de stappenlijst', Object.values(kloon(w.ctx.WIZ_FIX)).every((d) => !d.stap || STAPPEN.indexOf(d.stap) !== -1), null);
+    {
+      const wm = bouw(); wm.els['set-integraties'] = wm.mkEl(); wm.ctx.wizFixActie('meta');
+      ck('de Meta-regel sluit de wizard en gaat naar Instellingen \u2192 Integraties', wm.log.sluit === 1 && wm.log.nav.join() === 'instellingen' && wm.log.scroll.length === 1, [wm.log.sluit, wm.log.nav]);
+      const we2 = bouw(); we2.run("_wizardStap = WIZARD_STAPPEN.indexOf('klaar');"); we2.ctx.wizFixActie('eigennr');
+      ck('de eigen-nummerregel gaat terug naar kanalen en daarna meteen weer naar Klaar',
+        we2.ctx.WIZARD_STAPPEN[we2.ctx._wizardStap] === 'kanalen' && we2.ctx.wizVolgendeDelta() === STAPPEN.indexOf('klaar') - STAPPEN.indexOf('kanalen'), null);
+    }
 
     w.run("_wizardStap = WIZARD_STAPPEN.indexOf('klaar');");
     w.ctx.wizFixActie('alerts');
@@ -376,10 +399,10 @@ async function rest() {
   console.log('\n— de checklist op Klaar leest echte status —');
   {
     const w = bouw({ taal: 'nl', config: { country: 'BE', language: 'nl', notifyPhone: '+32470123456', workingHours: 'maa-vri 9-18', aiName: 'Faro', autoReplyTpl: 'Hallo {naam}' } });
-    w.run("_wizStatus = { whatsapp: true, email: false, website: null, agenda: false, voorraad: true };");
+    w.run("_wizStatus = { whatsapp: true, eigenNr: null, email: false, website: null, agenda: false, voorraad: true, meta: true };");
     const h = w.ctx.wizKlaarHtml(true, 'https://app.helvaro.pro/start/X', 'volgende zin');
     const rijen = (h.match(/data-wiz-rij="([a-z]+)"/g) || []).map((x) => x.slice(14, -1));
-    ck('dealer: zeven regels in de gevraagde volgorde', rijen.join() === 'whatsapp,alerts,uren,agenda,voorraad,email,website', rijen);
+    ck('dealer: acht regels in de gevraagde volgorde (geen eigen-nummerregel zolang Embedded Signup niet bekend is)', rijen.join() === 'whatsapp,alerts,uren,agenda,voorraad,meta,email,website', rijen);
     const fix = (h.match(/data-wiz-fix="([a-z]+)"/g) || []).map((x) => x.slice(14, -1));
     ck('alleen open regels hebben een knop (agenda, e-mail, website)', fix.join() === 'agenda,email,website', fix);
     ck('elke knop heeft een naam voor schermlezers (actie + onderdeel)', (h.match(/<button type="button" class="wiz-kaart-knop wiz-klaar-fix" data-wiz-fix="[a-z]+" aria-label="[^"]{6,}">/g) || []).length === 3, null);
@@ -389,12 +412,12 @@ async function rest() {
     ck('het testbericht-blok staat erin, met knop en live-regio',
       /id="wizard-test-knop"/.test(h) && /id="wizard-test-uit"[^>]*role="status"[^>]*aria-live="polite"/.test(h), null);
 
-    w.run("_wizStatus = { whatsapp: true, email: true, website: true, agenda: true, voorraad: true };");
+    w.run("_wizStatus = { whatsapp: true, eigenNr: true, email: true, website: true, agenda: true, voorraad: true, meta: true };");
     const h2 = w.ctx.wizKlaarHtml(true, '', 'v');
     ck('alles groen: geen knoppen en de zin zegt dat alles klaarstaat', !/data-wiz-fix=/.test(h2) && /Alles wat nodig is staat klaar/.test(h2), null);
 
     const w3 = bouw({ taal: 'nl', config: { country: 'BE', language: 'nl', notifyPhone: '+32470123456', waAlertOff: true, workingHours: '' } });
-    w3.run("_wizStatus = { whatsapp: true, email: true, website: true, agenda: true, voorraad: null };");
+    w3.run("_wizStatus = { whatsapp: true, eigenNr: null, email: true, website: true, agenda: true, voorraad: null, meta: null };");
     const h3 = w3.ctx.wizKlaarHtml(false, '', 'v');
     ck('een nummer met seintjes UIT telt niet als klaar', /data-wiz-fix="alerts"/.test(h3), null);
     ck('geen werkuren: open maar optioneel (telt niet mee: alleen de seintjes staan open)', /data-wiz-fix="uren"/.test(h3) && /Nog open: 1\./.test(h3), h3.match(/Nog open[^<]*/));
@@ -471,6 +494,242 @@ async function rest() {
     ck('de nieuwe klassen bestaan', ['.wiz-tel ', '.wiz-tel-land', '.wiz-chip', '.wiz-test-uit', '.wiz-klaar-detail'].every((k) => css.indexOf(k) !== -1), null);
     ck('met zichtbare focus op het telefoonveld en de landkeuze', /\.wiz-tel:focus-within \{[^}]*box-shadow/.test(css) && /\.wiz-tel-land:focus-within \{[^}]*outline/.test(css), null);
     ck('geen font-size in px erbij', !/\.wiz-(tel|chip|test)[^{]*\{[^}]*font-size:\s*[0-9.]+px/.test(css), null);
+  }
+
+  /* ══ 6. Eigen WhatsApp-nummer in de wizard ═════════════════════════════════ */
+  console.log('\n— WhatsApp-kaart: eigen nummer (wizard-whatsapp.js) —');
+  {
+    const ES_UIT = { beschikbaar: false, gekoppeld: false, nummer: null };
+    const ES_AAN = { beschikbaar: true, appId: '111', configId: '222', gekoppeld: false, nummer: null };
+    const ES_GEKOPPELD = { beschikbaar: true, appId: '111', configId: '222', gekoppeld: true, nummer: { number: '+32 470 12 34 56', name: 'Garage Teljo', quality: 'UNKNOWN' } };
+    const KLAAR_GEDEELD = { eigenNummer: false, klaar: true, ondersteund: true, taal: 'nl_BE' };
+    const BEZIG_GEDEELD = { eigenNummer: false, klaar: false, ondersteund: true, taal: 'nl_BE' };
+
+    /* — de zuivere toestandsfunctie — */
+    const w0 = bouw();
+    const T = (es, kl, dealer) => kloon(w0.ctx.wizWaToestand(es, kl, dealer));
+    ck('niet beschikbaar (dealer): gedeeld nummer, WhatsApp telt als klaar, geen eigen-nummerregel',
+      (() => { const t = T(ES_UIT, null, true); return t.soort === 'gedeeld' && t.whatsapp === true && t.eigenNr === null; })(), T(ES_UIT, null, true));
+    ck('niet beschikbaar (andere markt): volgt de sjabloonstatus van het gedeelde nummer',
+      T(ES_UIT, KLAAR_GEDEELD, false).whatsapp === true && T(ES_UIT, BEZIG_GEDEELD, false).whatsapp === false && T(ES_UIT, null, false).whatsapp === null
+      && T(ES_UIT, { klaar: false, ondersteund: false }, false).whatsapp === false, null);
+    ck('wa-es-status onbereikbaar: valt terug op gedeeld, zonder eigen-nummerregel', T(null, KLAAR_GEDEELD, false).soort === 'gedeeld' && T(null, KLAAR_GEDEELD, false).eigenNr === null, null);
+    ck('beschikbaar en nog niet gekoppeld: koppelbaar, eigen nummer = false (open, optioneel)', T(ES_AAN, KLAAR_GEDEELD, false).soort === 'koppelbaar' && T(ES_AAN, KLAAR_GEDEELD, false).eigenNr === false, null);
+    ck('gekoppeld, sjablonen goedgekeurd: eigen + klaar, ook voor een niet-dealer',
+      (() => { const t = T(ES_GEKOPPELD, { eigenNummer: true, klaar: true, eigenToestand: { onbekend: false, ingediend: 0, bezig: false } }, false); return t.soort === 'eigen' && t.sjablonen === 'klaar' && t.whatsapp === true && t.eigenNr === true; })(), null);
+    ck('gekoppeld, sjablonen nog niet goedgekeurd: bezig; een niet-dealer is dan NIET klaar (hij hangt aan sjablonen), een dealer wel (koper begint)',
+      (() => { const kl = { eigenNummer: true, klaar: false, eigenToestand: { onbekend: false, ingediend: 4, bezig: true } };
+        return T(ES_GEKOPPELD, kl, false).sjablonen === 'bezig' && T(ES_GEKOPPELD, kl, false).whatsapp === false && T(ES_GEKOPPELD, kl, true).whatsapp === true && T(ES_GEKOPPELD, kl, true).eigenNr === true; })(), null);
+    ck('gekoppeld maar sjablonen niet te lezen: onbekend (niet "bezig", niet "klaar")',
+      T(ES_GEKOPPELD, { klaar: false, eigenToestand: { onbekend: true } }, false).sjablonen === 'onbekend' && T(ES_GEKOPPELD, null, false).sjablonen === 'onbekend' && T(ES_GEKOPPELD, null, false).whatsapp === null, null);
+    ck('een eigen nummer dat al hangt blijft zichtbaar als Embedded Signup zelf uit staat', T({ beschikbaar: false, gekoppeld: true }, null, true).soort === 'eigen', null);
+
+    /* — de kaart — */
+    const kaart = async (es, kl, dealer, taal) => {
+      const w = bouw({ taal: taal || 'nl', fetchAntwoord: (b) => ({ ok: true, json: async () => (b.mode === 'wa-es-status' ? es : (b.mode === 'wa-readiness' ? kl : {})) }) });
+      for (const id of ['wiz-wa-badge', 'wiz-wa-uitleg', 'wiz-wa-extra', 'wiz-wa-knop', 'wiz-wa-eigen-knop']) w.els[id] = w.mkEl();
+      await w.ctx.wizWaKaart(dealer);
+      return w;
+    };
+    {
+      const w = await kaart(ES_UIT, null, true);
+      ck('niet beschikbaar (dealer): oude gedrag - uitleg + knop naar Instellingen, GEEN koppelknop',
+        /AutoScout24/.test(w.els['wiz-wa-uitleg'].textContent) && w.els['wiz-wa-uitleg'].textContent.indexOf(i18n.t('nl', 'wiz.wa.dealer.geenEigen')) !== -1
+        && w.els['wiz-wa-extra'].innerHTML === '' && w.els['wiz-wa-knop'].textContent === i18n.t('nl', 'wiz.wa.dealer.knop') && w.els['wiz-wa-badge'].textContent === i18n.t('nl', 'wiz.wa.dealer.badge')
+        && w.ctx._wizStatus.whatsapp === true, w.els['wiz-wa-uitleg'].textContent);
+      const wn = await kaart(ES_UIT, KLAAR_GEDEELD, false);
+      ck('niet beschikbaar (andere markt): alleen de sjabloonstatus, geen koppelknop',
+        wn.els['wiz-wa-badge'].textContent === i18n.t('nl', 'st.klaar') && wn.els['wiz-wa-extra'].innerHTML === '' && wn.ctx._wizStatus.whatsapp === true, wn.els['wiz-wa-badge'].textContent);
+    }
+    {
+      const w = await kaart(ES_AAN, BEZIG_GEDEELD, false);
+      const ex = w.els['wiz-wa-extra'].innerHTML;
+      ck('beschikbaar, nog niet gekoppeld (andere markt): shared-status + waarom + primaire knop "Koppel je eigen WhatsApp-nummer"',
+        w.els['wiz-wa-badge'].textContent === i18n.t('nl', 'wiz.wa.bezig') && ex.indexOf('wiz-wa-eigen-knop') !== -1 && ex.indexOf(i18n.t('nl', 'wiz.wa.eigen.knop')) !== -1
+        && ex.indexOf('jouw bedrijfsnaam') !== -1 && /sms of oproep/.test(ex) && typeof w.els['wiz-wa-eigen-knop'].onclick === 'function'
+        && w.ctx._wizStatus.whatsapp === false && w.ctx._wizStatus.eigenNr === false, ex);
+      const wd = await kaart(ES_AAN, null, true);
+      const exd = wd.els['wiz-wa-extra'].innerHTML;
+      ck('beschikbaar (dealer): kopers starten zelf (werkt vandaag al), eigen nummer aanbevolen maar niet verplicht, met koppelknop',
+        wd.els['wiz-wa-badge'].textContent === i18n.t('nl', 'wiz.wa.dealer.badge') && /niet verplicht/.test(wd.els['wiz-wa-uitleg'].textContent) && /AutoScout24/.test(wd.els['wiz-wa-uitleg'].textContent)
+        && exd.indexOf('wiz-wa-eigen-knop') !== -1 && wd.ctx._wizStatus.whatsapp === true, wd.els['wiz-wa-uitleg'].textContent);
+      ck('de kaart verstuurt niets behalve de twee leesaanvragen (wa-es-status, wa-readiness)',
+        wd.log.fetch.map((f) => f.body.mode).sort().join() === 'wa-es-status,wa-readiness', wd.log.fetch.map((f) => f.body.mode));
+    }
+    {
+      const wg = await kaart(ES_GEKOPPELD, { eigenNummer: true, klaar: false, eigenToestand: { onbekend: false, ingediend: 4, bezig: true } }, false);
+      ck('gekoppeld, sjablonen in behandeling: badge, nummer + naam, eerlijke tekst zonder tijdsbelofte, geen koppelknop',
+        wg.els['wiz-wa-badge'].textContent === i18n.t('nl', 'wiz.wa.eigen.badge') && /\+32 470 12 34 56/.test(wg.els['wiz-wa-uitleg'].textContent) && /Garage Teljo/.test(wg.els['wiz-wa-uitleg'].textContent)
+        && wg.els['wiz-wa-extra'].innerHTML.indexOf(i18n.t('nl', 'wiz.wa.sjab.bezig')) !== -1 && !/wiz-wa-eigen-knop/.test(wg.els['wiz-wa-extra'].innerHTML)
+        && TALEN.every((t) => !/72|paar uur|few hours|quelques heures|Stunden: |minutes|minuten|Minuten/.test(i18n.t(t, 'wiz.wa.sjab.bezig'))) && wg.ctx._wizStatus.whatsapp === false && wg.ctx._wizStatus.eigenNr === true, wg.els['wiz-wa-extra'].innerHTML);
+      const wk = await kaart(ES_GEKOPPELD, { eigenNummer: true, klaar: true, eigenToestand: { onbekend: false, ingediend: 0, bezig: false } }, false);
+      ck('gekoppeld, sjablonen goedgekeurd: zegt dat ze goedgekeurd zijn, WhatsApp klaar',
+        wk.els['wiz-wa-extra'].innerHTML.indexOf(i18n.t('nl', 'wiz.wa.sjab.klaar')) !== -1 && wk.ctx._wizStatus.whatsapp === true, null);
+      const wo = await kaart(ES_GEKOPPELD, { eigenNummer: true, klaar: false }, false);
+      ck('gekoppeld, sjablonen niet te lezen: eerlijk onbekend', wo.els['wiz-wa-extra'].innerHTML.indexOf(i18n.t('nl', 'wiz.wa.sjab.onbekend')) !== -1 && wo.ctx._wizStatus.whatsapp === null, null);
+      const wx = await kaart({ beschikbaar: true, gekoppeld: true, nummer: { number: '', name: '<img src=x onerror=alert(1)>' } }, null, true);
+      ck('tekst van de server wordt niet als HTML getekend (naam met <img>) en een ontbrekend nummer geeft de zin zonder nummer',
+        wx.els['wiz-wa-uitleg'].textContent.indexOf('<img') !== -1 && wx.els['wiz-wa-uitleg'].textContent.indexOf(i18n.t('nl', 'wiz.wa.eigen.opGeen')) === 0
+        && wx.els['wiz-wa-extra'].innerHTML.indexOf('<img') === -1, wx.els['wiz-wa-uitleg'].textContent);
+    }
+
+    /* — de gedeelde kern — */
+    const FB_OK = (log, gebeurtenis) => ({ login: (cb, opts) => {
+      log.loginOpts = opts;
+      cb({ authResponse: { code: 'code-uit-meta' } });
+      log.listeners.forEach((f) => f({ origin: gebeurtenis.origin || 'https://www.facebook.com', data: JSON.stringify(gebeurtenis.data) }));
+    } });
+    const FINISH = { data: { type: 'WA_EMBEDDED_SIGNUP', event: 'FINISH', data: { waba_id: '123456789', phone_number_id: '987654321' } } };
+    const kern = async (gebeurtenis, fetchAntwoord) => {
+      const log0 = { listeners: [] };
+      const w = bouw({ fetchAntwoord });
+      w.ctx.window.FB = FB_OK(w.log, gebeurtenis);
+      const r = await w.ctx.waesKern(ES_AAN);
+      return { r: kloon(r), w };
+    };
+    {
+      const a = await kern(FINISH);
+      const f = a.w.log.fetch[0];
+      ck('kern: popup met config_id, response_type code en sessionInfoVersion 3', a.w.log.loginOpts && a.w.log.loginOpts.config_id === '222' && a.w.log.loginOpts.response_type === 'code' && a.w.log.loginOpts.extras.sessionInfoVersion === '3', a.w.log.loginOpts);
+      ck('kern: een geslaagde koppeling geeft {ok:true} en doet precies een wa-es-complete met code + id\'s, zonder projectcode',
+        a.r.ok === true && a.w.log.fetch.length === 1 && f.body.mode === 'wa-es-complete' && f.body.code === 'code-uit-meta' && f.body.wabaId === '123456789' && f.body.phoneNumberId === '987654321'
+        && Object.keys(f.body).sort().join() === 'code,mode,phoneNumberId,wabaId', f && f.body);
+      const c = await kern({ data: { type: 'WA_EMBEDDED_SIGNUP', event: 'CANCEL', data: {} } });
+      ck('kern: annuleren in de popup geeft {cancelled:true} en roept de server niet aan', c.r.cancelled === true && c.w.log.fetch.length === 0, c.r);
+      const o = await kern({ origin: 'https://evil.example', data: FINISH.data });
+      ck('kern: een message van een vreemde origin wordt genegeerd (geeft cancelled, geen verzoek)', o.r.cancelled === true && o.w.log.fetch.length === 0, o.r);
+      const e = await kern(FINISH, () => ({ ok: false, json: async () => ({ error: 'Het koppelen is niet afgerond.' }) }));
+      ck('kern: een serverfout geeft {error:<zin van de server>}', e.r.error === 'Het koppelen is niet afgerond.' && !e.r.ok, e.r);
+      const g = await kern(FINISH, () => { throw new Error('netwerk'); });
+      ck('kern: een netwerkfout gooit niet maar geeft {error:""}', g.r.error === '' && !g.r.ok, g.r);
+      const u = bouw(); const r0 = await u.ctx.waesKern({ beschikbaar: false });
+      ck('kern: zonder beschikbaar doet hij niets', r0.error === '' && u.log.fetch.length === 0, null);
+    }
+
+    /* — de knop op de kaart gebruikt die kern, en tekent daarna opnieuw — */
+    {
+      let gekoppeld = false;
+      const w = bouw({ fetchAntwoord: (b) => ({ ok: true, json: async () => {
+        if (b.mode === 'wa-es-complete') { gekoppeld = true; return { ok: true }; }
+        if (b.mode === 'wa-es-status') return gekoppeld ? ES_GEKOPPELD : ES_AAN;
+        if (b.mode === 'wa-readiness') return gekoppeld ? { eigenNummer: true, klaar: false, eigenToestand: { onbekend: false, ingediend: 4, bezig: true } } : KLAAR_GEDEELD;
+        return {};
+      } }) });
+      for (const id of ['wiz-wa-badge', 'wiz-wa-uitleg', 'wiz-wa-extra', 'wiz-wa-knop', 'wiz-wa-eigen-knop']) w.els[id] = w.mkEl();
+      w.ctx.window.FB = FB_OK(w.log, FINISH);
+      await w.ctx.wizWaKaart(false);
+      await w.els['wiz-wa-eigen-knop'].onclick();
+      ck('klik op de wizardknop: wa-es-complete via de kern, melding "Gekoppeld", en de kaart toont daarna het eigen nummer',
+        w.log.fetch.some((f) => f.body.mode === 'wa-es-complete') && w.log.toast.some((t) => t[0] === 'success' && t[1] === i18n.t('nl', 'set.waes.done'))
+        && w.els['wiz-wa-badge'].textContent === i18n.t('nl', 'wiz.wa.eigen.badge') && w.ctx._wizStatus.eigenNr === true, [w.log.toast, w.els['wiz-wa-badge'].textContent]);
+      const w2 = bouw({ fetchAntwoord: (b) => ({ ok: true, json: async () => (b.mode === 'wa-es-status' ? ES_AAN : KLAAR_GEDEELD) }) });
+      for (const id of ['wiz-wa-badge', 'wiz-wa-uitleg', 'wiz-wa-extra', 'wiz-wa-knop', 'wiz-wa-eigen-knop']) w2.els[id] = w2.mkEl();
+      w2.ctx.window.FB = FB_OK(w2.log, { data: { type: 'WA_EMBEDDED_SIGNUP', event: 'CANCEL', data: {} } });
+      await w2.ctx.wizWaKaart(false);
+      await w2.els['wiz-wa-eigen-knop'].onclick();
+      ck('annuleren in de wizard: melding, knop weer vrij, niets opgeslagen', w2.log.toast.some((t) => t[0] === 'info' && t[1] === i18n.t('nl', 'set.waes.cancelled'))
+        && w2.els['wiz-wa-eigen-knop'].disabled === false && !w2.log.fetch.some((f) => f.body.mode === 'wa-es-complete'), w2.log.toast);
+    }
+
+    /* — Klaar: WhatsApp, eigen nummer, Meta-catalogus — */
+    console.log('\n— Klaar: WhatsApp, eigen nummer en Meta-catalogus —');
+    {
+      const rijenVan = (w, dealer) => (w.ctx.wizKlaarHtml(dealer, '', 'v').match(/data-wiz-rij="([a-z]+)"/g) || []).map((x) => x.slice(14, -1));
+      const rij = (w, dealer, id) => (w.ctx.wizKlaarHtml(dealer, '', 'v').match(new RegExp('<li class="wiz-klaar-rij" data-wiz-rij="' + id + '">[\\s\\S]*?</li>')) || [''])[0];
+      const w = bouw();
+      w.ctx.wizKlaarWhatsApp(ES_AAN, KLAAR_GEDEELD, true);
+      w.run("_wizStatus.meta = false;");
+      ck('dealer, eigen nummer mogelijk maar niet gekoppeld: WhatsApp klaar, eigen-nummerregel open + optioneel met knop naar kanalen, Meta-regel open + optioneel',
+        rijenVan(w, true).join() === 'whatsapp,eigennr,alerts,uren,agenda,voorraad,meta,email,website' && /data-wiz-fix="eigennr"/.test(rij(w, true, 'eigennr')) && /wiz-optioneel/.test(rij(w, true, 'eigennr'))
+        && /data-wiz-fix="meta"/.test(rij(w, true, 'meta')) && /wiz-optioneel/.test(rij(w, true, 'meta')) && !/data-wiz-fix="whatsapp"/.test(rij(w, true, 'whatsapp')), rijenVan(w, true));
+      ck('de optionele regels tellen niet mee in "Nog open"', !/data-wiz-fix="eigennr"[\s\S]*Nog open: [5-9]/.test(w.ctx.wizKlaarHtml(true, '', 'v')), null);
+      w.ctx.wizKlaarWhatsApp(ES_GEKOPPELD, { eigenNummer: true, klaar: true, eigenToestand: { onbekend: false, ingediend: 0, bezig: false } }, true);
+      ck('dealer met eigen nummer: de eigen-nummerregel is klaar (geen knop)', !/data-wiz-fix="eigennr"/.test(rij(w, true, 'eigennr')) && /is-aan/.test(rij(w, true, 'eigennr')), null);
+      w.run("_wizStatus.meta = true;");
+      ck('Meta-catalogus actief: regel klaar, geen knop', !/data-wiz-fix="meta"/.test(rij(w, true, 'meta')) && /is-aan/.test(rij(w, true, 'meta')), null);
+
+      const wn = bouw();
+      wn.ctx.wizKlaarWhatsApp(ES_UIT, BEZIG_GEDEELD, false);
+      ck('andere markt, gedeeld nummer, sjablonen bezig: WhatsApp-regel open (knop), geen eigen-nummerregel en geen Meta-regel',
+        rijenVan(wn, false).join() === 'whatsapp,alerts,uren,agenda,email,website' && /data-wiz-fix="whatsapp"/.test(rij(wn, false, 'whatsapp')), rijenVan(wn, false));
+      wn.ctx.wizKlaarWhatsApp(ES_AAN, KLAAR_GEDEELD, false);
+      ck('andere markt, gedeeld nummer klaar en eigen nummer mogelijk: WhatsApp klaar, eigen-nummerregel optioneel open, nog steeds geen Meta-regel',
+        !/data-wiz-fix="whatsapp"/.test(rij(wn, false, 'whatsapp')) && /data-wiz-fix="eigennr"/.test(rij(wn, false, 'eigennr')) && !/data-wiz-rij="meta"/.test(wn.ctx.wizKlaarHtml(false, '', 'v')), rijenVan(wn, false));
+      const wo = bouw();
+      wo.ctx.wizKlaarWhatsApp(null, null, false);
+      ck('niets op te halen: WhatsApp "nog niet gecontroleerd", geen eigen-nummerregel', rij(wo, false, 'whatsapp').indexOf(i18n.t('nl', 'wiz.klaar.onbekend')) !== -1 && !/data-wiz-rij="eigennr"/.test(wo.ctx.wizKlaarHtml(false, '', 'v')), null);
+    }
+
+    /* — Meta-catalogus en voorraadbronnen op de stap koppelingen — */
+    console.log('\n— koppelingen: Meta-catalogus en voorraadbronnen —');
+    {
+      const prov = (p) => ({ ok: true, providers: [{ id: 'feed', auth: 'feed_url' }, Object.assign({ id: 'meta', auth: 'catalog_feed', geconfigureerd: false, meta: { ontbreekt: ['addr1', 'postalCode'] } }, p || {})] });
+      const w0m = bouw();
+      ck('wizMetaToestand: ontbrekende velden, actief met telling, geen antwoord',
+        w0m.ctx.wizMetaToestand(prov()).aan === false && w0m.ctx.wizMetaToestand(prov()).mist.join() === 'addr1,postalCode'
+        && w0m.ctx.wizMetaToestand(prov({ geconfigureerd: true, feedTelling: { inFeed: 12 } })).inFeed === 12 && w0m.ctx.wizMetaToestand(null) === null && w0m.ctx.wizMetaToestand({ ok: true, providers: [] }) === null, null);
+      const kaartMeta = async (antwoord) => {
+        const w = bouw({ fetchAntwoord: () => ({ ok: antwoord !== null, json: async () => antwoord }) });
+        for (const id of ['wiz-meta-badge', 'wiz-meta-uitleg', 'wiz-meta-knop']) w.els[id] = w.mkEl();
+        await w.ctx.wizMetaStatus();
+        return w;
+      };
+      const wa = await kaartMeta(prov());
+      ck('Meta nog niet klaar: "Nog in te stellen", noemt wat ontbreekt (straat en nummer, postcode), knop naar Instellingen → Integraties',
+        wa.els['wiz-meta-badge'].textContent === i18n.t('nl', 'ig.status.TE_DOEN') && /straat en nummer, postcode/.test(wa.els['wiz-meta-uitleg'].textContent)
+        && wa.els['wiz-meta-knop'].textContent === i18n.t('nl', 'wiz.meta.knop') && wa.ctx._wizStatus.meta === false, wa.els['wiz-meta-uitleg'].textContent);
+      wa.els['set-integraties'] = wa.mkEl(); wa.els['wiz-meta-knop'].onclick();
+      ck('en die knop sluit de wizard en gaat naar Instellingen', wa.log.sluit === 1 && wa.log.nav.join() === 'instellingen', wa.log.nav);
+      const wb = await kaartMeta(prov({ geconfigureerd: true, feedTelling: { inFeed: 12, weggelaten: 3 } }));
+      ck('Meta klaar: "Actief" en het aantal wagens in de feed', wb.els['wiz-meta-badge'].textContent === i18n.t('nl', 'ig.status.ACTIVE') && /12/.test(wb.els['wiz-meta-uitleg'].textContent) && wb.ctx._wizStatus.meta === true, wb.els['wiz-meta-uitleg'].textContent);
+      const wl = await kaartMeta(prov({ geconfigureerd: true, feedTelling: { inFeed: 0, weggelaten: 2 } }));
+      ck('Meta klaar maar nog geen wagen in de feed: zegt dat eerlijk', wl.els['wiz-meta-uitleg'].textContent === i18n.t('nl', 'wiz.meta.aanLeeg'), null);
+      const wf = await kaartMeta(null);
+      ck('status niet op te halen: "nog niet gecontroleerd", niet "klaar", en _wizStatus.meta = null', wf.els['wiz-meta-badge'].textContent === i18n.t('nl', 'wiz.klaar.onbekend') && wf.ctx._wizStatus.meta === null, null);
+      ck('de Meta-kaart doet alleen een leesaanvraag (inventory-providers)', wa.log.fetch.length === 1 && wa.log.fetch[0].body.mode === 'inventory-providers', wa.log.fetch.map((f) => f.body.mode));
+
+      ck('voorraadkaart: aantal bronnen (0 = niets, 1, meerdere); publiceerkanalen (Meta) tellen niet mee',
+        w0m.ctx.wizVoorraadBronnenTekst({ bronnen: [] }) === '' && w0m.ctx.wizVoorraadBronnenTekst({}) === ''
+        && w0m.ctx.wizVoorraadBronnenTekst({ bronnen: [{ id: 'feed' }] }) === i18n.t('nl', 'wiz.voorraad.bronnenAantal.een')
+        && w0m.ctx.wizVoorraadBronnenTekst({ bronnen: [{ id: 'feed' }, { id: 'autoscout24' }, { id: 'meta', alleenPubliceren: true }] }) === '2 bronnen gekoppeld', null);
+      const wd = bouw(); wd.els['wiz-mail-extra'] = wd.mkEl(); wd.ctx.wizMailDealerZin();
+      ck('e-mailkaart (dealer): noemt precies de platformen uit platformlead.js, en is geen belofte zonder voorbehoud',
+        ['AutoScout24', '2dehands', '2ememain', 'Marktplaats', 'mobile.de'].every((x) => wd.els['wiz-mail-extra'].innerHTML.indexOf(x) !== -1) && /zodra die in je voorraad staat/.test(wd.els['wiz-mail-extra'].innerHTML), null);
+      const PLAT = require('../api/_email/platformlead.js');
+      const bronnen = (PLAT.PLATFORMEN || []).map((p) => p.bron);
+      ck('de platformen in de zin komen overeen met PLATFORMEN (' + bronnen.join(', ') + ')',
+        bronnen.length === 5 && TALEN.every((t) => bronnen.every((b) => i18n.t(t, 'wiz.mail.dealer').indexOf(b === '2dehands' ? '2dehands' : b === '2ememain' ? '2ememain' : b) !== -1)), bronnen);
+    }
+
+    /* — vier talen — */
+    console.log('\n— WhatsApp/Meta-wizard: vier talen en geen verouderde tekst —');
+    {
+      const bron = modulWa.js() + modul.js();
+      const sleutels = new Set((bron.match(/tr\('((?:wiz|set\.waes|ig\.status|ig\.meta\.mist)\.[A-Za-z.]+)'/g) || []).map((x) => x.slice(4, -1)).filter((k) => !/\.$/.test(k)));
+      ['wiz.wa.sjab.klaar', 'wiz.wa.sjab.bezig', 'wiz.wa.sjab.onbekend', 'wiz.voorraad.bronnenAantal', 'wiz.voorraad.bronnenAantal.een', 'wiz.wa.dealer', 'wiz.wa.dealer.badge', 'wiz.wa.dealer.knop',
+        'ig.meta.mist.addr1', 'ig.meta.mist.city', 'ig.meta.mist.region', 'ig.meta.mist.postalCode', 'ig.meta.mist.lat', 'ig.meta.mist.lng', 'wiz.klaar.rij.eigenNr', 'wiz.klaar.rij.meta'].forEach((k) => sleutels.add(k));
+      const ontbreekt = [], gelijk = [], vars = [];
+      const pl = (x) => (x.match(/\{[a-z]+\}/g) || []).sort().join(',');
+      for (const k of sleutels) {
+        for (const t of TALEN) { const v = i18n.t(t, k); if (typeof v !== 'string' || !v.length || v === k) ontbreekt.push(t + ':' + k); }
+        if (TALEN.some((t) => pl(i18n.t(t, k)) !== pl(i18n.t('nl', k)))) vars.push(k);
+        if (/^wiz\.(wa|meta|mail\.dealer|voorraad\.bronnenAantal|klaar\.rij\.(eigenNr|meta))/.test(k) && (i18n.t('fr', k) === i18n.t('nl', k) || i18n.t('de', k) === i18n.t('nl', k))) gelijk.push(k);
+      }
+      ck('elke sleutel van de WhatsApp-module bestaat in nl, fr, en, de (' + sleutels.size + ')', ontbreekt.length === 0, ontbreekt);
+      ck('plaatshouders zijn in elke taal dezelfde', vars.length === 0, vars);
+      ck('fr en de zijn echt vertaald (niet gekopieerd uit nl)', gelijk.length === 0, gelijk);
+      const nieuw = ['wiz.wa.dealer', 'wiz.wa.dealer.geenEigen', 'wiz.wa.eigen.waarom', 'wiz.wa.eigen.later', 'wiz.wa.eigen.knop', 'wiz.wa.eigen.badge', 'wiz.wa.eigen.op', 'wiz.wa.eigen.opGeen',
+        'wiz.wa.sjab.klaar', 'wiz.wa.sjab.bezig', 'wiz.wa.sjab.onbekend', 'wiz.mail.dealer', 'wiz.voorraad.bronnenAantal', 'wiz.voorraad.bronnenAantal.een', 'wiz.meta.t', 'wiz.meta.uit', 'wiz.meta.mist',
+        'wiz.meta.aan', 'wiz.meta.aanLeeg', 'wiz.meta.aanZonder', 'wiz.meta.knop', 'wiz.klaar.rij.eigenNr', 'wiz.klaar.rij.meta'];
+      ck('alle nieuwe sleutels bestaan in vier talen', nieuw.every((k) => TALEN.every((t) => i18n.t(t, k) && i18n.t(t, k) !== k)), nieuw.filter((k) => TALEN.some((t) => !i18n.t(t, k) || i18n.t(t, k) === k)));
+      const VEROUDERD = /zodra (dat |het )?(voor jouw account )?(beschikbaar|kan)|dat voor jouw account|once (it is|that is|it.s) available|dès que c.est disponible|sobald das für .{0,20}verfügbar|noch nicht beschikbaar|not yet available/i;
+      const alle = [];
+      for (const t of TALEN) for (const k of ['wiz.wa.dealer', 'wiz.wa.dealer.geenEigen', 'wiz.wa.dealer.badge', 'wiz.wa.dealer.knop', 'wiz.wa.klaarSub', 'wiz.wa.bezigSub', 'wiz.kan.s', 'wiz.gids.kanalen', 'set.waes.sub', 'set.waes.sub.gekoppeld', 'set.waes.title', 'chk.whatsapp.sub']) alle.push([t + ':' + k, i18n.t(t, k)]);
+      ck('geen "zodra dat voor jouw account beschikbaar is"-tekst meer in de WhatsApp-teksten (4 talen)', alle.every(([k, v]) => !VEROUDERD.test(v)), alle.filter(([k, v]) => VEROUDERD.test(v)).map((x) => x[0]));
+      const help = fs.readFileSync(path.join(ROOT, 'api/_dash/help.js'), 'utf8');
+      ck('geen helpartikel zegt nog dat een eigen nummer niet kan', !/(eigen|own|propre|eigene)[^.<]{0,60}(nog niet|not yet|pas encore|noch nicht|binnenkort|coming soon)/i.test(help), null);
+      ck('de oude opmerking "nog nergens aangesloten / geen knop" staat niet meer in dashboard.js', !/is compleet maar nergens aangesloten/.test(lees('api/dashboard.js')), null);
+    }
   }
 
   console.log(`\n  ${pass} geslaagd, ${fail} gefaald\n`);
