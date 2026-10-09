@@ -2268,6 +2268,9 @@ module.exports = _errors.vangAf(async function handler(req, res) {
         }));
         return res.status(200).json({ pipeline });
       }
+      if (type === 'dagtaken') {
+        return res.status(200).json({ dagtaken: require('./_founder-dagtaken').DAILY_TASKS });
+      }
       if (type === 'goals') {
         const r = await fetch(
           `https://api.airtable.com/v0/${MYSTARTUP_BASE}/${GOALS_TABLE}?pageSize=100`,

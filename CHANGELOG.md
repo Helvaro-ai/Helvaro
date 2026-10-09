@@ -836,6 +836,10 @@ lokale teller, dus dit verandert niets zolang Upstash niet is aangesloten.
 
 ## 9 oktober 2026 — beveiliging
 
+- **De dagtaken van het founder-dashboard stonden publiek leesbaar.** Ze zaten
+  in het dashboardscript dat iedereen kan downloaden, ook zonder in te loggen,
+  met namen en e-mailadressen van prospects erin. Ze komen nu van de server,
+  alleen voor wie als beheerder ingelogd is.
 - **Pushmeldingen voor een nieuwe lead kwamen nooit aan.** Zonder gevraagde
   wagen ging de melding zonder tekst naar OneSignal, en die weigert dat. Elke
   zo'n melding mislukte stil (gezien in de logs van vandaag). Ze heeft nu een
