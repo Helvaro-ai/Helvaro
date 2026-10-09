@@ -897,7 +897,7 @@ async function processMessage(phone, text, scopedProjectCode, inkomendId) {
         `"${text.slice(0, 280)}"\n\n` +
         `Open de lead: https://app.helvaro.pro/dashboard`;
       const nudgeSent = await sendWA(ownerPhoneP, nudge, clientPhoneNumberId);
-      if (!nudgeSent) console.error(`[whatsapp] paused-lead melding naar owner (${ownerPhoneP}) is niet aangekomen`);
+      if (!nudgeSent) console.error(`[whatsapp] paused-lead melding naar owner (${maskPhone(ownerPhoneP)}) is niet aangekomen`);
     }
     return;
   }
@@ -946,7 +946,7 @@ async function processMessage(phone, text, scopedProjectCode, inkomendId) {
           `"${text.slice(0, 280)}"\n\n` +
           `Open de lead: https://app.helvaro.pro/dashboard`;
         const nudgeSentExp = await sendWA(ownerPhoneExp, nudge, clientPhoneNumberId);
-        if (!nudgeSentExp) console.error(`[whatsapp] plan-status melding naar owner (${ownerPhoneExp}) is niet aangekomen`);
+        if (!nudgeSentExp) console.error(`[whatsapp] plan-status melding naar owner (${maskPhone(ownerPhoneExp)}) is niet aangekomen`);
       }
       if (ownerEmailExp) {
         sendOwnerEmail({
