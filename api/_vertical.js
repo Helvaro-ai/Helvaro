@@ -241,6 +241,11 @@ function afspraakWoord(velden, taal) {
   /* Terugval op vastgoed als een markt hier ooit ontbreekt: liever het woord
      van de standaardmarkt dan een lege string midden in een zin. */
   const rij = AFSPRAAKWOORD[v] || AFSPRAAKWOORD[VASTGOED];
+  /* Binnen dealership heet de afspraak voor het motorsegment testrit. Lui
+     geladen: _segment.js leest dit bestand, dus bovenaan requiren is een kring. */
+  if (v === DEALERSHIP && require('./_segment').van(velden) === 'motor') {
+    return require('./_segment').termen('motor', t).rit;
+  }
   return rij[t] || rij.nl;
 }
 

@@ -113,7 +113,35 @@ function mogelijkMetRijbewijs(m, heeft) {
   return RANG[h] >= RANG[nodig] ? 'ja' : 'nee';
 }
 
+/* ── Woordenschat voor wat een mens te lezen krijgt ────────────────────────
+ * Per segment en per taal. De prompts aan het model zijn Nederlands en hebben
+ * hun eigen tabel (api/_ai/prompts.js); dit is voor berichten, het
+ * websiteassistent, Faro en het dashboard. De autokolom is wat er altijd al
+ * stond. */
+const TERMEN = Object.freeze({
+  auto: Object.freeze({
+    nl: { voertuig: 'auto',   voertuigen: "auto's",    dealer: 'autodealer',                rijbewijs: 'rijbewijs',     rit: 'proefrit' },
+    fr: { voertuig: 'voiture', voertuigen: 'voitures', dealer: 'concessionnaire automobile', rijbewijs: 'permis',       rit: 'essai' },
+    en: { voertuig: 'car',    voertuigen: 'cars',      dealer: 'car dealership',            rijbewijs: 'licence',       rit: 'test drive' },
+    de: { voertuig: 'Auto',   voertuigen: 'Autos',     dealer: 'Autohändler',               rijbewijs: 'Führerschein',  rit: 'Probefahrt' },
+  }),
+  motor: Object.freeze({
+    nl: { voertuig: 'motor',  voertuigen: 'motoren',   dealer: 'motordealer',               rijbewijs: 'rijbewijs',     rit: 'testrit' },
+    fr: { voertuig: 'moto',   voertuigen: 'motos',     dealer: 'concessionnaire moto',      rijbewijs: 'permis',        rit: 'essai routier' },
+    en: { voertuig: 'motorcycle', voertuigen: 'motorcycles', dealer: 'motorcycle dealership', rijbewijs: 'licence',     rit: 'test ride' },
+    de: { voertuig: 'Motorrad', voertuigen: 'Motorräder', dealer: 'Motorradhändler',        rijbewijs: 'Führerschein',  rit: 'Probefahrt' },
+  }),
+});
+
+/** De woorden voor dit segment in deze taal (onbekend segment = auto, onbekende taal = nl). */
+function termen(segment, taal) {
+  const t = TERMEN[norm(segment)];
+  const k = String(taal || 'nl').slice(0, 2).toLowerCase();
+  return t[k] || t.nl;
+}
+
 module.exports = {
+  TERMEN, termen,
   AUTO, MOTOR, BEKEND, VELD, van, isMotor, norm,
   RIJBEWIJS, KLASSE_GRENZEN, normRijbewijs, vereistRijbewijs, mogelijkMetRijbewijs,
 };
