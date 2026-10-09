@@ -3219,7 +3219,7 @@ module.exports = _errors.vangAf(async function handler(req, res) {
           case 'email-status':
             return res.status(200).json(await _mailbox.status(projectCode));
           case 'email-connect':
-            return res.status(200).json({ url: _mailbox.authUrl(String(body.provider || 'gmail'), (body.provider === 'microsoft' ? 'mail.ms.' : body.provider === 'gmail-send' ? 'mail.gs.' : 'mail.') + gcalSignState(projectCode)) });
+            return res.status(200).json({ url: _mailbox.authUrl(String(body.provider || 'gmail'), (body.provider === 'microsoft' ? 'mail.ms.' : body.provider === 'gmail-send' ? 'mail.gs.' : 'mail.') + gcalSignState(projectCode, res)) });
           case 'email-disconnect':
             return res.status(200).json(await _mailbox.ontkoppel(projectCode));
           case 'email-settings':
@@ -4401,12 +4401,30 @@ const GCAL_F_REFRESH = 'fldkYmK3jAabvytCF';   // Google Refresh Token (encrypted
 const GCAL_F_GEMAIL  = 'fldXF7qdyHYnSjnGf';   // Google Calendar Email
 const GCAL_F_CALID   = 'fldWBxxhGYEZNIMqA';   // Google Calendar ID
 
-function gcalSignState(projectCode) {
-  const payload = Buffer.from(JSON.stringify({ p: projectCode, t: Date.now() })).toString('base64url');
+/* De state is getekend en tijdgebonden, maar was niet aan een BROWSER gebonden:
+   wie een state voor zijn eigen account opvroeg en de Google-link naar een
+   ander stuurde, kreeg diens agenda of mailbox aan zijn account gekoppeld
+   (OAuth login-CSRF). Nu krijgt de browser die de koppeling start een
+   eenmalige nonce in een HttpOnly-cookie, en de terugkeer van Google telt
+   alleen als diezelfde browser die nonce terugbrengt. SameSite=Lax: de
+   terugkeer is een top-level GET, daarbij gaat een Lax-cookie gewoon mee. */
+const OAUTH_NONCE_COOKIE = 'hv_oauth_n';
+function zetOauthNonce(res) {
+  const nonce = crypto.randomBytes(18).toString('base64url');
+  const cookie = `${OAUTH_NONCE_COOKIE}=${nonce}; HttpOnly; Secure; SameSite=Lax; Path=/; Max-Age=${Math.round(GCAL_STATE_TTL_MS / 1000)}`;
+  const prev = res && res.getHeader ? res.getHeader('Set-Cookie') : null;
+  const lijst = !prev ? [] : (Array.isArray(prev) ? prev.slice() : [prev]);
+  lijst.push(cookie);
+  if (res && res.setHeader) res.setHeader('Set-Cookie', lijst);
+  return nonce;
+}
+function gcalSignState(projectCode, res) {
+  const n = zetOauthNonce(res);
+  const payload = Buffer.from(JSON.stringify({ p: projectCode, t: Date.now(), n })).toString('base64url');
   const sig = crypto.createHmac('sha256', sessionSecret()).update(payload).digest('base64url');
   return `${payload}.${sig}`;
 }
-function gcalVerifyState(state) {
+function gcalVerifyState(state, req) {
   try {
     const [payload, sig] = String(state || '').split('.');
     if (!payload || !sig) return '';
@@ -4415,6 +4433,11 @@ function gcalVerifyState(state) {
     if (a.length !== b.length || !crypto.timingSafeEqual(a, b)) return '';
     const data = JSON.parse(Buffer.from(payload, 'base64url').toString('utf8'));
     if (!data.p || !data.t || Date.now() - data.t > GCAL_STATE_TTL_MS) return '';
+    // Gebonden aan de browser die de koppeling startte (zie zetOauthNonce).
+    const koek = String((_session.parseCookies(req) || {})[OAUTH_NONCE_COOKIE] || '');
+    const verwacht = String(data.n || '');
+    if (!verwacht || koek.length !== verwacht.length
+        || !crypto.timingSafeEqual(Buffer.from(koek), Buffer.from(verwacht))) return '';
     return data.p;
   } catch { return ''; }
 }
@@ -4491,7 +4514,7 @@ async function handleGcal(req, res) {
     const st0 = String(u0.searchParams.get('state') || '');
     if (req.method === 'GET' && u0.searchParams.get('action') !== 'mailpush' && st0.startsWith('mail.ms.')) {
       if (u0.searchParams.get('error')) return gcalRedirect(res, '/dashboard?mail=denied');
-      const msProject = gcalVerifyState(st0.slice(8));
+      const msProject = gcalVerifyState(st0.slice(8), req);
       const msCode = u0.searchParams.get('code');
       if (!msProject || !msCode) return gcalRedirect(res, '/dashboard?mail=invalid_state');
       try {
@@ -4562,7 +4585,7 @@ async function handleGcal(req, res) {
        gewone "mail." hieronder, die hij anders zou opeten). */
     if (ruweState.startsWith('mail.gs.')) {
       if (url.searchParams.get('error')) return gcalRedirect(res, '/dashboard?mail=denied');
-      const gsProject = gcalVerifyState(ruweState.slice(8));
+      const gsProject = gcalVerifyState(ruweState.slice(8), req);
       const gsCode = url.searchParams.get('code');
       if (!gsProject || !gsCode) return gcalRedirect(res, '/dashboard?mail=invalid_state');
       try {
@@ -4575,7 +4598,7 @@ async function handleGcal(req, res) {
     }
     if (ruweState.startsWith('mail.')) {
       if (url.searchParams.get('error')) return gcalRedirect(res, '/dashboard?mail=denied');
-      const mailProject = gcalVerifyState(ruweState.slice(5));
+      const mailProject = gcalVerifyState(ruweState.slice(5), req);
       const mailCode = url.searchParams.get('code');
       if (!mailProject || !mailCode) return gcalRedirect(res, '/dashboard?mail=invalid_state');
       try {
@@ -4588,7 +4611,7 @@ async function handleGcal(req, res) {
     }
     if (url.searchParams.get('error')) return gcalRedirect(res, '/dashboard?gcal=denied');
     const code = url.searchParams.get('code');
-    const projectCode = gcalVerifyState(url.searchParams.get('state'));
+    const projectCode = gcalVerifyState(url.searchParams.get('state'), req);
     if (!code || !projectCode) return gcalRedirect(res, '/dashboard?gcal=invalid_state');
     try {
       const { refreshToken, email } = await _gcal.exchangeCode(code);
@@ -4648,7 +4671,7 @@ async function handleGcal(req, res) {
     body = body || {};
 
     if (body.mode === 'connect') {
-      return res.status(200).json({ url: _gcal.getAuthUrl(gcalSignState(projectCode)) });
+      return res.status(200).json({ url: _gcal.getAuthUrl(gcalSignState(projectCode, res)) });
     }
     if (body.mode === 'status') {
       try {

@@ -836,6 +836,11 @@ lokale teller, dus dit verandert niets zolang Upstash niet is aangesloten.
 
 ## 9 oktober 2026 — beveiliging
 
+- **Een agenda of mailbox koppelen kan alleen nog vanuit je eigen browser.**
+  Iemand kon vroeger een koppelingslink voor zijn eigen account naar jou sturen;
+  keurde je die bij Google goed, dan hing jouw agenda of mailbox aan zijn
+  account. De koppeling moet nu afgerond worden in dezelfde browser waarin ze
+  gestart werd (binnen 10 minuten).
 - **De publieke voorraadlijst kan de rest van Helvaro niet meer vertragen.**
   Elke variant van de link (een willekeurig stukje achter het vraagteken) haalde
   de voorraad opnieuw uit de database die ook WhatsApp en de leads bedient. Nu
