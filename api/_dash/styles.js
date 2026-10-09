@@ -972,71 +972,93 @@ h1, h2, h3, .display-heading, .page-title, .stat-value, .card-title {
    LOGIN PAGE. FULL VIEWPORT SPLIT
    ============================================================ */
 #login-page {
-  /* Het merkpaneel rechts is een podium, geen oppervlak van de app: het blijft
-     donker in beide thema's, zoals het logo dat erop staat. Het volgde eerder
-     --bg, en dus het thema -- schakelde je naar licht, dan werd de halve
-     inlogpagina wit en verdween de merkkant helemaal. Vandaar een eigen token
-     in plaats van --bg: het is niet dezelfde kleur die toevallig gelijk is,
-     het is een kleur die met opzet niet meebeweegt. */
-  --login-stage:      #17140F;   /* warm zwart, zelfde grond als Dark Helvaro */
-  --login-stage-ink:  #F1E9DA;
-  --login-stage-dim:  #A79B85;
+  /* ── Licht is de standaard, donker volgt het thema ───────────────────────
+     Het inlogscherm was permanent donker ("een podium, geen oppervlak van de
+     app"). Licht is nu de standaard voor iedereen, dus het scherm waar een
+     nieuwe klant binnenkomt volgt het thema zoals de rest van de app: warm
+     licht hier, en de oude donkere waarden staan hieronder onder
+     [data-theme="dark"] voor wie zelf voor donker koos.
 
-  /* ── Het formulierpaneel is donker ────────────────────────────────────────
-     Het was wit, en dat was de enige plek in de app waar het merk zichzelf
-     tegensprak: een wit paneel naast een zwart podium, met een gouden logo dat
-     op geen van beide dezelfde kleur kon zijn. Daar kwam de plaat onder het
-     logo vandaan, daar kwam de inkt-variant vandaan, en daar kwam de regel
-     vandaan dat dit paneel "altijd wit" is en het thema niet volgt.
-
-     Nu volgt het het thema nog steeds niet -- maar het staat aan de goede kant.
-     Donker is de standaard van de app (initTheme geeft elke nieuwe bezoeker
-     dark), het merk is goud-op-zwart, en het gouden logo hoeft nergens meer
-     omgekleurd of ingelijst te worden.
-
-     De waarden komen uit het donkere thema van de app zelf, niet uit een nieuw
-     palet: #F9F9F9 en #B5B5B5 zijn --text-c en --text-muted-c, #35332F is
-     --border-c. Eén uitzondering, hieronder. */
-  --login-panel:      #1E1B16;   /* iets opgetild t.o.v. het podium, zodat de
-                                    splitsing op desktop zichtbaar blijft */
-  --login-panel-lift: #262319;   /* de actieve pil in de segmentschakelaar */
-  --login-track:      #17150F;   /* de goot waar die pil in ligt */
-  --login-input-bg:   #14120E;   /* het veld ligt VERDIEPT in het paneel */
-  --login-border:     #35332F;   /* haarlijnen en scheidingen -- decoratief */
-  /* De rand van een BEDIENBAAR ding is iets anders dan een scheidingslijn.
-     WCAG 1.4.11 vraagt 3:1 voor de omtrek die een invoerveld herkenbaar maakt,
-     en --login-border haalt op dit paneel 1,36:1 -- op een verdiept veld dat
-     zelf maar 1,09:1 van het paneel verschilt, is het veld dan niet te vinden.
-
-     Deze rand grenst aan VIER vlakken, en dat is de reden dat hij lichter is
-     dan hij op het oog hoeft te zijn: buiten aan het paneel (#1E1B16) of de
-     goot (#17150F), binnen aan de veldvulling (#14120E) of -- bij de
-     Google-knop en de actieve pil -- aan de opgetilde tint (#262319). Die
-     laatste is de strengste, want hij ligt het dichtst bij de rand zelf.
-     Gemeten: 3,32 / 3,04 / 3,54 / 3,62. De eerste kandidaat (#6B6862) haalde
-     3,09 op het paneel maar 2,83 op de opgetilde tint, en dat is precies de
-     rand die je het vaakst ziet. */
-  --login-field-line: #706D66;
-  --login-text:       #F9F9F9;   /* 16,30:1 op het paneel */
-  --login-muted:      #B5B5B5;   /*  8,37:1 */
-  --login-placeholder:#9A9489;   /*  6,21:1 op het verdiepte veld */
-  /* Zand ALS TEKST op dit paneel. Precies de regel uit CLAUDE.md: --accent-c
-     is de vulling, --accent-ink diezelfde kleur als tekst. Nu het paneel
-     donker is, is dat gewoon --accent-ink van het donkere thema: 13,60:1.
-     Hier stond #8A6D2E -- de diepe tint die nodig was op wit, en die op donker
-     juist 2,4:1 zou halen. Eén token verkeerd meeverhuizen en de merkkleur op
-     het eerste scherm is onleesbaar. */
-  --login-accent-ink: #F0E4C8;
+     Alle waarden komen uit het lichte thema van de app (--bg #F3EDE1, --card
+     #FAF6EE, --text-c #1F1D19, --accent-ink #6E5320), geen nieuw palet. Gemeten
+     contrasten staan in CHANGELOG.md. Tekst gebruikt --login-accent-ink / de
+     *-ink waarden; het zand zelf (--login-fill) is alleen een vulling. */
+  --login-stage:      #F3EDE1;   /* showcase-vlak: de grond van de app */
+  --login-stage-ink:  #1F1D19;
+  --login-stage-dim:  #6B6252;
+  --login-panel:      #FAF6EE;   /* formulierpaneel: de kaartkleur */
+  --login-panel-lift: #FFFCF6;   /* de actieve pil in de segmentschakelaar */
+  --login-track:      #EAE2D2;   /* de goot waar die pil in ligt */
+  --login-input-bg:   #FFFDF9;
+  --login-border:     #D9CCB0;   /* haarlijnen en scheidingen -- decoratief */
+  --login-line:       #D9CCB0;
+  /* Omtrek van een BEDIENBAAR ding: WCAG 1.4.11, 3:1 tegen alles wat eraan
+     grenst (paneel, goot, veldvulling, actieve pil). */
+  --login-field-line: #857A63;
+  --login-input-hover:#6B6252;
+  --login-text:       #1F1D19;
+  --login-muted:      #6B6252;
+  --login-faint:      #6B6252;
+  --login-placeholder:#7A705E;
+  --login-accent-ink: #6E5320;
+  --login-fill:       #E8D7B1;   /* zand als VULLING (knop, vinkjes, balk) */
+  --login-fill-edge:  #BFA877;   /* de rand die de zandknop op crème leesbaar maakt */
+  --login-on-fill:    #1A1A1A;
+  --login-caret:      #6E5320;
+  --login-ring:       rgba(110,83,32,0.20);
+  --login-hover:      rgba(31,29,25,0.05);
+  --login-link-line:  rgba(110,83,32,0.40);
+  --login-card:       #FFFBF4;   /* kaart in het showcase-vlak */
+  --login-card-inset: #F3EDE1;
+  --login-bubble-in:  #EFE7D8;
+  --login-bar-bg:     #E3D9C4;
+  --login-dot:        #D9CCB0;
+  --login-error:      #A52D25;
+  --login-error-bg:   rgba(194,53,43,0.08);
+  --login-error-line: rgba(194,53,43,0.32);
+  --login-shadow:     0 1px 2px rgba(23,19,12,0.06), 0 12px 32px -12px rgba(23,19,12,0.14);
+  --login-sel:        rgba(232,215,177,0.65);
   position: fixed;
   inset: 0;
   display: flex;
   z-index: 1000;
   padding: 0;
-  /* Stond op --bg en volgde daarmee het thema, terwijl beide panelen erop dat
-     juist NIET doen. Zolang de twee panelen samen 100% vulden zag je dat niet;
-     het kwam pas tevoorschijn als er ergens een kier viel -- en dan een lichte
-     strook op een verder donker scherm. Nu hetzelfde podium als de merkkant. */
   background: var(--login-stage);
+}
+[data-theme="dark"] #login-page {
+  --login-stage:      #17140F;
+  --login-stage-ink:  #F1E9DA;
+  --login-stage-dim:  #A79B85;
+  --login-panel:      #211D16;
+  --login-panel-lift: #2A251C;
+  --login-track:      #17140F;
+  --login-input-bg:   #17140F;
+  --login-border:     #35332F;
+  --login-line:       #3A3327;
+  --login-field-line: #706D66;
+  --login-input-hover:#574B37;
+  --login-text:       #F1E9DA;
+  --login-muted:      #A79B85;
+  --login-faint:      #8A7F6B;
+  --login-placeholder:#9A9489;
+  --login-accent-ink: #F0E4C8;
+  --login-fill:       #E8D7B1;
+  --login-fill-edge:  #E8D7B1;
+  --login-on-fill:    #1A1A1A;
+  --login-caret:      #E8D7B1;
+  --login-ring:       rgba(232,215,177,0.16);
+  --login-hover:      rgba(241,233,218,0.06);
+  --login-link-line:  rgba(240,228,200,0.35);
+  --login-card:       #211D16;
+  --login-card-inset: #17140F;
+  --login-bubble-in:  #2A251C;
+  --login-bar-bg:     #2A251C;
+  --login-dot:        #3A3327;
+  --login-error:      #E7756B;
+  --login-error-bg:   rgba(228,102,90,0.10);
+  --login-error-line: rgba(228,102,90,0.28);
+  --login-shadow:     none;
+  --login-sel:        rgba(232,215,177,0.32);
 }
 
 #login-page::before { display: none; }
@@ -1341,53 +1363,8 @@ h1, h2, h3, .display-heading, .page-title, .stat-value, .card-title {
 
 /* ── RIGHT: brand panel (58%). Calm dark surface, sand accents only ── */
 .login-brand-side {
-  /* Alles binnen dit paneel rekent voortaan met de DONKERE waarden, ongeacht
-     het thema van de pagina.
-
-     Waarom hier en niet per regel: de kaarten, de chatballonnen, de scorebalken
-     en de agendategels binnenin gebruiken samen een stuk of tien tokens
-     (--text-muted, --border, --card, ...). Zet je het paneel donker vast en
-     laat je die tokens meebewegen, dan krijg je in het lichte thema donkere
-     tekst op een donker vlak -- onleesbaar, en op precies de plek die een
-     nieuwe klant als eerste ziet. Eén blok dat de tokens vastzet, is
-     controleerbaar; tien losse uitzonderingen zijn dat niet, en er komt altijd
-     een elfde element bij dat vergeten wordt.
-
-     De waarden hieronder zijn letterlijk die uit het donkere thema. */
-  --bg:            #17140F;
-  --bg-alt:        #120F0B;
-  /* Zelfde verlopen als in :root -- zie de uitleg daar. Fase 4: palet
-     bijgewerkt naar de warme-neutrale doelwaarden, letterlijk gesynchroniseerd
-     met het donkere :root-blok. */
-  --card-flat:     #211D16;
-  --card:          #211D16;
-  --card-elevated: #2A251C;
-  /* De rand stond op #262626 terwijl de kaart op #232323 staat: drie punten
-     ertussen, en dan IS er geen rand. Een kaart zonder rand leunt volledig op
-     zijn schaduw, en op bijna-zwart doet een schaduw bijna niets -- vandaar
-     dat alles vlak aanvoelde. Nu is het verschil zichtbaar zonder dat er een
-     lijn OM de kaart komt: het leest als een vouw, niet als een omtrek.
-     --divider blijft de zachtste, want een scheiding BINNEN een kaart hoort
-     minder te doen dan de kaartrand zelf.
-     Staat twee keer, en dat hoort: het tweede blok zet de donkere tokens vast
-     voor een paneel dat altijd donker is. Uit elkaar laten lopen is precies
-     hoe zoiets stilletjes scheef gaat. */
-  --border-c:      #3A3327;
-  --border-strong: #574B37;
-  --divider:       #2C2A26;
-  --hover-c:       #26211A;
-  --text-c:        #F1E9DA;
-  --text-muted-c:  #A79B85;
-  --accent-ink:    #F5ECD7;
-  --on-accent:     #1A1A1A;
-  --text:           var(--text-c);
-  --text-primary:   var(--text-c);
-  --text-secondary: var(--text-muted-c);
-  --text-muted:     var(--text-muted-c);
-  --border:         var(--border-c);
-  --border-bright:  var(--border-strong);
-  --surface:        var(--card);
-
+  /* Het showcase-vlak volgt het thema: licht is de standaard, de tokens
+     (--card, --text, ...) komen dus gewoon uit het actieve thema. */
   flex: 1;
   background: var(--login-stage);
   color: var(--login-stage-ink);
@@ -1919,14 +1896,14 @@ button.brand-dot { border: none; padding: 0; }
 }
 
 .form-input:hover {
-  border-color: var(--accent-hover);
-  background: var(--login-stage);
+  border-color: var(--login-input-hover);
+  background: var(--login-input-bg);
 }
 
 .form-input:focus {
-  border-color: var(--accent);
-  background: var(--login-stage);
-  box-shadow: 0 0 0 4px rgba(232,215,177,0.25);
+  border-color: var(--login-accent-ink);
+  background: var(--login-input-bg);
+  box-shadow: 0 0 0 3px var(--login-ring);
 }
 
 .form-input:focus-visible {
@@ -2053,8 +2030,8 @@ button.brand-dot { border: none; padding: 0; }
   padding: 12px 16px;
   /* Het vlak mag iets zwaarder nu het op donker ligt: 6% rood op bijna-zwart
      is geen vlak meer maar ruis. */
-  background: rgba(248,113,113,0.10);
-  border: 1px solid rgba(248,113,113,0.32);
+  background: var(--login-error-bg);
+  border: 1px solid var(--login-error-line);
   border-radius: var(--r-sm);
   /* Deze regel heeft twee keer eerder een onleesbare foutmelding opgeleverd,
      allebei op dezelfde manier: de kleur werd gekozen voor het paneel van
@@ -2069,7 +2046,7 @@ button.brand-dot { border: none; padding: 0; }
 
      Nu dezelfde tint als colorDanger in CLERK_APPEARANCE, zodat onze eigen
      foutmelding en die van Clerk niet uit elkaar kunnen lopen: 6,20:1. */
-  color: #F87171;
+  color: var(--login-error);
   font-size: 0.8667rem;
   font-weight: 500;
   text-align: center;
@@ -2276,7 +2253,7 @@ button.brand-dot { border: none; padding: 0; }
 #clerk-signin .cl-input:focus {
   outline: none;
   border-color: var(--login-accent-ink);
-  box-shadow: 0 0 0 3px rgba(232, 215, 177, .30);
+  box-shadow: 0 0 0 3px var(--login-ring);
 }
 #clerk-signin .cl-formFieldInputGroup { border-radius: var(--r-sm); }
 #clerk-signin .cl-formFieldInputShowPasswordButton { color: var(--login-muted); }
@@ -2317,7 +2294,7 @@ button.brand-dot { border: none; padding: 0; }
 #clerk-signin .cl-alertText {
   font-family: 'Inter', sans-serif;
   font-size: 0.8667rem;
-  color: #B42318;
+  color: var(--login-error);
 }
 
 /* Sign-in / sign-up switch under the Clerk component */
@@ -2335,13 +2312,13 @@ button.brand-dot { border: none; padding: 0; }
   padding: 0;
   font: inherit;
   font-weight: 600;
-  color: #8A6714;
+  color: var(--login-accent-ink);
   cursor: pointer;
   text-decoration: underline;
   text-underline-offset: 2px;
 }
-.clerk-toggle-link:hover { color: #6d520f; }
-.clerk-toggle-link:focus-visible { outline: 2px solid #C9A34E; outline-offset: 2px; border-radius: var(--r-xs); }
+.clerk-toggle-link:hover { color: var(--login-text); }
+.clerk-toggle-link:focus-visible { outline: 2px solid var(--login-accent-ink); outline-offset: 2px; border-radius: var(--r-xs); }
 
 .login-error::before {
   content: '';
@@ -10485,16 +10462,11 @@ summary.ap-tpl-header:focus-visible { outline: 2px solid var(--accent); outline-
    - elke dia staat er in z'n geheel: tabs met een naam en een vaste lijn.
    Elke blok, veld en dia uit de HTML blijft; er is alleen de pauzeknop
    uitgehaald, omdat er niets meer is om te pauzeren. */
-#login-page {
-  --login-text:  #F1E9DA;
-  --login-muted: #A79B85;
-  --login-line:  #3A3327;
-}
 #login-page .login-split { display: grid; grid-template-columns: minmax(480px, 560px) 1fr; height: 100vh; }
 
 /* ── Links: het formulier ── */
 #login-page .login-form-side {
-  position: relative; flex: none; width: auto; padding: 44px 72px 28px; background: #211D16;
+  position: relative; flex: none; width: auto; padding: 44px 72px 28px; background: var(--login-panel);
   border-right: 1px solid var(--login-line); align-items: stretch; overflow-y: auto;
 }
 #login-page .login-form-side::after { display: none; }
@@ -10508,46 +10480,47 @@ summary.ap-tpl-header:focus-visible { outline: 2px solid var(--accent); outline-
 #login-page .login-subtitle { font-size: 1.0667rem; line-height: 1.5; color: var(--login-muted); margin: 0 0 32px; max-width: 36ch; }
 
 /* Inloggen / account maken: één goot met een opgetilde pil. */
-#login-page .login-modus { background: #17140F; border: 1px solid var(--login-line); border-radius: var(--r-sm); padding: 4px; gap: 4px; margin-bottom: 28px; }
+#login-page .login-modus { background: var(--login-track); border: 1px solid var(--login-line); border-radius: var(--r-sm); padding: 4px; gap: 4px; margin-bottom: 28px; }
 #login-page .login-modus-knop {
   height: 42px; border-radius: var(--r-xs); font-family: 'Space Grotesk', 'Inter', sans-serif; font-weight: 600;
   font-size: 0.9667rem; color: var(--login-muted); background: transparent; border: 1px solid transparent;
   transition: color .15s ease, background-color .15s ease, border-color .15s ease;
 }
 #login-page .login-modus-knop:hover { color: var(--login-text); }
-#login-page .login-modus-knop.actief { background: #2A251C; color: var(--login-text); border-color: #4A4133; }
+#login-page .login-modus-knop.actief { background: var(--login-panel-lift); color: var(--login-text); border-color: var(--login-field-line); box-shadow: var(--login-shadow); }
 
 /* Velden: ruim, verdiept in het paneel, zand bij focus. Labels zonder
    hoofdletters: een kapitalen-regel boven elk veld is een eyebrow. */
 #login-page .form-group { margin-bottom: 18px; }
 #login-page .form-label { font-size: 0.8667rem; font-weight: 600; letter-spacing: 0; text-transform: none; color: var(--login-muted); margin-bottom: 8px; }
 #login-page .form-input {
-  height: 52px; background: #17140F; border: 1px solid #4A4133; border-radius: var(--r-sm);
-  color: var(--login-text); font-size: 1.0333rem; padding: 0 16px; caret-color: #E8D7B1;
+  height: 52px; background: var(--login-input-bg); border: 1px solid var(--login-field-line); border-radius: var(--r-sm);
+  color: var(--login-text); font-size: 1.0333rem; padding: 0 16px; caret-color: var(--login-caret);
   transition: border-color .15s ease, box-shadow .15s ease;
 }
-#login-page .form-input::placeholder { color: #8A7F6B; }
-#login-page .form-input:hover { border-color: #574B37; }
-#login-page .form-input:focus { outline: none; border-color: #E8D7B1; box-shadow: 0 0 0 3px rgba(232,215,177,0.16); }
+#login-page .form-input::placeholder { color: var(--login-placeholder); }
+#login-page .form-input:hover { border-color: var(--login-input-hover); }
+#login-page .form-input:focus { outline: none; border-color: var(--login-accent-ink); box-shadow: 0 0 0 3px var(--login-ring); }
 #login-page .login-pw-toggle {
   position: absolute; right: 8px; top: 50%; transform: translateY(-50%); width: 38px; height: 38px;
   display: flex; align-items: center; justify-content: center; background: none; border: 0; border-radius: var(--r-xs);
   color: var(--login-muted); cursor: pointer; padding: 0;
 }
-#login-page .login-pw-toggle:hover { color: var(--login-text); background: rgba(241,233,218,0.06); }
+#login-page .login-pw-toggle:hover { color: var(--login-text); background: var(--login-hover); }
 
 /* De ene knop: zand gevuld, houtskool erop. */
 #login-page .btn-login {
-  height: 54px; margin-top: 10px; border-radius: var(--r-sm); background: #E8D7B1; color: #1A1A1A; border: 0;
+  height: 54px; margin-top: 10px; border-radius: var(--r-sm); background: var(--login-fill); color: var(--login-on-fill); border: 1px solid var(--login-fill-edge);
   font-family: 'Space Grotesk', 'Inter', sans-serif; font-weight: 600; font-size: 1.0667rem; letter-spacing: -0.005em;
-  box-shadow: none; transition: filter .15s ease;
+  box-shadow: var(--login-shadow); transition: filter .15s ease;
 }
 #login-page .btn-login:hover { filter: brightness(1.06); }
 #login-page .btn-login:active { filter: brightness(0.96); }
+#login-page .btn-login:disabled, #login-page .btn-login.loading { opacity: .6; cursor: default; box-shadow: none; filter: none; transform: none; }
 #login-page .login-links { margin-top: 18px; text-align: center; }
-#login-page .login-link { color: var(--login-accent-ink); font-size: 0.9333rem; text-decoration: underline; text-decoration-color: rgba(240,228,200,0.35); text-underline-offset: 3px; }
+#login-page .login-link { color: var(--login-accent-ink); font-size: 0.9333rem; text-decoration: underline; text-decoration-color: var(--login-link-line); text-underline-offset: 3px; }
 #login-page .login-link:hover { text-decoration-color: currentColor; }
-#login-page .login-error:not(:empty) { margin-top: 14px; padding: 11px 14px; border-radius: var(--r-xs); background: rgba(228,102,90,0.10); border: 1px solid rgba(228,102,90,0.28); color: #E7756B; font-size: 0.9333rem; }
+#login-page .login-error:not(:empty) { margin-top: 14px; padding: 11px 14px; border-radius: var(--r-xs); background: var(--login-error-bg); border: 1px solid var(--login-error-line); color: var(--login-error); font-size: 0.9333rem; }
 
 /* Drie feiten, een getekend vinkje. */
 #login-page .login-trust {
@@ -10556,21 +10529,24 @@ summary.ap-tpl-header:focus-visible { outline: 2px solid var(--accent); outline-
 }
 #login-page .login-trust li { gap: 8px; }
 #login-page .login-trust li::before {
-  content: ''; width: 14px; height: 14px; flex: none; border-radius: 0; background: #E8D7B1;
+  content: ''; width: 14px; height: 14px; flex: none; border-radius: 0; background: var(--login-accent-ink);
   -webkit-mask: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'><polyline points='20 6 9 17 4 12'/></svg>") center / contain no-repeat;
           mask: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'><polyline points='20 6 9 17 4 12'/></svg>") center / contain no-repeat;
 }
 #login-page .login-what { margin: 16px 0 0; font-size: 0.8667rem; line-height: 1.6; color: var(--login-muted); max-width: 46ch; text-align: left; }
-#login-page .login-footer { margin-top: auto; padding-top: 36px; color: #8A7F6B; font-size: 0.8rem; letter-spacing: 0; text-align: left; }
-#login-page .login-lang { position: absolute; right: 32px; bottom: 22px; margin: 0; }
+#login-page .login-what { margin-bottom: 28px; }
+#login-page .login-footer { margin-top: auto; padding-top: 24px; border-top: 1px solid var(--login-line); color: var(--login-faint); font-size: 0.8rem; letter-spacing: 0; text-align: left; padding-right: 128px; }
+/* In de kolom en niet meer los op het paneel: een absoluut geplaatste keuzelijst
+   schoof over de tekst zodra een foutmelding de kolom hoger maakte. */
+#login-page .login-lang { position: static; align-self: flex-end; margin: -32px 0 0; }
 #login-page .login-lang select {
   background: transparent; color: var(--login-muted); border: 1px solid var(--login-line); border-radius: var(--r-xs);
   font-size: 0.8667rem; height: 32px; padding: 0 28px 0 10px;
 }
-#login-page .login-lang select:hover { border-color: #574B37; color: var(--login-text); }
+#login-page .login-lang select:hover { border-color: var(--login-input-hover); color: var(--login-text); }
 
 /* ── Rechts: het podium ── */
-#login-page .login-brand-side { padding: 64px 72px; background: #17140F; align-items: center; justify-content: center; overflow: hidden; }
+#login-page .login-brand-side { padding: 64px 72px; background: var(--login-stage); align-items: center; justify-content: center; overflow: hidden; }
 /* Vaste hoogte: de tabs blijven staan ook als de ene kop drie regels heeft en de andere twee. */
 #login-page .brand-slides-wrap { max-width: 620px; width: 100%; height: auto; min-height: 600px; margin: 0 auto; flex: none; position: static; }
 /* De dia's wisselen, ze bewegen niet: geen fade, geen schuif. */
@@ -10586,27 +10562,30 @@ summary.ap-tpl-header:focus-visible { outline: 2px solid var(--accent); outline-
 
 /* De kaart: een rand, geen schaduw. */
 #login-page .brand-card-mock {
-  position: relative; width: 100%; max-width: none; background: #211D16; border: 1px solid var(--login-line);
-  border-radius: var(--r-lg); padding: 0; box-shadow: none;
+  position: relative; width: 100%; max-width: none; background: var(--login-card); border: 1px solid var(--login-line);
+  border-radius: var(--r-lg); padding: 0; box-shadow: var(--login-shadow);
 }
 #login-page .brand-card-header { padding: 16px 24px; margin: 0; border-bottom: 1px solid var(--login-line); }
-#login-page .brand-card-dot { width: 8px; height: 8px; background: #3A3327; }
+#login-page .brand-card-dot { width: 8px; height: 8px; background: var(--login-dot); }
 #login-page .brand-card-title { font-size: 0.8667rem; font-weight: 600; letter-spacing: 0; text-transform: none; color: var(--login-muted); }
 #login-page .brand-chat { gap: 12px; padding: 24px; }
 #login-page .brand-chat-msg { max-width: 82%; padding: 12px 16px 10px; border-radius: var(--r-md); font-size: 1.0333rem; line-height: 1.45; }
-#login-page .brand-chat-msg.in { background: #2A251C; color: var(--login-text); border-bottom-left-radius: 4px; }
-#login-page .brand-chat-msg.out { background: #E8D7B1; color: #1A1A1A; border-bottom-right-radius: 4px; }
-#login-page .brand-chat-msg.out em { color: rgba(26,26,26,0.55); }
+#login-page .brand-chat-msg.in { background: var(--login-bubble-in); color: var(--login-text); border-bottom-left-radius: 4px; }
+#login-page .brand-chat-msg.out { background: var(--login-fill); color: var(--login-on-fill); border-bottom-right-radius: 4px; }
+#login-page .brand-chat-msg.out em { color: rgba(26,26,26,0.72); opacity: 1; }
 #login-page .brand-chat-msg em { font-size: 0.7667rem; font-style: normal; }
+#login-page .brand-chat-msg.in em { color: var(--login-muted); opacity: 1; }
 #login-page .brand-score-row { padding: 28px 24px; gap: 28px; }
+#login-page .brand-score-ring circle:first-child { stroke: var(--login-bar-bg); }
+#login-page .brand-score-ring circle:last-child { stroke: var(--login-accent-ink); }
 #login-page .brand-score-ring, #login-page .brand-score-ring svg { width: 104px; height: 104px; }
 #login-page .brand-score-items { flex: 1; min-width: 0; }
-#login-page .brand-score-bar-wrap { width: 100%; height: 8px; background: #2A251C; }
-#login-page .brand-score-bar-fill { background: #E8D7B1; box-shadow: none; }
+#login-page .brand-score-bar-wrap { width: 100%; height: 8px; background: var(--login-bar-bg); }
+#login-page .brand-score-bar-fill { background: var(--login-accent-ink); box-shadow: none; }
 #login-page .brand-score-label { font-family: 'Space Grotesk', 'Inter', sans-serif; font-size: 1.4rem; font-variant-numeric: tabular-nums; color: var(--login-text); }
 #login-page .brand-score-item span { font-size: 0.9667rem; color: var(--login-muted); }
 #login-page .brand-agenda { padding: 24px; gap: 12px; }
-#login-page .brand-agenda-item { padding: 16px 18px; border-radius: var(--r-sm); background: #17140F; border: 1px solid var(--login-line); }
+#login-page .brand-agenda-item { padding: 16px 18px; border-radius: var(--r-sm); background: var(--login-card-inset); border: 1px solid var(--login-line); }
 #login-page .brand-agenda-time { font-family: 'Space Grotesk', 'Inter', sans-serif; font-variant-numeric: tabular-nums; font-size: 1.0667rem; color: var(--login-text); }
 #login-page .brand-agenda-name { font-size: 1.0667rem; color: var(--login-text); }
 #login-page .brand-agenda-tag { font-size: 0.9rem; color: var(--login-muted); }
@@ -10618,9 +10597,9 @@ summary.ap-tpl-header:focus-visible { outline: 2px solid var(--accent); outline-
   display: flex; align-items: flex-end; text-align: left; cursor: pointer;
 }
 #login-page .brand-dot::before { content: ''; position: absolute; left: 0; top: 0; height: 2px; border-radius: 2px; background: var(--login-line); width: 100%; }
-#login-page .brand-dot::after { content: ''; position: absolute; left: 0; top: 0; height: 2px; border-radius: 2px; background: #E8D7B1; width: 0; }
+#login-page .brand-dot::after { content: ''; position: absolute; left: 0; top: 0; height: 2px; border-radius: 2px; background: var(--login-accent-ink); width: 0; }
 #login-page .brand-dot.active::after { width: 100%; }
-#login-page .brand-dot-label { font-size: 0.9333rem; font-weight: 600; color: #8A7F6B; padding-bottom: 4px; }
+#login-page .brand-dot-label { font-size: 0.9333rem; font-weight: 600; color: var(--login-faint); padding-bottom: 4px; }
 #login-page .brand-dot:hover .brand-dot-label { color: var(--login-muted); }
 #login-page .brand-dot.active .brand-dot-label { color: var(--login-text); }
 #login-page .brand-dot.active { width: auto; background: none; }
@@ -10629,32 +10608,32 @@ summary.ap-tpl-header:focus-visible { outline: 2px solid var(--accent); outline-
    als het eigen formulier hierboven, en leesbare foutkleuren op donker:
    #B42318 haalde 2,6:1 op dit paneel, #8A6714 nog minder. */
 #login-page #clerk-signin .cl-formFieldInput, #login-page #clerk-signin .cl-input {
-  height: 52px; min-height: 52px; background: #17140F; border: 1px solid #4A4133; border-radius: var(--r-sm); font-size: 1.0333rem; caret-color: #E8D7B1;
+  height: 52px; min-height: 52px; background: var(--login-input-bg); border: 1px solid var(--login-field-line); border-radius: var(--r-sm); font-size: 1.0333rem; caret-color: var(--login-caret);
 }
-#login-page #clerk-signin .cl-formFieldInput:focus, #login-page #clerk-signin .cl-input:focus { border-color: #E8D7B1; box-shadow: 0 0 0 3px rgba(232,215,177,0.16); }
+#login-page #clerk-signin .cl-formFieldInput:focus, #login-page #clerk-signin .cl-input:focus { border-color: var(--login-accent-ink); box-shadow: 0 0 0 3px var(--login-ring); }
 #login-page #clerk-signin .cl-formFieldLabel { font-size: 0.8667rem; font-weight: 600; letter-spacing: 0; text-transform: none; }
 #login-page #clerk-signin .cl-formButtonPrimary {
-  height: 54px; border-radius: var(--r-sm); background: #E8D7B1; color: #1A1A1A;
+  height: 54px; border-radius: var(--r-sm); background: var(--login-fill); color: var(--login-on-fill); border: 1px solid var(--login-fill-edge); box-shadow: var(--login-shadow);
   font-family: 'Space Grotesk', 'Inter', sans-serif; font-weight: 600; font-size: 1.0667rem; text-transform: none; letter-spacing: -0.005em;
 }
-#login-page #clerk-signin .cl-formButtonPrimary:hover { background: #E8D7B1; filter: brightness(1.06); }
-#login-page #clerk-signin .cl-socialButtonsBlockButton { height: 52px; border-radius: var(--r-sm); background: #2A251C; border-color: #4A4133; }
-#login-page #clerk-signin .cl-socialButtonsBlockButton:hover { background: #312B21; border-color: #574B37; }
-#login-page #clerk-signin .cl-formFieldErrorText, #login-page #clerk-signin .cl-formFieldWarningText, #login-page #clerk-signin .cl-alertText { color: #E7756B; }
+#login-page #clerk-signin .cl-formButtonPrimary:hover { background: var(--login-fill); filter: brightness(1.06); }
+#login-page #clerk-signin .cl-socialButtonsBlockButton { height: 52px; border-radius: var(--r-sm); background: var(--login-panel-lift); border-color: var(--login-field-line); }
+#login-page #clerk-signin .cl-socialButtonsBlockButton:hover { background: var(--login-card-inset); border-color: var(--login-input-hover); }
+#login-page #clerk-signin .cl-formFieldErrorText, #login-page #clerk-signin .cl-formFieldWarningText, #login-page #clerk-signin .cl-alertText { color: var(--login-error); }
 #login-page #clerk-signin a, #login-page #clerk-signin .cl-footerActionLink, #login-page #clerk-signin .cl-formResendCodeLink, #login-page #clerk-signin .cl-identityPreviewEditButton { color: var(--login-accent-ink); }
 
 #login-page #clerk-toggle { color: var(--login-muted); text-align: center; margin-top: 16px; }
-#login-page .clerk-toggle-link { color: var(--login-accent-ink); text-decoration-color: rgba(240,228,200,0.35); text-underline-offset: 3px; }
-#login-page .clerk-toggle-link:hover { color: #F5ECD7; text-decoration-color: currentColor; }
+#login-page .clerk-toggle-link { color: var(--login-accent-ink); text-decoration-color: var(--login-link-line); text-underline-offset: 3px; }
+#login-page .clerk-toggle-link:hover { color: var(--login-text); text-decoration-color: currentColor; }
 
 /* Het podium kleurt ook wat de browser zelf tekent. */
-#login-page ::selection { background: rgba(232,215,177,0.32); color: #F1E9DA; }
-#login-page :focus-visible { outline: 2px solid #E8D7B1; outline-offset: 2px; }
-#login-page .login-form-side { scrollbar-width: thin; scrollbar-color: #3A3327 transparent; }
+#login-page ::selection { background: var(--login-sel); color: var(--login-text); }
+#login-page :focus-visible { outline: 2px solid var(--login-accent-ink); outline-offset: 2px; }
+#login-page .login-form-side { scrollbar-width: thin; scrollbar-color: var(--login-dot) transparent; }
 #login-page .login-form-side::-webkit-scrollbar { width: 8px; }
 #login-page .login-form-side::-webkit-scrollbar-track { background: transparent; }
-#login-page .login-form-side::-webkit-scrollbar-thumb { background: #3A3327; border-radius: var(--r-xs); border: 2px solid #211D16; }
-#login-page .login-form-side::-webkit-scrollbar-thumb:hover { background: #574B37; }
+#login-page .login-form-side::-webkit-scrollbar-thumb { background: var(--login-dot); border-radius: var(--r-xs); border: 2px solid var(--login-panel); }
+#login-page .login-form-side::-webkit-scrollbar-thumb:hover { background: var(--login-input-hover); }
 
 /* Op een laptop van 1280x720 moet het podium nog steeds in één beeld. */
 @media (max-height: 800px) {
