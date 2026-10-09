@@ -105,6 +105,17 @@ function getCachedClient(key) {
 function setCachedClient(key, record) {
   _clientCache.set(key, { record, ts: Date.now() });
 }
+/* De cache is gesleuteld op de API key (zie het auth-pad). Na een wijziging aan
+   een klantrecord vergeten we daarom elk item van dat project, in plaats van een
+   item onder de projectcode te zetten: een projectcode is publiek (formulier-URL)
+   en zou anders zelf als API key werken. */
+function vergeetCachedClient(projectCode) {
+  if (!projectCode) return;
+  for (const [k, e] of _clientCache) {
+    const f = (e && e.record && e.record.fields) || {};
+    if ((f['fldN4dL0bGgfBOXwM'] || f['Project Code']) === projectCode) _clientCache.delete(k);
+  }
+}
 
 // Rate limiter. 120 req / 60s per IP (allows normal polling, blocks hammering)
 const _rl = new Map();
@@ -833,7 +844,7 @@ module.exports = _errors.vangAf(async function handler(req, res) {
           { method: 'PATCH', headers: { Authorization: `Bearer ${AIRTABLE_TOKEN}`, 'Content-Type': 'application/json' }, body: JSON.stringify({ fields: velden, typecast: true }) }
         );
         if (!upRes.ok) return res.status(500).json({ error: 'Ontkoppelen mislukt. Probeer later opnieuw.' });
-        try { setCachedClient(projectCode, { ...rec, fields: { ...rec.fields, ...velden } }); } catch (e) {}
+        try { vergeetCachedClient(projectCode); } catch (e) {}
         if (oudNummer) _waToken.vergeet(oudNummer);
         console.log('[wa-es] eigen nummer ontkoppeld voor', projectCode);
         return res.status(200).json({ ok: true });
@@ -910,7 +921,7 @@ module.exports = _errors.vangAf(async function handler(req, res) {
             '-- nummer-id', nummerId, 'hoort handmatig op Client Config. Airtable:', upRes.status, txt.slice(0, 200));
           return res.status(500).json({ error: 'Koppeling gelukt, maar opslaan mislukte. We hebben dit gemeld.' });
         }
-        try { setCachedClient(projectCode, { ...rec, fields: { ...rec.fields, ...velden } }); } catch (e) {}
+        try { vergeetCachedClient(projectCode); } catch (e) {}
         _waToken.onthoud(nummerId, uit.token);
         /* Helvaro's sjablonen meteen op de WABA van de klant zetten: zonder
            kan dit nummer buiten het 24u-venster niets versturen. Een fout hier
@@ -1803,8 +1814,15 @@ module.exports = _errors.vangAf(async function handler(req, res) {
     if (body.mode === 'appointments-list') {
       if (!projectCode) return res.status(403).json({ error: 'Geen client context' });
       const APPOINTMENTS_TABLE = 'tblD058vEITs1xYFc';
-      const from = body.from || new Date(Date.now() - 7*24*60*60*1000).toISOString();
-      const to   = body.to   || new Date(Date.now() + 30*24*60*60*1000).toISOString();
+      /* from/to komen uit de body en gaan een Airtable-formule in: alleen een
+         echte datum, als ISO herschreven, mag erdoor. Al het andere valt terug
+         op het standaardbereik. */
+      const alsIso = (v, standaard) => {
+        const d = v ? new Date(v) : null;
+        return d && Number.isFinite(d.getTime()) ? d.toISOString() : standaard;
+      };
+      const from = alsIso(body.from, new Date(Date.now() - 7*24*60*60*1000).toISOString());
+      const to   = alsIso(body.to,   new Date(Date.now() + 30*24*60*60*1000).toISOString());
       const formula = encodeURIComponent(
         `AND({Project Code}="${escapeFormula(projectCode)}", IS_AFTER({Start Time}, "${from}"), IS_BEFORE({Start Time}, "${to}"))`
       );
@@ -1833,7 +1851,12 @@ module.exports = _errors.vangAf(async function handler(req, res) {
           console.warn('[appointments-list] gcal listEvents failed:', e && e.message);
         }
 
-        return res.status(200).json({ appointments: d.records || [], externalEvents });
+        // Tweede slot: alleen records van dit project, wat de formule ook deed.
+        const eigen = (d.records || []).filter(r => {
+          const pc = r.fields && r.fields['Project Code'];
+          return pc === undefined || String(Array.isArray(pc) ? pc[0] : pc) === projectCode;
+        });
+        return res.status(200).json({ appointments: eigen, externalEvents });
       } catch (err) {
         return res.status(500).json({ error: 'Serverfout' });
       }
@@ -2509,6 +2532,7 @@ module.exports = _errors.vangAf(async function handler(req, res) {
         // Via de AI-router: model uit configuratie, uitwijken bij een provider
         // die omvalt, en verbruik geboekt op deze tenant.
         let txt = '';
+        let tokens = null;
         try {
           const uit = await _ai.converse({
             ctx: { projectCode, userId: 'dashboard' },
@@ -2518,6 +2542,7 @@ module.exports = _errors.vangAf(async function handler(req, res) {
             maxTokens: 600,
           });
           txt = uit.text || '';
+          tokens = ((uit.inputTokens || 0) + (uit.outputTokens || 0)) || null;
         } catch (err) {
           console.error('[suggest-replies] AI-router fout:', err && err.code, err && err.message);
           return res.status(502).json({ error: 'AI niet bereikbaar' });
@@ -2532,7 +2557,7 @@ module.exports = _errors.vangAf(async function handler(req, res) {
         if (!replies.length) return res.status(502).json({ error: 'AI gaf geen suggesties terug' });
         credits.recordUsage(projectCode, credits.FEATURES.REPLY_SUGGESTION, {
           credits: credits.WEIGHTS[credits.FEATURES.REPLY_SUGGESTION],
-          tokens: (ad.usage && (ad.usage.input_tokens || 0) + (ad.usage.output_tokens || 0)) || null,
+          tokens,
           /* Lead + het aantal berichten waarop deze suggestie gebaseerd is: een
              retry voor DEZELFDE lead op DEZELFDE historie (niets nieuws
              binnengekomen) krijgt dezelfde referentie en boekt maar één keer.

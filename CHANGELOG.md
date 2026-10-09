@@ -764,6 +764,20 @@ dezelfde gedeelde teller aan (`api/_ratelimit.js`, met de Upstash-instelling
 die er al was); zonder die instelling valt hij net als voorheen terug op een
 lokale teller, dus dit verandert niets zolang Upstash niet is aangesloten.
 
+## 9 oktober 2026 — beveiliging
+
+- **Een projectcode werkte tijdelijk als API-sleutel.** Na het koppelen of
+  ontkoppelen van een eigen WhatsApp-nummer kon iemand met alleen de publieke
+  projectcode (die in de formulierlink staat) tot 30 minuten de instellingen van
+  dat account lezen en wijzigen. Dat kan niet meer; de cache wordt nu gewist in
+  plaats van onder de projectcode gezet.
+- **De agenda-lijst nam zijn datums ongecontroleerd over.** Een vervalste datum
+  kon het filter op het eigen account breken en afspraken (namen, nummers) van
+  andere accounts tonen. Alleen een echte datum komt er nog door, en de lijst
+  houdt daarna alleen de eigen afspraken over.
+- **"Antwoordsuggesties" faalden altijd met een fout** nadat de AI al betaald
+  was. Ze komen nu terug zoals bedoeld en het verbruik wordt correct geboekt.
+
 ## 16 september 2026 — avond
 
 ### De assistent antwoordt weer op leads die via het formulier binnenkwamen
