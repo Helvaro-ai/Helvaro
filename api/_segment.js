@@ -60,4 +60,60 @@ function norm(segment) {
   return BEKEND.indexOf(s) !== -1 ? s : AUTO;
 }
 
-module.exports = { AUTO, MOTOR, BEKEND, VELD, van, isMotor, norm };
+/* ── Rijbewijsklasse (motor) ─────────────────────────────────────────────────
+ * Wat een bike VEREIST (A1 <= 125 cc / 11 kW, A2 <= 35 kW, A onbeperkt) en wat
+ * een klant HEEFT. Eén normalisatie voor beide kanten, zodat 'a2', 'A 2',
+ * 'rijbewijs A2' en 'permis A2' hetzelfde zijn. Alles wat geen klasse is geeft
+ * '' -- nooit een gok. */
+const RIJBEWIJS = Object.freeze(['A1', 'A2', 'A']);
+const RANG = Object.freeze({ A1: 1, A2: 2, A: 3 });
+function normRijbewijs(x) {
+  const t = String(x == null ? '' : x).trim().toUpperCase();
+  if (!t) return '';
+  const m = /(?:^|[^A-Z0-9])A\s?([12])?(?![A-Z0-9])/.exec(t) || /^A\s?([12])?$/.exec(t);
+  if (!m) return '';
+  return m[1] ? 'A' + m[1] : 'A';
+}
+
+/* Grenzen van de klassen (EU-richtlijn rijbewijzen). */
+const KLASSE_GRENZEN = Object.freeze({
+  A1: { maxKw: 11, maxCc: 125 },
+  A2: { maxKw: 35, maxCc: null },
+  A:  { maxKw: null, maxCc: null },
+});
+
+/**
+ * Welke klasse heeft deze motor minstens nodig?
+ * Uitdrukkelijk opgegeven wint; anders afgeleid uit vermogen, en alleen als
+ * dat ondubbelzinnig is. 'onbekend' betekent: niet te bevestigen -- de
+ * aanroeper mag dat NIET als 'past' lezen.
+ * @returns {'A1'|'A2'|'A'|'onbekend'}
+ */
+function vereistRijbewijs(m) {
+  const expliciet = normRijbewijs(m && m.rijbewijs);
+  if (expliciet) return expliciet;
+  const kw = m && m.kw != null && m.kw !== '' ? Number(m.kw) : NaN;
+  if (Number.isFinite(kw) && kw > 35) return 'A';
+  const cc = m && m.cc != null && m.cc !== '' ? Number(m.cc) : NaN;
+  if (Number.isFinite(cc) && cc > 125 && Number.isFinite(kw) && kw > 11 && kw <= 35) return 'A2';
+  if (Number.isFinite(cc) && cc > 125 && !Number.isFinite(kw)) return 'onbekend';
+  if (Number.isFinite(cc) && cc <= 125 && Number.isFinite(kw) && kw <= 11) return 'A1';
+  return 'onbekend';
+}
+
+/**
+ * Mag iemand met rijbewijs `heeft` deze motor rijden?
+ * @returns {'ja'|'nee'|'onbekend'}
+ */
+function mogelijkMetRijbewijs(m, heeft) {
+  const h = normRijbewijs(heeft);
+  if (!h) return 'ja';                 // geen rijbewijsbeperking opgegeven
+  const nodig = vereistRijbewijs(m);
+  if (nodig === 'onbekend') return h === 'A' ? 'ja' : 'onbekend';
+  return RANG[h] >= RANG[nodig] ? 'ja' : 'nee';
+}
+
+module.exports = {
+  AUTO, MOTOR, BEKEND, VELD, van, isMotor, norm,
+  RIJBEWIJS, KLASSE_GRENZEN, normRijbewijs, vereistRijbewijs, mogelijkMetRijbewijs,
+};

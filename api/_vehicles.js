@@ -81,6 +81,12 @@ const F = Object.freeze({
      verschillende platformen aan elkaar gekoppeld worden (api/_voorraad-sync.js).
      Optioneel veld: zie onbekendOptioneelVeld(). */
   vin:         'VIN',
+  /* Motorsegment (api/_segment.js): cilinderinhoud in cc en de rijbewijsklasse
+     die de motor minstens vraagt (A1|A2|A). Het motortype (cruiser, touring,
+     ...) staat in het bestaande veld Body. Beide velden zijn optioneel: zie
+     OPTIONELE_VELDEN. */
+  cc:          'Engine CC',
+  rijbewijs:   'Licence Class',
 });
 
 class VehicleError extends Error {
@@ -447,6 +453,8 @@ function vanRecord(rec) {
     gesynct:     String(f[F.gesynct] || '').trim(),
     verkochtOp:  String(f[F.verkochtOp] || '').trim(),
     vin:         String(f[F.vin] || '').trim().toUpperCase(),
+    cc:          getal(f[F.cc]),
+    rijbewijs:   require('./_segment').normRijbewijs(f[F.rijbewijs]),
   };
 }
 
@@ -707,6 +715,13 @@ function naarVelden(invoer, projectCode) {
      (een base zonder het veld mag een gewone save niet breken). */
   if (v.vin && /^[A-HJ-NPR-Z0-9]{17}$/i.test(String(v.vin).trim())) velden[F.vin] = String(v.vin).trim().toUpperCase();
 
+  /* Motor: alleen als de aanroeper ze meegeeft, zodat een auto-save of een
+     base zonder deze velden niet verandert. Zie OPTIONELE_VELDEN. */
+  const cc = nummer(v.cc);
+  if (cc !== null && cc > 0 && cc <= 10000) velden[F.cc] = cc;
+  const klasse = require('./_segment').normRijbewijs(v.rijbewijs);
+  if (klasse) velden[F.rijbewijs] = klasse;
+
   return velden;
 }
 
@@ -739,8 +754,8 @@ function onbekendVerkochtVeld(status, tekstAntwoord) {
 
 /* Hetzelfde voor elk optioneel veld dat de schema-migratie moet aanmaken:
    welke velden noemt een 422 UNKNOWN_FIELD_NAME? Geeft de veldnamen terug die
-   we mogen weglaten en opnieuw proberen (nu: Sold At en VIN). */
-const OPTIONELE_VELDEN = Object.freeze([F.verkochtOp, F.vin]);
+   we mogen weglaten en opnieuw proberen (nu: Sold At, VIN, Engine CC en Licence Class). */
+const OPTIONELE_VELDEN = Object.freeze([F.verkochtOp, F.vin, F.cc, F.rijbewijs]);
 function onbekendOptioneelVeld(status, tekstAntwoord) {
   if (status !== 422 || !/UNKNOWN_FIELD_NAME/.test(tekstAntwoord)) return [];
   return OPTIONELE_VELDEN.filter((naam) => tekstAntwoord.indexOf(naam) !== -1);
@@ -789,8 +804,9 @@ async function save(projectCode, invoer = {}) {
     let fout = '';
     if (!r.ok) {
       fout = await r.text().catch(() => '');
-      if (F.verkochtOp in velden && onbekendVerkochtVeld(r.status, fout)) {
-        delete velden[F.verkochtOp];
+      const weg = onbekendOptioneelVeld(r.status, fout).filter((n) => n in velden);
+      if (weg.length) {
+        for (const n of weg) delete velden[n];
         r = await patch(velden);
         fout = r.ok ? '' : await r.text().catch(() => '');
       }
@@ -826,8 +842,9 @@ async function save(projectCode, invoer = {}) {
   let fout = '';
   if (!r.ok) {
     fout = await r.text().catch(() => '');
-    if (F.verkochtOp in velden && onbekendVerkochtVeld(r.status, fout)) {
-      delete velden[F.verkochtOp];
+    const weg = onbekendOptioneelVeld(r.status, fout).filter((n) => n in velden);
+    if (weg.length) {
+      for (const n of weg) delete velden[n];
       r = await post(velden);
       fout = r.ok ? '' : await r.text().catch(() => '');
     }
