@@ -125,12 +125,14 @@ async function vrijeMomenten(projectCode, { max = 8, nu = Date.now(), alle: alle
 
   /* Google Agenda: bezette blokken, of null als het niet te controleren viel.
      null = niet raden: dan tellen alleen de afspraken in Helvaro. */
-  let bezet = [], agenda = false;
+  let bezet = [], agenda = false, agendaNietGelezen = false;
   try {
     const g = await _afspraken.gcalVoor(t);
+    if (g.nietBereikbaar) agendaNietGelezen = true;          // koppeling bestaat, token werkt niet (L-03)
     if (g.token) {
       const blokken = await _gcal.freeBusy(g.token, g.calId, van, tot);
       if (Array.isArray(blokken)) { bezet = blokken; agenda = true; }
+      else agendaNietGelezen = true;                          // L-13: niet gelezen is niet vrij
     }
   } catch (e) { /* zonder agenda */ }
 
@@ -139,7 +141,7 @@ async function vrijeMomenten(projectCode, { max = 8, nu = Date.now(), alle: alle
     return !_afspraken.botsendeAfspraak(bestaande, ms, DUUR_MIN) && !overlapt(ms, DUUR_MIN, bezet);
   });
   /* Voor de boekingscontrole: ALLE vrije momenten, niet de gespreide selectie. */
-  if (allesTerug) return { momenten: vrij, agenda };
+  if (allesTerug) return { momenten: vrij, agenda, agendaNietGelezen };
   /* Spreiden: eerst één per dag (ochtend of middag), dan aanvullen. */
   const gekozen = [], dagGezien = new Set();
   for (const iso of vrij) {
@@ -147,7 +149,7 @@ async function vrijeMomenten(projectCode, { max = 8, nu = Date.now(), alle: alle
     if (!dagGezien.has(sleutel)) { dagGezien.add(sleutel); gekozen.push(iso); }
     if (gekozen.length >= max) break;
   }
-  return { momenten: gekozen.sort(), agenda };
+  return { momenten: gekozen.sort(), agenda, agendaNietGelezen };
 }
 
 /* ── Boeken ────────────────────────────────────────────────────────────── */
@@ -164,7 +166,7 @@ async function boek(projectCode, o = {}) {
 
   /* Het gekozen moment moet NU nog vrij zijn -- opnieuw berekend, niet wat de
      browser ooit kreeg. */
-  const { momenten } = await vrijeMomenten(t, { alle: true });
+  const { momenten, agendaNietGelezen } = await vrijeMomenten(t, { alle: true });
   if (momenten.indexOf(start.toISOString()) === -1) throw new BoekFout('Dat moment is intussen niet meer vrij. Kies een ander.', 'slot_bezet');
 
   /* Twee boekingen in dezelfde seconde (website + WhatsApp, of twee
@@ -173,7 +175,7 @@ async function boek(projectCode, o = {}) {
   const slotClaim = await _lock.claim(_lock.slotSleutel(t, start.toISOString()), _lock.SLOT_CLAIM_MS, o.leadId);
   if (!slotClaim.genomen) throw new BoekFout('Dat moment wordt net door iemand anders geboekt. Kies een ander.', 'slot_bezet');
   try {
-    return await boekOpGeclaimdMoment(t, start, o);
+    return await boekOpGeclaimdMoment(t, start, { ...o, agendaNietGelezen });
   } catch (e) {
     await slotClaim.los();
     throw e;
@@ -204,7 +206,7 @@ async function boekOpGeclaimdMoment(t, start, o) {
   const fields = {
     'Appointment ID': apptId, 'Start Time': start.toISOString(), Duration: DUUR_MIN, 'Project Code': t,
     'Lead Name': String(o.naam || '').slice(0, 100), 'Lead Phone': String(o.telefoon || '').slice(0, 30),
-    Status: 'booked', Source: 'website', Notes: String(o.notitie || 'Geboekt via de websiteassistent').slice(0, 2000),
+    Status: 'booked', Source: 'website', Notes: String((o.notitie || 'Geboekt via de websiteassistent') + (o.agendaNietGelezen ? '\n\n[LET OP] De Google agenda kon op het moment van boeken niet gelezen worden. Dit moment is NIET gecontroleerd op dubbele afspraken — kijk het even na.' : '')).slice(0, 2000),
     'Created At': new Date().toISOString(), Lead: [o.leadId],
   };
   if (voertuig) { fields['Vehicle Code'] = voertuig.code; fields['Appointment Type'] = 'proefrit'; }

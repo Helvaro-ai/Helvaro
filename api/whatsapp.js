@@ -2145,6 +2145,7 @@ async function processMessage(phone, text, scopedProjectCode, inkomendId) {
       try {
         const gAccess = await gcalAccess(client);
         gToken = gAccess.token; gCalId = gAccess.calId;
+        if (gAccess.nietBereikbaar) agendaGeverifieerd = false;   // L-03: koppeling bestaat, token werkt niet
         if (gToken) {
           const uitslag = await _gcal.checkSlot(gToken, gCalId, appt.start, appt.duration || appointmentDuration);
           slotTaken = !uitslag.free;
@@ -3581,9 +3582,21 @@ async function gcalAccess(client) {
     if (!enc) return { token: '', calId: 'primary' };
     const refresh = _gcal.decryptToken(enc);
     if (!refresh) return { token: '', calId: 'primary' };
-    const token = await _gcal.getAccessToken(refresh);
     const calId = client.fields['fldWBxxhGYEZNIMqA'] || client.fields['Google Calendar ID'] || 'primary';
-    return { token, calId };
+    try {
+      const token = await _gcal.getAccessToken(refresh);
+      return { token, calId };
+    } catch (e) {
+      /* L-03: een koppeling die er WEL is maar niet werkt, mag niet als "geen
+         agenda gekoppeld" doorgaan -- dan kent de boeking de agenda niet en
+         zegt hij dat ook niet. */
+      console.error('[gcal] token vernieuwen mislukt:', e && e.message);
+      const reauth = !!(e && e.code === 'reauth_required');
+      if (reauth) {
+        try { _afspraken.meldKoppelingVerlopen(String(client.fields['fldN4dL0bGgfBOXwM'] || client.fields['Project Code'] || '').trim()); } catch (_) { /* bijzaak */ }
+      }
+      return { token: '', calId, nietBereikbaar: true, reauth };
+    }
   } catch (e) {
     console.error('[gcal] access failed:', e && e.message);
     return { token: '', calId: 'primary' };

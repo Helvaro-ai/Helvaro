@@ -241,14 +241,37 @@ async function gcalVoor(projectCode) {
     if (!enc) return { token: '', calId: 'primary' };
     const refresh = _gcal.decryptToken(enc);
     if (!refresh) return { token: '', calId: 'primary' };
-    return {
-      token: await _gcal.getAccessToken(refresh),
-      calId: rec.fields.fldWBxxhGYEZNIMqA || rec.fields['Google Calendar ID'] || 'primary',
-    };
+    const calId = rec.fields.fldWBxxhGYEZNIMqA || rec.fields['Google Calendar ID'] || 'primary';
+    try {
+      return { token: await _gcal.getAccessToken(refresh), calId };
+    } catch (err) {
+      /* Er IS een koppeling maar het token werkt niet. Dat is iets anders dan
+         "geen agenda gekoppeld": de agenda is NIET gelezen (audit L-03). De
+         aanroeper kan dan 'niet geverifieerd' zeggen; bij invalid_grant
+         (verlopen/ingetrokken) hoort de eigenaar opnieuw te koppelen. */
+      console.error('[afspraken] gcal-token vernieuwen mislukt:', err && err.message);
+      const reauth = !!(err && err.code === 'reauth_required');
+      if (reauth) meldKoppelingVerlopen(String(projectCode || '').trim());
+      return { token: '', calId, nietBereikbaar: true, reauth };
+    }
   } catch (err) {
     console.error('[afspraken] gcal-toegang mislukt:', err && err.message);
     return { token: '', calId: 'primary' };
   }
+}
+
+/* De Google-koppeling is verlopen of ingetrokken: één melding per dag aan de
+   eigenaar (push + logboek), zodat hij opnieuw verbindt. Vuur-en-vergeet. */
+async function meldKoppelingVerlopen(code) {
+  try {
+    const ref = `gcal_reauth:${code}:${new Date().toISOString().slice(0, 10)}`;
+    if (await _activiteit.alGemeldBinnen(code, 'calendar_sync_failed', ref, 24 * 3600 * 1000)) return;
+    _activiteit.log(code, 'calendar_sync_failed', { details: { actie: 'reauth', idempotencyKey: ref } }).catch(() => {});
+    require('./_push').stuurVertaald({
+      projectCode: code, titelSleutel: 'push.agenda.titel', tekstSleutel: 'push.agenda.reauth',
+      url: 'https://app.helvaro.pro/dashboard',
+    }).catch(() => {});
+  } catch (e) { /* melding is bijzaak */ }
 }
 
 /* De twee vlaggen op de lead terugzetten.
@@ -647,6 +670,6 @@ function corrigeerNaarBrusselseTijd(isoRuw, tz = 'Europe/Brussels') {
 module.exports = {
   F, STATUS, APPOINTMENTS_TABLE,
   komendeVoorLead, zoekOpEvent, leesEigen, annuleer, verzet, wisLeadVlaggen,
-  telSleutel, gcalVoor, botsendeAfspraak, rondTijdstip,
+  telSleutel, gcalVoor, meldKoppelingVerlopen, botsendeAfspraak, rondTijdstip,
   corrigeerNaarBrusselseTijd,
 };

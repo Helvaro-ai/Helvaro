@@ -187,6 +187,14 @@ async function freeBusy(accessToken, calendarId, timeMinISO, timeMaxISO) {
       return null;
     }
     const cal = (d.calendars || {})[calendarId || 'primary'] || {};
+    /* Google geeft HTTP 200 maar zet per agenda `errors` (notFound, internalError,
+       groupTooBig) en laat `busy` dan leeg. Leeg + errors is NIET "vrij": de
+       agenda is niet gelezen. Dus null, net als bij een HTTP-fout (audit L-13). */
+    if (Array.isArray(cal.errors) && cal.errors.length) {
+      console.error('[GCAL] freeBusy gaf agenda-fouten —', 'de agenda is NIET gecontroleerd:',
+        JSON.stringify(cal.errors).slice(0, 200));
+      return null;
+    }
     return Array.isArray(cal.busy) ? cal.busy : [];
   } catch (err) {
     console.error('[GCAL] freeBusy netwerkfout — de agenda is NIET gecontroleerd:', err && err.message);
