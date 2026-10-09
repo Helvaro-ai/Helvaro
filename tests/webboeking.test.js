@@ -70,7 +70,7 @@ const ck = (n, ok, got) => {
   fout = null;
   try { await A.momenten(Object.assign({ sessie: 'sessie-dddddddddddd1' }, basis)); } catch (e) { fout = e.code; }
   ck('momenten zonder contactgegevens: geweigerd', fout === 'geen_contact');
-  await A.contact(Object.assign({ sessie: 'sessie-dddddddddddd1', telefoon: '0470 11 22 33', naam: 'Els' }, basis));
+  await A.contact(Object.assign({ sessie: 'sessie-dddddddddddd1', telefoon: '0470 11 22 33', naam: 'Els', toestemming: true }, basis));
   const m = await A.momenten(Object.assign({ sessie: 'sessie-dddddddddddd1' }, basis));
   ck('na contact: momenten', Array.isArray(m.momenten) && m.momenten.length > 0);
   const geboekt = await A.boekMoment(Object.assign({ sessie: 'sessie-dddddddddddd1', start: m.momenten[0] }, basis));

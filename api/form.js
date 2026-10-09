@@ -75,6 +75,9 @@ module.exports = _errors.vangAf(function (req, res) {
   return _trace.met(_trace.maakId(soort), () => formHandler(req, res));
 });
 
+/* Gedeeld met de websiteassistent (api/_assistent.js): één open lead per persoon. */
+module.exports._leadHulp = { zoekOpenLead, werkOpenLeadBij };
+
 async function formHandler(req, res) {
   /* Websiteassistent (api/_assistent.js) via de rewrite /api/assistant. Eigen
      CORS (alleen de domeinen van de dealer), dus vóór de '*' hieronder. Via

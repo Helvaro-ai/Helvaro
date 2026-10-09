@@ -397,22 +397,43 @@ async function meldVerkoopLead({ gesprek, naam, email, telefoon, toestemming, or
 
 /* ── Contact ───────────────────────────────────────────────────────────── */
 
-async function contact({ siteKey, sessie, email, telefoon, naam, toestemming, origin, ip }) {
+async function contact({ siteKey, sessie, email, telefoon, naam, toestemming, voertuig, origin, ip }) {
   const dealer = await controleerToegang({ siteKey, origin, ip, sessie });
   const t = dealer.projectCode;
   const verkoop = verkoopModus(dealer);
   const e = _klant.normEmail(email);
   const p = _klant.normTelefoon(telefoon);
   if (!e && !p) throw new AssistentFout('Geef een e-mailadres of een telefoonnummer.', 'geen_contact');
+  /* Toestemming, net als op het formulier (audit L-08): zonder aangevinkt
+     vakje geen lead. Het vakje in het venster blokkeert niets als de API
+     rechtstreeks wordt aangeroepen. */
+  if (toestemming !== true) throw new AssistentFout('Vink aan dat we contact met je mogen opnemen.', 'consent_required', 400);
   const { gesprek } = await _gesprekken.vindOfMaak(t, { kanaal: 'website', thread: 'web:' + sessie, onderwerp: 'Website' });
+  /* Het voertuig waar de bezoeker naar keek, als die code er echt uitziet. */
+  const codeRuw = String(voertuig || gesprek.voertuig || '').trim().toUpperCase();
+  const pand = /^[A-Z0-9_-]{1,20}$/.test(codeRuw) ? codeRuw : '';
 
   let leadId = gesprek.leadId;
+  if (!leadId) {
+    /* Eén open lead per persoon (zelfde regel als api/form.js): bestaat er al
+       een open lead voor dit nummer of e-mailadres bij deze dealer, dan wordt
+       die bijgewerkt in plaats van een tweede aan te maken. Faalt de
+       opzoeking, dan een nieuwe lead -- liever dubbel dan verloren. */
+    try {
+      const hulp = require('./form')._leadHulp;
+      const basisAt = { token: process.env.API_AIRTABLE, baseId: process.env.BASE_AIRTABLE, tabel: 'tbliukTnDAbEDcZmt' };
+      const bestaand = await hulp.zoekOpenLead(Object.assign({ project: t, telefoon: p, email: e }, basisAt));
+      if (bestaand && await hulp.werkOpenLeadBij(Object.assign({ lead: bestaand, pand, email: e, bron: 'Website-assistent', consentTs: new Date().toISOString() }, basisAt))) {
+        leadId = bestaand.id;
+      }
+    } catch (x) { console.warn('[assistent] open lead opzoeken mislukt, nieuwe lead:', x && x.message); }
+  }
   if (!leadId) {
     const nu = new Date().toISOString();
     const basis = {
       fldbk0LVNckOU0bqA: String(naam || '').slice(0, 100), fld6YaitW0lMqHUrd: p,
       fldSmczuyUJd26HLe: t, fld8mkrEWcyq7mUip: 'new', fldGoerozqdea4BfU: 'Website-assistent', fldR0r13EU4RwrtvH: nu,
-      fldoLRI5W12ThTls7: JSON.stringify({ _v: 1, notes: verkoop ? await verkoopNotitie(t, gesprek, nu, origin) : [], tasks: [], calls: [], consent: { given: toestemming === true, ts: nu, via: 'website_assistent' } }),
+      fldoLRI5W12ThTls7: JSON.stringify(Object.assign({ _v: 1, notes: verkoop ? await verkoopNotitie(t, gesprek, nu, origin) : [], tasks: [], calls: [], consent: { given: toestemming === true, ts: nu, via: 'website_assistent' } }, pand ? { property: pand } : {}, e ? { email: e } : {})),
     };
     let r = await at('tbliukTnDAbEDcZmt', { method: 'POST', body: { typecast: true, fields: Object.assign({ Email: e, Channels: 'website' }, basis) } });
     if (!r.ok && r.status === 422) r = await at('tbliukTnDAbEDcZmt', { method: 'POST', body: { typecast: true, fields: basis } });
@@ -637,7 +658,7 @@ async function handler(req, res) {
   const ip = clientIp(req);
   try {
     const args = { siteKey, sessie: body.session, origin, ip };
-    if (body.action === 'contact') return res.status(200).json(await contact(Object.assign(args, { email: body.email, telefoon: body.phone, naam: body.name, toestemming: body.consent === true })));
+    if (body.action === 'contact') return res.status(200).json(await contact(Object.assign(args, { email: body.email, telefoon: body.phone, naam: body.name, toestemming: body.consent === true, voertuig: body.vehicle })));
     if (body.action === 'handoff') return res.status(200).json(await handoff(Object.assign(args, { doel: body.target })));
     if (body.action === 'slots') return res.status(200).json(await momenten(args));
     if (body.action === 'book') return res.status(200).json(await boekMoment(Object.assign(args, { start: body.start, voertuig: body.vehicle })));
