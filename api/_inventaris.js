@@ -66,6 +66,7 @@ const registry = require('./_voorraad-providers');
 const credentials = require('./_voorraad-providers/credentials');
 const fouten = require('./_voorraad-providers/fouten');
 const _listings = require('./_listings');
+const _lock = require('./_lock');
 const feedModule = require('./_voorraad-providers/feed');
 const autoscoutModule = require('./_voorraad-providers/autoscout24');
 const { isInternIp } = require('./_lib/fetch-website');
@@ -85,7 +86,11 @@ const STANDAARD = Object.freeze({
   feed:   { versMin: 60, waarschuwMin: 180, hardMin: 12 * 60 },
 });
 
-const SLOT_MS = 2 * 60 * 1000;          // een sync die langer duurt geldt als dood
+const SLOT_MS = 5 * 60 * 1000;          // een sync die langer duurt geldt als dood (= maxDuration van cron-followup; was 2 min, korter dan het cron-budget van 240 s)
+/* Het Upstash-slot om de sync van een dealer (api/_lock.js; faalt open zonder
+   Redis, dan blijft alleen het Airtable-slot hieronder). Even lang als de
+   hardste grens van de functie: wat daarna nog 'loopt' is dood. */
+const SYNC_LOCK_MS = 5 * 60 * 1000;
 const MAX_SCHRIJF_PER_RUN = 400;         // rest volgt in de volgende run (DEGRADED 'gedeeltelijk')
 const GESCHIEDENIS = 10;
 
@@ -460,6 +465,15 @@ async function syncBronnen(projectCode, bron, staat, opties = {}) {
   /* De hele voorraad, niet de eerste 1000. Wat hier ontbreekt, ziet verzoen()
      als "nieuw" en maakt het een tweede keer aan. Past hij zelfs in 3000 niet,
      dan liever niets doen dan dubbels schrijven (audit M-9). */
+  /* Een voertuigentabel die niet te lezen is, is NIET leeg. list() geeft dan
+     stil [] terug, en een plan op een lege voorraad maakt elke feedwagen een
+     tweede keer aan, met hergebruikte V-codes (audit F1; een afgebroken
+     beschikbaarheidscontrole bij een koude start gebeurde echt op 2026-09-13).
+     Dus eerst expliciet vragen, en bij nee STOPPEN voor er iets gepland wordt. */
+  if (!(await vehicles.available())) {
+    const reden = vehicles.onbeschikbaarReden();
+    throw fouten.maakFout(reden === 'geen_tabel' ? 'voertuigentabel bestaat niet' : 'voorraad onbereikbaar; sync gestopt om dubbels te vermijden', reden || 'onbereikbaar');
+  }
   const { vehicles: bestaand, afgekapt: bestaandAfgekapt } = await vehicles.listMetStatus(projectCode, { inclusiefGearchiveerd: true, maxPaginas: 30 });
   if (bestaandAfgekapt) {
     throw fouten.maakFout('voorraad groter dan 3000 wagens; sync gestopt om dubbels te vermijden', 'voorraad_te_groot');
@@ -470,6 +484,12 @@ async function syncBronnen(projectCode, bron, staat, opties = {}) {
      welk ander platform een wagen nog toont, mag er niets op verkocht. */
   const lijstAdv = await _listings.list(projectCode);
   if (!lijstAdv.beschikbaar && _listings.onbeschikbaarReden() === 'geen_tabel') { try { require('./_schema').ensureLui(); } catch (_) { /* optioneel */ } }
+  /* De tabel bestaat wel maar was niet te lezen (time-out, storing): dat is
+     "weet ik niet", geen "leeg". Zonder te weten welk ander platform een wagen
+     nog toont mag er niets geschreven worden (audit F1). */
+  if (!lijstAdv.beschikbaar && _listings.onbeschikbaarReden() === 'onbereikbaar') {
+    throw fouten.maakFout('advertenties onbereikbaar; sync gestopt om dubbels te vermijden', 'onbereikbaar');
+  }
   if (lijstAdv.afgekapt) {
     throw fouten.maakFout('meer dan 3000 advertenties; sync gestopt om dubbels te vermijden', 'voorraad_te_groot');
   }
@@ -488,7 +508,10 @@ async function syncBronnen(projectCode, bron, staat, opties = {}) {
       : null;
     /* Wat de kaart als "aantal" toont: zonder de wagens die de dealer zelf verwijderde. */
     if (voertuigen) perBron[b.provider].gebruikt = voertuigen.length;
-    return { provider: b.provider, verdwenen: b.verdwenen, kentReservering: p.kentReservering !== false, voertuigen };
+    /* Een lezing die niet te controleren was (AutoScout24 zonder bruikbaar totaal,
+       audit F13): wat we niet zien is onbekend, niet verkocht. */
+    const verdwenen = feed && feed.geenVerwijdering ? 'negeren' : b.verdwenen;
+    return { provider: b.provider, verdwenen, kentReservering: p.kentReservering !== false, voertuigen };
   });
   const plan = _sync.verzoenAlles(bestaand, lijstAdv.listings, planBronnen, {
     nu, bevestigDaling: opties.bevestigDaling, legacyProvider: legacy,
@@ -503,11 +526,19 @@ async function syncBronnen(projectCode, bron, staat, opties = {}) {
        toont: alleen als ALLES geslaagd is mag er iets op verkocht. */
     listingsOnbekend: !lijstAdv.beschikbaar && draaibaar.length > 1,
   });
+  /* Een tegengehouden daling moet in de serverlog te vinden zijn (naast de
+     melding aan de dealer via de run-geschiedenis en de push). */
+  if (plan.dalingGeblokkeerd) {
+    for (const [prov, st] of Object.entries(plan.perBron)) {
+      if (st.dalingGeblokkeerd) console.warn('[voorraad] DALING GEBLOKKEERD voor', projectCode, 'bron', prov, JSON.stringify(st.dalingDetail || {}), '-- niets op verkocht/onbekend gezet tot de dealer bevestigt');
+    }
+  }
   const res = await _sync.pasToe(projectCode, plan, { nu, codes: bestaand.map((v) => v.code), max: MAX_SCHRIJF_PER_RUN });
   _sync.logGebeurtenissen(projectCode, plan.gebeurtenissen);
   let advFout = 0;
   try {
-    const w = await _listings.schrijf(projectCode, plan.listings, { nu, max: MAX_LISTING_SCHRIJF });
+    /* REMOVED pas als de verkocht-PATCH van die wagen aankwam (audit F3). */
+    const w = await _listings.schrijf(projectCode, _sync.advertentiesNaSchrijven(plan, res.gelukt), { nu, max: MAX_LISTING_SCHRIJF });
     advFout = w.failed;
   } catch (e) { advFout = plan.listings.length; console.warn('[voorraad] advertenties niet weggeschreven voor', projectCode, e && e.message); }
 
@@ -517,7 +548,9 @@ async function syncBronnen(projectCode, bron, staat, opties = {}) {
   if (mislukt.length) notities.push('bron niet gelezen: ' + mislukt.map((b) => b.provider + ' ' + perBron[b.provider].genorm.code).join(', ') + ' -- niets aangepast voor wagens die daar stonden');
   if (plan.dubbelGemeld) notities.push(`${plan.dubbelGemeld} advertentie(s) pasten op meerdere wagens (zelfde chassisnummer) en zijn niet samengevoegd`);
   if (advFout) notities.push(`${advFout} advertentierij(en) niet weggeschreven`);
-  const partial = res.failed > 0 || res.afgekapt || plan.dalingGeblokkeerd || mislukt.length > 0;
+  const onverifieerbaar = geslaagd.filter((b) => perBron[b.provider].feed.geenVerwijdering);
+  if (onverifieerbaar.length) notities.push('bron niet volledig te controleren (' + onverifieerbaar.map((b) => b.provider + ' ' + perBron[b.provider].feed.geenVerwijderingReden).join(', ') + ') -- er is niets op verkocht gezet');
+  const partial = res.failed > 0 || res.afgekapt || plan.dalingGeblokkeerd || mislukt.length > 0 || onverifieerbaar.length > 0;
 
   for (const b of geslaagd) {
     const st = plan.perBron[b.provider] || {};
@@ -576,9 +609,23 @@ function bronToestand(vorige, uitkomst, nuIso, ms) {
 }
 
 /* ── Sync: slot, bronnen, toestand wegschrijven ────────────────────────── */
-async function sync(projectCode, { door = 'systeem', trigger = 'handmatig', bevestigDaling = false, budgetMs, upload = null } = {}) {
+/* Een sync per dealer tegelijk, over alle instanties heen. Het Airtable-slot
+   in neemSlot() is lezen-dan-schrijven op een momentopname: twee syncs die op
+   hetzelfde moment beginnen zien allebei "vrij" en maakten elke wagen twee keer
+   aan (audit F2). Dit slot is atomair (SET NX) en wordt token-gecontroleerd
+   vrijgegeven, ook bij een fout. Ligt het vast: dan loopt er al een sync en
+   krijgt de aanroeper dezelfde "hergebruikt"-weergave als bij het Airtable-slot. */
+async function sync(projectCode, opties = {}) {
   const tenant = String(projectCode || '').trim();
   if (!tenant) throw new Error('sync zonder projectcode');
+  const uit = await _lock.metSlot('voorraad:' + tenant, SYNC_LOCK_MS, () => syncBinnenSlot(tenant, opties), { pogingen: 1, wachtOpVrijgave: true });
+  if (!uit.bezet) return uit.resultaat;
+  const { rec, bron, staat } = await lees(tenant);
+  if (!rec) return { ok: false, reden: 'geen_klantrecord' };
+  return { ok: true, hergebruikt: true, ...weergave(staat, bron) };
+}
+
+async function syncBinnenSlot(tenant, { door = 'systeem', trigger = 'handmatig', bevestigDaling = false, budgetMs, upload = null } = {}) {
   const { rec, bron, staat } = await lees(tenant);
   if (!rec) return { ok: false, reden: 'geen_klantrecord' };
 

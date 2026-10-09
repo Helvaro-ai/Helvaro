@@ -169,7 +169,9 @@ const regel = (o) => Object.assign({ bronId: 'X', merk: 'BMW', model: 'X5', prij
 
     const drie = [wagen({ code: 'K1' }), wagen({ code: 'K2' }), wagen({ code: 'K3' })];
     p = vsync.verzoen(drie, [regel({ bronId: 'K3' })], { nu: NU });
-    ck('kleine dealer verkoopt 2 van 3: gewoon doorgevoerd', p.dalingGeblokkeerd === false && p.weg.length === 2, p);
+    ck('kleine dealer: 2 van 3 ineens weg is meer dan de helft: tegengehouden (audit F4)', p.dalingGeblokkeerd === true && p.weg.length === 0, p);
+    p = vsync.verzoen(drie, [regel({ bronId: 'K2' }), regel({ bronId: 'K3' })], { nu: NU });
+    ck('kleine dealer verkoopt 1 van 3: gewoon doorgevoerd', p.dalingGeblokkeerd === false && p.weg.length === 1, p);
 
     const twintig = Array.from({ length: 20 }, (_, i) => wagen({ code: 'T' + i }));
     p = vsync.verzoen(twintig, twintig.slice(0, 16).map((v) => regel({ bronId: v.bronId })), { nu: NU });

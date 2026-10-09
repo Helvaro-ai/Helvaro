@@ -97,7 +97,11 @@ async function metSlot(sleutel, ttlMs, fn, opties = {}) {
     if (uit === 'ok') {
       /* Alleen ons eigen slot vrijgeven: is de TTL verlopen en heeft een
          ander het intussen, dan blijft dat van hem. */
-      pijplijn(['EVAL', VRIJGEEF_SCRIPT, '1', volledig(sleutel), waarde]).catch(() => {});
+      const vrij = pijplijn(['EVAL', VRIJGEEF_SCRIPT, '1', volledig(sleutel), waarde]).catch(() => {});
+      /* Een lang slot (de voorraadsync, minuten) mag niet blijven liggen omdat
+         de lambda bevroor voor het vrijgeefverzoek weg was: dan mag de aanroeper
+         erop wachten. Standaard niet: korte sloten hoeven dat niet. */
+      if (opties.wachtOpVrijgave) await vrij;
     }
   }
 }

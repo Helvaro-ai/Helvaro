@@ -39,6 +39,7 @@ const AS24_HOST = /^(www\.)?autoscout24\.(be|nl|de|at|fr|it|es|lu|com)$/i;
 const AS24_PAD = /^\/(?:[a-z]{2}\/)?(verkopers|haendler|professional|professionals|professionnel|professionnels|concessionari|concesionarios|dealers|vendeurs)\/([a-z0-9][a-z0-9-]{1,80})\/?$/i;
 const MAX_AS24_PAGINAS = 60;           // 1.200 wagens
 const AS24_PAUZE_MS = 1000;
+const AS24_PER_PAGINA = 20;            // AutoScout24 toont 20 advertenties per pagina: een kortere pagina is de laatste
 const AS24_UA = 'HelvaroInventory/1.0 (+https://helvaro.pro; voorraadsync voor de dealer zelf)';
 
 /** Het verkopersprofiel uit een geplakte link, of null. Query en tracking weg. */
@@ -141,7 +142,7 @@ async function haalAutoscout(bron, opties = {}) {
     const e = new Error('robots.txt van AutoScout24 staat het lezen van deze pagina niet toe'); e.code = 'bron_geweigerd'; throw e;
   }
   const alle = new Map();
-  let totaal = 0, paginas = 1, ongeldig = 0;
+  let totaal = 0, paginas = 1, ongeldig = 0, totaalBekend = false;
   for (let p = 1; p <= paginas; p++) {
     if (p > 1) {
       if (Date.now() > budgetTot) { const e = new Error(`tijd op na ${p - 1} van ${paginas} pagina's -- niets aangepast`); e.code = 'bron_onvolledig'; throw e; }
@@ -156,23 +157,36 @@ async function haalAutoscout(bron, opties = {}) {
     const pagina = leesAutoscoutPagina(html);
     if (p === 1) {
       totaal = pagina.totaal;
+      totaalBekend = totaal > 0;
       const perPagina = Math.max(1, pagina.listings.length);
-      paginas = Math.min(MAX_AS24_PAGINAS, Math.ceil(totaal / perPagina) || 1);
+      /* Zonder opgegeven totaal (gewijzigde pagina?) is er niets om de
+         volledigheid aan te toetsen. Dan doorlezen tot een korte of lege pagina
+         (hooguit het maximum), zodat toevoegen en bijwerken compleet zijn --
+         maar zie hieronder: verdwijnen mag op zo'n lezing nooit tellen. */
+      paginas = totaalBekend ? Math.min(MAX_AS24_PAGINAS, Math.ceil(totaal / perPagina) || 1) : MAX_AS24_PAGINAS;
     }
+    const voor = alle.size;
     for (const l of pagina.listings) {
       const m = mapAutoscout(l, dealer.origin);
       if (!m || !m.merk) { ongeldig++; continue; }
       if (!alle.has(m.bronId)) alle.set(m.bronId, m);
     }
     if (!pagina.listings.length) break;
+    if (!totaalBekend && (pagina.listings.length < AS24_PER_PAGINA || alle.size === voor)) break;
   }
   const verwacht = Math.min(totaal, MAX_AS24_PAGINAS * 20);
   if (verwacht && alle.size < Math.floor(verwacht * 0.95)) {
     const e = new Error(`maar ${alle.size} van ${verwacht} wagens gelezen -- niets op verkocht gezet`); e.code = 'bron_onvolledig'; throw e;
   }
+  /* Is het totaal niet te vertrouwen -- ontbreekt het, is het 0, of is het KLEINER
+     dan wat we echt lazen -- dan is de lezing niet te controleren (audit F13).
+     Toevoegen en bijwerken mag, maar wat we niet zien is dan onbekend, niet
+     verkocht: de sync zet er niets op verkocht (geenVerwijdering). */
+  const geenVerwijdering = !totaalBekend || alle.size > totaal;
   const voertuigen = Array.from(alle.values());
   const hash = crypto.createHash('sha256').update(JSON.stringify(voertuigen.map((v) => [v.bronId, v.prijs, v.km, v.uitvoering, v.fotos.length]).sort())).digest('hex').slice(0, 16);
-  return { formaat: 'autoscout24', voertuigen, ongeldig, hash, totaalBijBron: totaal };
+  return Object.assign({ formaat: 'autoscout24', voertuigen, ongeldig, hash, totaalBijBron: totaal },
+    geenVerwijdering ? { geenVerwijdering: true, geenVerwijderingReden: totaalBekend ? 'totaal_kleiner_dan_gelezen' : 'totaal_ontbreekt' } : {});
 }
 
 const autoscout24 = {

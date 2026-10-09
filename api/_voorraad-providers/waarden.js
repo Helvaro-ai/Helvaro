@@ -148,6 +148,6 @@ function voertuig(v) {
 
 /* Ophogen als de regels hierboven veranderen: de volgende sync vergelijkt dan
    elke wagen opnieuw in plaats van een ongewijzigde bron over te slaan. */
-const VERSIE = 2;
+const VERSIE = 3;
 
 module.exports = { VERSIE, BRANDSTOF, TRANSMISSIE, KLEUREN, brandstof, transmissie, kleurUitLink, voertuig };

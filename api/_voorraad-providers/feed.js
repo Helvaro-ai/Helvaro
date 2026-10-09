@@ -73,6 +73,21 @@ function normVin(x) {
 
 function normSleutel(k) { return String(k || '').toLowerCase().replace(/[^a-z0-9_]/g, ''); }
 
+/* Statuswoorden die feeds in de praktijk sturen (audit F5). Zonder dit werd
+   "Actief" of "Te koop" 'onbekend' en verdween de hele voorraad van de website.
+   Staat er een kolom `state` met used/new/occasion: dat is de CONDITIE van de
+   wagen, geen beschikbaarheid -- een wagen die in de feed staat is te koop. Een
+   woord dat hier echt niet in staat blijft 'onbekend' (nooit gokken); als dat
+   een groot deel van de voorraad tegelijk treft, blokkeert de dalingswacht. */
+const STATUS_WOORDEN = Object.freeze(Object.assign(Object.create(null),
+  ...[
+    ['beschikbaar', ['available', 'beschikbaar', 'disponible', 'verfugbar', 'in stock', 'instock', 'active', 'actief', 'actif', 'te koop', 'for sale', 'forsale',
+      'a vendre', 'zu verkaufen', 'in voorraad', 'voorradig', 'on sale', 'online', 'published', 'gepubliceerd', 'yes', 'ja', 'oui', 'true',
+      'used', 'new', 'occasion', 'gebruikt', 'gebraucht', 'nieuw', 'neuf', 'neu', 'tweedehands', 'second hand', 'demo']],
+    ['gereserveerd', ['reserved', 'gereserveerd', 'reserve', 'reserviert', 'on hold', 'in optie', 'optie', 'option']],
+    ['verkocht', ['sold', 'sold out', 'verkocht', 'vendu', 'vendue', 'verkauft']],
+  ].map(([waarde, woorden]) => Object.fromEntries(woorden.map((w) => [w, waarde])))));
+
 /** Eén feedregel (object met willekeurige sleutels) -> Helvaro-velden, of null. */
 function mapRegel(ruw) {
   const plat = {};
@@ -83,10 +98,10 @@ function mapRegel(ruw) {
   const getal = (x) => { if (x === undefined) return undefined; const n = Number(String(x).replace(/[^0-9.,-]/g, '').replace(/\.(?=\d{3}(\D|$))/g, '').replace(',', '.')); return Number.isFinite(n) ? n : undefined; };
   const fotosRuw = pak('fotos');
   const fotos = Array.isArray(fotosRuw) ? fotosRuw.map(String) : (fotosRuw ? String(fotosRuw).split(/[\s,;|]+/) : []);
-  const statusRuw = String(pak('status') || '').trim().toLowerCase();
-  const statusMap = { available: 'beschikbaar', beschikbaar: 'beschikbaar', disponible: 'beschikbaar', verfugbar: 'beschikbaar', 'in stock': 'beschikbaar', active: 'beschikbaar',
-    reserved: 'gereserveerd', gereserveerd: 'gereserveerd', reserve: 'gereserveerd', reserviert: 'gereserveerd',
-    sold: 'verkocht', verkocht: 'verkocht', vendu: 'verkocht', verkauft: 'verkocht' };
+  /* Zonder accenten, hoofdletters en scheidingstekens: "À vendre", "te_koop"
+     en "In-Voorraad" zijn gewoon woorden. */
+  const statusRuw = String(pak('status') || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim().toLowerCase().replace(/[\s_-]+/g, ' ');
+  const statusMap = STATUS_WOORDEN;
   return {
     bronId: String(bronId).trim().slice(0, 120),
     merk: pak('merk'), model: pak('model'), uitvoering: pak('uitvoering'),
@@ -217,5 +232,5 @@ const feed = {
 module.exports = {
   provider: feed,
   MAX_FEED_BYTES,
-  haalFeed, mapRegel, parseCsv, parseJson, parseXml, parseFeed, normVin, isInternIp,
+  haalFeed, mapRegel, STATUS_WOORDEN, parseCsv, parseJson, parseXml, parseFeed, normVin, isInternIp,
 };
