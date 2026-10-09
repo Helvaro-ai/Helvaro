@@ -61,8 +61,8 @@ function parseUren(spec) {
 }
 
 /** Datum-onderdelen van een moment in Brussel. */
-function brussel(ms) {
-  const p = new Intl.DateTimeFormat('en-GB', { timeZone: TZ, year: 'numeric', month: '2-digit', day: '2-digit', weekday: 'short', hour: '2-digit', minute: '2-digit', hour12: false })
+function brussel(ms, tz) {
+  const p = new Intl.DateTimeFormat('en-GB', { timeZone: tz || TZ, year: 'numeric', month: '2-digit', day: '2-digit', weekday: 'short', hour: '2-digit', minute: '2-digit', hour12: false })
     .formatToParts(new Date(ms)).reduce((o, x) => { o[x.type] = x.value; return o; }, {});
   return { j: Number(p.year), m: Number(p.month), d: Number(p.day), wd: DAGEN.indexOf(String(p.weekday).toLowerCase().slice(0, 3)), u: Number(p.hour) % 24 };
 }
@@ -71,16 +71,16 @@ function brussel(ms) {
  * Kandidaat-momenten: elk heel uur binnen de openingsuren, vanaf `minVoor`
  * minuten na nu, over `dagen` dagen. Puur (nu is een parameter).
  */
-function kandidaten(spec, { nu = Date.now(), dagen = 7, minVoor = 120, duur = DUUR_MIN } = {}) {
+function kandidaten(spec, { nu = Date.now(), dagen = 7, minVoor = 120, duur = DUUR_MIN, tz = TZ } = {}) {
   const uren = parseUren(spec) || parseUren(STANDAARD_UREN);
   const uit = [];
   for (let i = 0; i <= dagen; i++) {
-    const b = brussel(nu + i * 864e5);
+    const b = brussel(nu + i * 864e5, tz);
     const inRange = uren.van <= uren.tot ? (b.wd >= uren.van && b.wd <= uren.tot) : (b.wd >= uren.van || b.wd <= uren.tot);
     if (!inRange) continue;
     for (let h = Math.ceil(uren.begin); h + duur / 60 <= uren.eind; h++) {
       const naief = `${b.j}-${String(b.m).padStart(2, '0')}-${String(b.d).padStart(2, '0')}T${String(h).padStart(2, '0')}:00:00`;
-      const iso = _afspraken.corrigeerNaarBrusselseTijd(naief, TZ);
+      const iso = _afspraken.corrigeerNaarBrusselseTijd(naief, tz);
       const ms = Date.parse(iso);
       if (Number.isFinite(ms) && ms >= nu + minVoor * 60000) uit.push(new Date(ms).toISOString());
     }
@@ -111,7 +111,9 @@ async function vrijeMomenten(projectCode, { max = 8, nu = Date.now(), alle: alle
   const t = String(projectCode || '').trim();
   const velden = await klantVelden(t);
   const spec = String(velden.fldq5oIqw5MG8fKhc || velden['Working Hours'] || '').trim();
-  const alle = kandidaten(spec, { nu });
+  /* Tijdzone van de klant (api/_regio.js); zonder instelling Europe/Brussels (L-12). */
+  const tz = require('./_regio').lees(velden).tz || TZ;
+  const alle = kandidaten(spec, { nu, tz });
   if (!alle.length) return { momenten: [], agenda: false };
   const van = alle[0], tot = new Date(Date.parse(alle[alle.length - 1]) + DUUR_MIN * 60000).toISOString();
 
@@ -145,7 +147,7 @@ async function vrijeMomenten(projectCode, { max = 8, nu = Date.now(), alle: alle
   /* Spreiden: eerst één per dag (ochtend of middag), dan aanvullen. */
   const gekozen = [], dagGezien = new Set();
   for (const iso of vrij) {
-    const b = brussel(Date.parse(iso)); const sleutel = `${b.j}-${b.m}-${b.d}-${b.u < 13 ? 'v' : 'n'}`;
+    const b = brussel(Date.parse(iso), tz); const sleutel = `${b.j}-${b.m}-${b.d}-${b.u < 13 ? 'v' : 'n'}`;
     if (!dagGezien.has(sleutel)) { dagGezien.add(sleutel); gekozen.push(iso); }
     if (gekozen.length >= max) break;
   }

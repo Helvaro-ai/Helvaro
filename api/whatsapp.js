@@ -1424,7 +1424,7 @@ async function processMessage(phone, text, scopedProjectCode, inkomendId) {
          (hij hangt af van de taal waarin de AI antwoordde) en staat hier nog in
          zijn dode zone. Voor een datum in een systeemprompt is de ingestelde
          taal van de klant sowieso de juiste. */
-      ? formatApptDateTime(eigenAfspraak.fields[_afspraken.F.START], lang)
+      ? formatApptDateTime(eigenAfspraak.fields[_afspraken.F.START], lang, regio.tz)
       : '',
   });
 
@@ -1916,7 +1916,7 @@ async function processMessage(phone, text, scopedProjectCode, inkomendId) {
         }
       } else {
         afspraakAfgezegd = true;
-        const wanneer = formatApptDateTime(eigenAfspraak.fields[_afspraken.F.START], effectiveLang);
+        const wanneer = formatApptDateTime(eigenAfspraak.fields[_afspraken.F.START], effectiveLang, regio.tz);
 
         /* De AI schreef zelf al iets ("jammer, wanneer komt het je wel uit?").
            Dit bericht komt daar NIET nog eens overheen -- twee berichten over
@@ -2051,7 +2051,7 @@ async function processMessage(phone, text, scopedProjectCode, inkomendId) {
        boekingsprompt (api/_ai/prompts.js) vraagt het model om zelf
        +02:00/+01:00 te kiezen, en dat is precies het rekenwerk waar een
        model naast kan zitten rond de omschakeling. */
-    if (appt.start) appt.start = _afspraken.corrigeerNaarBrusselseTijd(appt.start);
+    if (appt.start) appt.start = _afspraken.corrigeerNaarBrusselseTijd(appt.start, regio.tz);
     const startMs = Date.parse(appt.start);
     const startGeldig = Number.isFinite(startMs) && startMs > Date.now() - 60000;
     if (!bookingSent && appt.start && !startGeldig) {
@@ -2103,7 +2103,7 @@ async function processMessage(phone, text, scopedProjectCode, inkomendId) {
               `Naam: ${leadName || '(onbekend)'}\n` +
               `Tel: ${phone}\n` +
               `Project: ${projectCode}\n\n` +
-              `De AI bevestigde ${formatApptDateTime(appt.start, effectiveLang)} aan de lead voor ${herkendVoertuig ? herkendVoertuig.code : 'een voertuig'}, ` +
+              `De AI bevestigde ${formatApptDateTime(appt.start, effectiveLang, regio.tz)} aan de lead voor ${herkendVoertuig ? herkendVoertuig.code : 'een voertuig'}, ` +
               `maar dat voertuig bleek niet meer boekbaar (${dealerControle.reden}). ` +
               `Er is GEEN afspraak aangemaakt en de lead is gevraagd om alternatieven — volg op als dat nog niet gebeurd is.\n\n` +
               `Dashboard: https://app.helvaro.pro/dashboard`;
@@ -2224,7 +2224,7 @@ async function processMessage(phone, text, scopedProjectCode, inkomendId) {
             `Naam: ${leadName || '(onbekend)'}\n` +
             `Tel: ${phone}\n` +
             `Project: ${projectCode}\n\n` +
-            `De AI bevestigde ${formatApptDateTime(appt.start, effectiveLang)} aan de lead, maar dat moment bleek net bezet in de Google agenda. ` +
+            `De AI bevestigde ${formatApptDateTime(appt.start, effectiveLang, regio.tz)} aan de lead, maar dat moment bleek net bezet in de Google agenda. ` +
             `Er is GEEN afspraak aangemaakt en de lead is gevraagd een ander moment te kiezen — volg op als dat nog niet gebeurd is.\n\n` +
             `Dashboard: https://app.helvaro.pro/dashboard`;
           const conflictNotifySent = await sendWA(ownerPhone, conflictNotice, clientPhoneNumberId);
@@ -2301,7 +2301,7 @@ async function processMessage(phone, text, scopedProjectCode, inkomendId) {
                     `Naam: ${leadName || '(onbekend)'}\n` +
                     `Tel: ${phone}\n` +
                     `Project: ${projectCode}\n\n` +
-                    `De AI bevestigde ${formatApptDateTime(appt.start, effectiveLang)} aan de lead voor ${herkendVoertuig ? herkendVoertuig.code : 'een voertuig'}, ` +
+                    `De AI bevestigde ${formatApptDateTime(appt.start, effectiveLang, regio.tz)} aan de lead voor ${herkendVoertuig ? herkendVoertuig.code : 'een voertuig'}, ` +
                     `maar een andere afspraak op dat voertuig won de race. Er staat GEEN afspraak meer voor deze lead en de lead is gevraagd om alternatieven.\n\n` +
                     `Dashboard: https://app.helvaro.pro/dashboard`;
                   const noticeSent = await sendWA(ownerPhone, notice, clientPhoneNumberId);
@@ -2341,7 +2341,7 @@ async function processMessage(phone, text, scopedProjectCode, inkomendId) {
             // distinctly instead.
             try {
               await stuurAntwoordInWachtrij();   // L-02: pas NU, de afspraak staat
-              const when = formatApptDateTime(appt.start, effectiveLang);
+              const when = formatApptDateTime(appt.start, effectiveLang, regio.tz);
               const confirmSent = await sendWA(phone, _lang.buildConfirmMessage(effectiveLang, clientName, when, address), clientPhoneNumberId, { projectCode });
               if (!confirmSent) console.error(`[whatsapp] booking confirmation naar ${maskPhone(phone)} niet aangekomen (afspraak zelf blijft geldig)`);
             } catch (err) {
@@ -2382,7 +2382,7 @@ async function processMessage(phone, text, scopedProjectCode, inkomendId) {
                   `[Even nakijken] Afspraak geboekt zonder agendacontrole\n\n` +
                   `Naam: ${leadName || '(onbekend)'}\n` +
                   `Tel: ${phone}\n` +
-                  `Wanneer: ${formatApptDateTime(appt.start, effectiveLang)}\n\n` +
+                  `Wanneer: ${formatApptDateTime(appt.start, effectiveLang, regio.tz)}\n\n` +
                   `De afspraak staat en de lead heeft een bevestiging. Alleen kon je Google agenda op dat moment niet gelezen worden, ` +
                   `dus dit tijdstip is NIET gecontroleerd op een dubbele boeking. Kijk het even na.\n\n` +
                   `Blijft dit terugkomen, dan is de koppeling met Google waarschijnlijk verlopen — opnieuw verbinden in Instellingen.\n\n` +
@@ -2435,7 +2435,7 @@ async function processMessage(phone, text, scopedProjectCode, inkomendId) {
               try {
                 const melding = _dealerMelding.bouwAfspraakBericht({
                   lang, leadNaam: leadName,
-                  wanneer: formatApptDateTime(appt.start, lang),
+                  wanneer: formatApptDateTime(appt.start, lang, regio.tz),
                   voertuigNaam: herkendVoertuig ? _vehicles.naam(herkendVoertuig) : '',
                   prijsTekst: herkendVoertuig ? _vehicles.prijsTekst(herkendVoertuig.prijs) : '',
                   type: dealerType,
@@ -2450,7 +2450,7 @@ async function processMessage(phone, text, scopedProjectCode, inkomendId) {
                      Meta goedgekeurd is. Tot dan gebruikt de melding de
                      generieke lead_alert; zie api/_dealer-melding.js. */
                   sjabloon: {
-                    naam: leadName, wanneer: formatApptDateTime(appt.start, lang),
+                    naam: leadName, wanneer: formatApptDateTime(appt.start, lang, regio.tz),
                     voertuig: herkendVoertuig ? _vehicles.naam(herkendVoertuig) : '',
                     prijs: herkendVoertuig ? _vehicles.prijsTekst(herkendVoertuig.prijs) : '',
                     type: dealerType,
@@ -3524,7 +3524,7 @@ async function createAppointment({ startTime, duration, projectCode, leadId, lea
 // Gebruikt door de booking-confirmation hierboven. cron-followup.js en
 // api/leads.js hebben elk hun eigen kopie — zelfde per-file helper-duplicatie
 // conventie als mergeWaFailedFlag hierboven.
-function formatApptDateTime(iso, lang) {
+function formatApptDateTime(iso, lang, tz) {
   const dt = new Date(iso);
   if (isNaN(dt.getTime())) return String(iso || '');
   // calendar:'gregory' is NOT redundant — verified this matters. Several
@@ -3536,7 +3536,7 @@ function formatApptDateTime(iso, lang) {
   // Calendar would be genuinely confusing, not just a translation nicety.
   // Forcing 'gregory' keeps every language showing the SAME calendar date,
   // just formatted in that language's own words/script.
-  const opts = { weekday: 'long', day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Brussels', calendar: 'gregory' };
+  const opts = { weekday: 'long', day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit', timeZone: tz || 'Europe/Brussels', calendar: 'gregory' };
   return dt.toLocaleString(_lang.getLocale(lang), opts);
 }
 
