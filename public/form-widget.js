@@ -27,16 +27,16 @@
   var D = {
     nl: { aria: 'Contact opnemen', sluit: 'Sluiten', sub: 'Vul je gegevens in en wij nemen<br>contact op via WhatsApp', naam: 'Naam', naamPh: 'Jouw naam', tel: 'Telefoonnummer',
           akkoord1: 'Ik ga akkoord dat ', akkoord2: ' mij via WhatsApp contacteert. Zie het ', privacy: 'privacybeleid', stuur: 'VERSTUUR', stuurt: 'VERSTUREN\u2026',
-          bedankt: 'Bedankt!', bedanktTxt: 'We nemen binnenkort contact op via WhatsApp.', eNaam: 'Vul je naam en telefoonnummer in.', ePriv: 'Vink het privacy-vakje aan om verder te gaan.', eMis: 'Oeps, er ging iets mis. Probeer het opnieuw.' },
+          bedankt: 'Bedankt!', bedanktTxt: 'We nemen binnenkort contact op via WhatsApp.', bedanktNeutraal: 'We hebben je aanvraag ontvangen en nemen zo snel mogelijk contact op.', eNaam: 'Vul je naam en telefoonnummer in.', ePriv: 'Vink het privacy-vakje aan om verder te gaan.', eMis: 'Oeps, er ging iets mis. Probeer het opnieuw.' },
     fr: { aria: 'Nous contacter', sluit: 'Fermer', sub: 'Laissez vos coordonnées et nous vous<br>contactons via WhatsApp', naam: 'Nom', naamPh: 'Votre nom', tel: 'Numéro de téléphone',
           akkoord1: 'J’accepte que ', akkoord2: ' me contacte via WhatsApp. Voir la ', privacy: 'politique de confidentialité', stuur: 'ENVOYER', stuurt: 'ENVOI\u2026',
-          bedankt: 'Merci !', bedanktTxt: 'Nous vous contacterons bientôt via WhatsApp.', eNaam: 'Saisissez votre nom et votre numéro de téléphone.', ePriv: 'Cochez la case de confidentialité pour continuer.', eMis: 'Oups, une erreur est survenue. Réessayez.' },
+          bedankt: 'Merci !', bedanktTxt: 'Nous vous contacterons bientôt via WhatsApp.', bedanktNeutraal: 'Nous avons bien reçu votre demande et vous contactons dès que possible.', eNaam: 'Saisissez votre nom et votre numéro de téléphone.', ePriv: 'Cochez la case de confidentialité pour continuer.', eMis: 'Oups, une erreur est survenue. Réessayez.' },
     en: { aria: 'Get in touch', sluit: 'Close', sub: 'Fill in your details and we’ll<br>contact you via WhatsApp', naam: 'Name', naamPh: 'Your name', tel: 'Phone number',
           akkoord1: 'I agree that ', akkoord2: ' may contact me via WhatsApp. See the ', privacy: 'privacy policy', stuur: 'SEND', stuurt: 'SENDING\u2026',
-          bedankt: 'Thank you!', bedanktTxt: 'We’ll be in touch shortly via WhatsApp.', eNaam: 'Please enter your name and phone number.', ePriv: 'Tick the privacy box to continue.', eMis: 'Oops, something went wrong. Please try again.' },
+          bedankt: 'Thank you!', bedanktTxt: 'We’ll be in touch shortly via WhatsApp.', bedanktNeutraal: 'We have received your request and will get in touch as soon as possible.', eNaam: 'Please enter your name and phone number.', ePriv: 'Tick the privacy box to continue.', eMis: 'Oops, something went wrong. Please try again.' },
     de: { aria: 'Kontakt aufnehmen', sluit: 'Schließen', sub: 'Geben Sie Ihre Daten ein, wir melden<br>uns per WhatsApp', naam: 'Name', naamPh: 'Ihr Name', tel: 'Telefonnummer',
           akkoord1: 'Ich bin einverstanden, dass ', akkoord2: ' mich per WhatsApp kontaktiert. Siehe die ', privacy: 'Datenschutzerklärung', stuur: 'SENDEN', stuurt: 'WIRD GESENDET\u2026',
-          bedankt: 'Danke!', bedanktTxt: 'Wir melden uns in Kürze per WhatsApp.', eNaam: 'Bitte geben Sie Ihren Namen und Ihre Telefonnummer ein.', ePriv: 'Setzen Sie das Häkchen für den Datenschutz, um fortzufahren.', eMis: 'Hoppla, etwas ist schiefgelaufen. Bitte versuchen Sie es erneut.' }
+          bedankt: 'Danke!', bedanktTxt: 'Wir melden uns in Kürze per WhatsApp.', bedanktNeutraal: 'Wir haben Ihre Anfrage erhalten und melden uns so schnell wie möglich.', eNaam: 'Bitte geben Sie Ihren Namen und Ihre Telefonnummer ein.', ePriv: 'Setzen Sie das Häkchen für den Datenschutz, um fortzufahren.', eMis: 'Hoppla, etwas ist schiefgelaufen. Bitte versuchen Sie es erneut.' }
   };
   var L = D[TAAL] || D.nl;
 
@@ -139,7 +139,7 @@
     '</div>' +
     '<div id="hv-ok">' +
     '<div class="hv-tick">\u2713</div>' +
-    '<p class="hv-ok-txt"><strong>' + L.bedankt + '</strong><br>' + L.bedanktTxt + ' \uD83D\uDCAC</p>' +
+    '<p class="hv-ok-txt"><strong>' + L.bedankt + '</strong><br><span id="hv-ok-sub">' + L.bedanktTxt + '</span> \uD83D\uDCAC</p>' +
     '</div>' +
     '</div></div>';
   document.body.appendChild(el);
@@ -192,8 +192,16 @@
     })
     .then(function (r) {
       if (!r.ok) return r.json().then(function (d) { throw new Error(d.error || 'Serverfout'); });
-      form.style.display = 'none';
-      okEl.style.display = 'block';
+      /* De server zegt of er echt een WhatsApp-bericht komt (api/form.js:
+         kanaal/status). Zo niet, dan beloven we het hier ook niet. */
+      return r.json().catch(function () { return {}; }).then(function (d) {
+        if (d && d.kanaal && !(d.kanaal === 'whatsapp' && d.status === 'verzonden')) {
+          var sub = document.getElementById('hv-ok-sub');
+          if (sub) sub.textContent = L.bedanktNeutraal;
+        }
+        form.style.display = 'none';
+        okEl.style.display = 'block';
+      });
     })
     .catch(function () {
       errEl.textContent   = L.eMis;

@@ -3659,44 +3659,10 @@ function antwoordPauzeMs() {
 const { maskPhone } = require('./_masker');
 
 // Merge a waFailed:true marker into a lead's existing Notities JSON without
-// clobbering notes/tasks/calls a client may already have added manually.
-// api/form.js's flagWaFailed overwrites the field outright, which is safe
-// there because it only ever runs immediately after lead creation (Notities
-// is still empty). Here we're mid-conversation, so an unconditional overwrite
-// could wipe out real staff notes — merge instead.
-//
-// Notities isn't always JSON: dashboard.js's parseNotities() also accepts
-// bare legacy text (pre-JSON-envelope manual notes) and wraps it as a
-// {id:'legacy', text, ts} note on read. If we don't do the same here, a lead
-// with an old-style plain-text note would have that note silently destroyed
-// the moment it gets flagged — preserve it instead.
-//
-// `detail` (optional, added for the status-callback path — see
-// handleStatusCallback() above): Meta's error code/title for a 'failed'
-// status. Stored alongside the same `waFailed:true` flag the dashboard's
-// "Niet bereikbaar" widget already reads — NOT a new flag/mechanism, just
-// richer context riding in the same envelope for whoever investigates later.
-// api/form.js's flagWaFailed call site never had this context to give, so it
-// stays undefined there and this parameter is a no-op for that caller.
-function mergeWaFailedFlag(raw, detail) {
-  const trimmed = raw ? String(raw).trim() : '';
-  let data    = { _v: 1, notes: [], tasks: [], calls: [] };
-  let handled = false;
-  if (trimmed.startsWith('{')) {
-    try {
-      const parsed = JSON.parse(trimmed);
-      if (parsed && typeof parsed === 'object') { data = { ...data, ...parsed }; handled = true; }
-    } catch { /* malformed JSON: fall through, preserve as legacy text below */ }
-  }
-  if (!handled && trimmed) {
-    data.notes = [{ id: 'legacy', text: trimmed, ts: new Date().toISOString() }];
-  }
-  data.waFailed = true;
-  if (detail && (detail.code !== undefined || detail.title !== undefined)) {
-    data.waFailedReason = { code: detail.code ?? null, title: detail.title ?? null, at: new Date().toISOString() };
-  }
-  return JSON.stringify(data);
-}
+// clobbering notes/tasks/calls/consent/property. The implementation lives in
+// api/_notities-vlag.js so api/form.js shares it (its own flagWaFailed used to
+// overwrite the whole field and destroyed consent proof + vehicle code).
+const { mergeWaFailedFlag } = require('./_notities-vlag');
 
 // Merge a 'read' marker into a lead's Notities JSON — same merge-not-
 // overwrite contract as mergeWaFailedFlag above (including legacy-plain-text
