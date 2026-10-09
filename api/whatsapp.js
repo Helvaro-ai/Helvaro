@@ -1547,7 +1547,20 @@ async function processMessage(phone, text, scopedProjectCode, inkomendId) {
     }
   }
 
-  const sendOk = await sendWA(phone, replyText, clientPhoneNumberId, { projectCode });
+  /* L-02: staat er een in-chat boeking te wachten, dan gaat het AI-antwoord
+     ("Ingepland, tot dan") NIET meer vooraf de deur uit. De AI schrijft die zin
+     in dezelfde beurt als het BOOK-blok, dus er was niets te controleren
+     voordat de lead hem las. Nu beslist de boeking (slot + agenda + voertuig)
+     eerst: lukt hij, dan gaat het antwoord alsnog uit, direct gevolgd door de
+     bevestiging; botst hij, dan krijgt de lead ALLEEN het conflictbericht. */
+  let antwoordInWachtrij = !!(aiResponse.appointment && aiResponse.appointment.start
+    && bookingMethod === 'in_chat' && !isEscalation);
+  const sendOk = antwoordInWachtrij ? true : await sendWA(phone, replyText, clientPhoneNumberId, { projectCode });
+  async function stuurAntwoordInWachtrij() {
+    if (!antwoordInWachtrij) return true;
+    antwoordInWachtrij = false;
+    return sendWA(phone, replyText, clientPhoneNumberId, { projectCode }).catch(() => false);
+  }
   const updateFields = { 'Last Message': text };
   if (sendOk) {
     // `ts` stamps outbound turns too (not just inbound, see step 4's push
@@ -1946,6 +1959,7 @@ async function processMessage(phone, text, scopedProjectCode, inkomendId) {
      heeft. Apart, omdat er twee wegen naartoe lopen (een geweigerde schrijf en
      een uitzondering) en ze allebei hetzelfde moeten doen. */
   async function meldMislukteBoeking(reden) {
+    antwoordInWachtrij = false;   // L-02: de bevestiging van de AI klopt niet; de lead krijgt alleen de correctie
     console.error(`[whatsapp] afspraak NIET aangemaakt voor ${maskPhone(phone)} (${projectCode}): ${reden}`);
     try {
       await sendWA(phone, _lang.buildSlotConflictMessage(effectiveLang), clientPhoneNumberId, { projectCode });
@@ -2076,6 +2090,7 @@ async function processMessage(phone, text, scopedProjectCode, inkomendId) {
              verderop: de lead rechtzetten, de dealer waarschuwen, en geen
              enkele vlag zetten zodat een volgende beurt het alsnog kan boeken. */
           console.warn(`[whatsapp] BOOK geweigerd: voertuig niet boekbaar (${dealerControle.reden}) voor ${maskPhone(phone)} (${projectCode})`);
+          antwoordInWachtrij = false;   // L-02
           try {
             const correctieSent = await sendWA(phone, _lang.buildVehicleUnavailableMessage(effectiveLang), clientPhoneNumberId, { projectCode });
             if (!correctieSent) console.error(`[whatsapp] voertuig-onbeschikbaar correctie naar ${maskPhone(phone)} niet aangekomen`);
@@ -2178,6 +2193,7 @@ async function processMessage(phone, text, scopedProjectCode, inkomendId) {
       }
 
       if (slotTaken) {
+        antwoordInWachtrij = false;   // L-02: geen "ingepland" voor een bezet moment
         // The AI's reply THIS turn (already sent above in step 10 — e.g.
         // "Ingepland. Tot dan.") told the lead the slot was confirmed BEFORE
         // we ever get a chance to check Google; the AI drafts that line as
@@ -2270,6 +2286,7 @@ async function processMessage(phone, text, scopedProjectCode, inkomendId) {
               });
               if (!naResultaat.ok) {
                 dealerVerloren = true;
+                antwoordInWachtrij = false;   // L-02
                 console.warn(`[whatsapp] BOOK verloren van een race op het voertuig (${herkendVoertuig && herkendVoertuig.code}) voor ${maskPhone(phone)} (${projectCode})`);
                 try {
                   const correctieSent = await sendWA(phone, _lang.buildVehicleUnavailableMessage(effectiveLang), clientPhoneNumberId, { projectCode });
@@ -2322,6 +2339,7 @@ async function processMessage(phone, text, scopedProjectCode, inkomendId) {
             // creation failed" (it already exists at this point) — log it
             // distinctly instead.
             try {
+              await stuurAntwoordInWachtrij();   // L-02: pas NU, de afspraak staat
               const when = formatApptDateTime(appt.start, effectiveLang);
               const confirmSent = await sendWA(phone, _lang.buildConfirmMessage(effectiveLang, clientName, when, address), clientPhoneNumberId, { projectCode });
               if (!confirmSent) console.error(`[whatsapp] booking confirmation naar ${maskPhone(phone)} niet aangekomen (afspraak zelf blijft geldig)`);
@@ -2466,6 +2484,10 @@ async function processMessage(phone, text, scopedProjectCode, inkomendId) {
       } // sluit "if (!dealerControle || dealerControle.ok)" -- zie Fase 2b/3 hierboven
     }
   }
+
+  /* L-02: geen boeking geprobeerd (al geboekt, niets te doen) of de boeking
+     was idempotent/geweigerd zonder correctie nodig: het antwoord gaat alsnog uit. */
+  await stuurAntwoordInWachtrij();
 
   // 11c. Owner notificaties bij qualified (zowel in_chat als callback). Skip bij escalatie.
   // Intentioneel NIET gegated op sendOk: de kwalificatie is gebaseerd op wat de
