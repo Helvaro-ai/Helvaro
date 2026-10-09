@@ -41,7 +41,12 @@ ck('alleen onze vijf tabellen, geen Client Config/Leads', p.nieuweTabellen.lengt
 
 console.log('\nveiligheid van de definities');
 const alleVelden = Object.values(schema.TABELLEN).flatMap((d) => d.fields).concat(Object.values(schema.EXTRA_VELDEN).flatMap((d) => d.fields));
-ck('alleen tekst/lang/vink (geen types die typecast of opties vragen)', alleVelden.every((f) => ['singleLineText', 'multilineText', 'checkbox'].includes(f.type)));
+ck('alleen tekst/lang/vink, plus een geheel getal (geen types die typecast of keuzelijsten vragen)', alleVelden.every((f) => ['singleLineText', 'multilineText', 'checkbox'].includes(f.type)
+  || (f.type === 'number' && f.options && f.options.precision === 0 && f.name === 'Engine CC')));
+ck('de motorvelden staan in het schema: Vehicle Segment, Engine CC, Licence Class',
+  schema.EXTRA_VELDEN.tblPidTrwGRzRt4LZ.fields.some((f) => f.name === 'Vehicle Segment')
+  && schema.EXTRA_VELDEN.tblQAPdjEsh0l7lUe.fields.some((f) => f.name === 'Engine CC' && f.type === 'number')
+  && schema.EXTRA_VELDEN.tblQAPdjEsh0l7lUe.fields.some((f) => f.name === 'Licence Class'));
 ck('het eerste veld van elke nieuwe tabel is een sleutel-tekstveld', Object.values(schema.TABELLEN).every((d) => d.fields[0].type === 'singleLineText'));
 ck('elke nieuwe tabel draagt Project Code (tenant)', Object.values(schema.TABELLEN).every((d) => d.fields.some((f) => f.name === 'Project Code')));
 ck('ensure zonder configuratie gooit niet', (async () => (await schema.ensure()).reden === 'niet_geconfigureerd')() instanceof Promise);

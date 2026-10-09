@@ -34,6 +34,7 @@ const TIMEOUT_MS = 10000;
 
 const tekst = (name) => ({ name, type: 'singleLineText' });
 const lang = (name) => ({ name, type: 'multilineText' });
+const getal = (name) => ({ name, type: 'number', options: { precision: 0 } });
 const vink = (name) => ({ name, type: 'checkbox', options: { icon: 'check', color: 'greenBright' } });
 
 /* Nieuwe tabellen. Het EERSTE veld wordt het primaire veld in Airtable. */
@@ -93,6 +94,8 @@ const EXTRA_VELDEN = Object.freeze({
       vink('Email Auto Reply'), lang('Email Signature'),
       tekst('Site Key'), lang('Widget Domains'), vink('Widget Enabled'),
       lang('Inventory Source'), lang('Inventory State'),
+      /* auto of motor, alleen binnen dealership (api/_segment.js). Leeg = auto. */
+      tekst('Vehicle Segment'),
     ],
   },
   tbliukTnDAbEDcZmt: { // Leads
@@ -107,7 +110,10 @@ const EXTRA_VELDEN = Object.freeze({
        bewaartermijn aan -- 14 dagen als VERKOCHT, daarna gearchiveerd (zie
        archiveerVerkocht in api/_inventaris.js). Tekst, ISO-datum, net als
        Synced At en Created At. */
-    fields: [tekst('Source'), tekst('Source Record ID'), tekst('Synced At'), tekst('Sold At'), tekst('VIN')],
+    /* Engine CC en Licence Class: alleen voor motoren (api/_segment.js), leeg
+       bij een auto. Optioneel in api/_vehicles.js: ontbreken ze, dan wordt
+       zonder die velden opnieuw geschreven. */
+    fields: [tekst('Source'), tekst('Source Record ID'), tekst('Synced At'), tekst('Sold At'), tekst('VIN'), getal('Engine CC'), tekst('Licence Class')],
   },
 });
 
