@@ -137,7 +137,13 @@ function sessionSecret() {
   return crypto.createHmac('sha256', signingBase()).update('helvaro-session-v1').digest('hex');
 }
 function signSession(data) {
-  const payload = Buffer.from(JSON.stringify({ ...data, exp: Date.now() + SESSION_TTL_MS })).toString('base64url');
+  /* De permanente API-sleutel van het account hoort NIET in het token: de
+     payload is alleen base64, dus wie ooit een token in handen kreeg (een
+     gelekte cookie, een gedeelde schermafdruk van devtools) kon de sleutel eruit
+     lezen en hem als x-api-key blijven gebruiken, ook na uitloggen of een nieuw
+     wachtwoord. Niets op de server leest hem uit de sessie. */
+  const { apiKey, ...zonderSleutel } = data || {};
+  const payload = Buffer.from(JSON.stringify({ ...zonderSleutel, exp: Date.now() + SESSION_TTL_MS })).toString('base64url');
   const sig     = crypto.createHmac('sha256', sessionSecret()).update(payload).digest('base64url');
   return `hvs1.${payload}.${sig}`;
 }

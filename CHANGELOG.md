@@ -862,6 +862,9 @@ lokale teller, dus dit verandert niets zolang Upstash niet is aangesloten.
 
 ## 9 oktober 2026 — beveiliging
 
+- **Het inlogtoken bevat je vaste API-sleutel niet meer.** Wie een token in
+  handen kreeg, kon die sleutel er vroeger uit lezen en blijven gebruiken, ook
+  na uitloggen of een nieuw wachtwoord. Bestaande sessies lopen gewoon af.
 - **Een bevestiging in Faro voert maar één keer uit.** Klikte iemand twee keer
   (of kwam het verzoek bij twee servers terecht), dan kon dezelfde actie (een
   bericht, een afspraak, een campagne) twee keer gebeuren. Nu niet meer; mislukt
