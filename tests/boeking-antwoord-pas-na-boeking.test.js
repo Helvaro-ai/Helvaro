@@ -21,14 +21,22 @@ const flushIdx = b.indexOf('await stuurAntwoordInWachtrij();   // L-02: pas NU')
 ck('het antwoord gaat pas uit na een geslaagde createAppointment', apptIdx > -1 && flushIdx > apptIdx, [apptIdx, flushIdx]);
 
 const slot = b.slice(b.indexOf('if (slotTaken) {'), b.indexOf('if (slotTaken) {') + 200);
-ck('botsend slot laat het antwoord vallen', /antwoordInWachtrij = false/.test(slot), slot);
+ck('botsend slot laat het antwoord vallen', /await schrapAntwoordInWachtrij\(/.test(slot), slot);
 const mis = b.slice(b.indexOf('async function meldMislukteBoeking'), b.indexOf('async function meldMislukteBoeking') + 200);
-ck('mislukte boeking laat het antwoord vallen', /antwoordInWachtrij = false/.test(mis), mis);
+ck('mislukte boeking laat het antwoord vallen', /await schrapAntwoordInWachtrij\(/.test(mis), mis);
 ck('voertuig niet boekbaar laat het antwoord vallen',
-   /voertuig niet boekbaar[^\n]*\n\s*antwoordInWachtrij = false/.test(b));
-ck('race verloren laat het antwoord vallen', /dealerVerloren = true;\s*\n\s*antwoordInWachtrij = false/.test(b));
+   /voertuig niet boekbaar[^\n]*\n\s*await schrapAntwoordInWachtrij\(/.test(b));
+ck('race verloren laat het antwoord vallen', /dealerVerloren = true;\s*\n\s*await schrapAntwoordInWachtrij\(/.test(b));
 ck('geen boeking geprobeerd: het antwoord gaat alsnog uit (voor 11c)',
    b.indexOf('await stuurAntwoordInWachtrij();\n\n  // 11c.') > -1);
+
+// Het geschrapte antwoord staat al in Conversation History (stap 10 bewaart vóór
+// de boeking). Het moet daar vervangen worden door de correctie, anders leest de
+// AI de volgende beurt dat hij "Ingepland" bevestigde.
+const schrap = b.slice(b.indexOf('async function schrapAntwoordInWachtrij'), b.indexOf('async function schrapAntwoordInWachtrij') + 900);
+ck('schrappen herschrijft de assistent-beurt in de geschiedenis',
+   /history\[i\] = \{ \.\.\.history\[i\], content: String\(correctie/.test(schrap) && /'Conversation History': JSON\.stringify\(history\)/.test(schrap), schrap.slice(0, 300));
+ck('geen kale antwoordInWachtrij = false meer buiten de helpers', (b.match(/antwoordInWachtrij = false;/g) || []).length === 2);
 
 console.log(`\n${fail === 0 ? 'ALLES GROEN' : 'ER IS IETS STUK'} — ${pass} ok, ${fail} fout\n`);
 process.exit(fail === 0 ? 0 : 1);
