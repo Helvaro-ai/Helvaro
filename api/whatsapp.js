@@ -177,9 +177,22 @@ module.exports = _errors.vangAf(async function handler(req, res) {
   res.status(200).send('OK');
 
   try {
-    const entry   = body?.entry?.[0];
-    const change  = entry?.changes?.[0]?.value;
-    const message = change?.messages?.[0];
+    /* Meta bundelt bij een achterstand of snel na elkaar verstuurde berichten
+       meerdere berichten in één webhook: value.messages[] heeft er n, en er
+       kunnen meerdere entry[] en changes[] in zitten. Tot nu toe werd alleen
+       entry[0].changes[0].messages[0] verwerkt en waren de rest weg, zonder
+       logregel, antwoord of spoor in de geschiedenis (audit L-05). Nu gaan ze
+       ALLEMAAL door dezelfde dedupe + opDeRij-keten; de volgorde per afzender
+       blijft zoals Meta hem stuurde. */
+    const entries = Array.isArray(body?.entry) ? body.entry : [];
+    const alleChanges = entries.flatMap((e) => (Array.isArray(e?.changes) ? e.changes : []));
+    const berichten = [];
+    for (const ch of alleChanges) {
+      const waarde = ch?.value;
+      if (Array.isArray(waarde?.messages)) {
+        for (const m of waarde.messages) { if (m) berichten.push({ message: m, change: waarde }); }
+      }
+    }
 
     // ── Status callbacks + other WABA event types ────────────────────────
     // Handled for EVERY change in this entry (not just the first), fully
@@ -190,11 +203,14 @@ module.exports = _errors.vangAf(async function handler(req, res) {
     // exactly what's covered. Promise.allSettled + its own internal
     // try/catch means this can never throw into this handler.
     const eventWork = Promise.allSettled(
-      (Array.isArray(entry?.changes) ? entry.changes : []).map(processWebhookChange)
+      alleChanges.map(processWebhookChange)
     );
     waitUntil(eventWork);
 
-    if (!message) { await eventWork; return; }
+    /* Eén bericht door de volledige voorbewerking (type, dedupe, routering) en
+       op de rij van zijn afzender zetten. Geeft de verwerkingsbelofte terug, of
+       null als het bericht bewust wordt overgeslagen. */
+    const verwerkBericht = async ({ message, change }) => {
 
     /* Een spraakbericht, een foto, een sticker: hier stond `return` en verder
      * niets. Geen antwoord, geen regel in de geschiedenis, en op het dashboard
@@ -229,8 +245,7 @@ module.exports = _errors.vangAf(async function handler(req, res) {
         // Iets wat we niet kennen (een reactie-emoji, een systeembericht).
         // Daar hoort geen antwoord op; stil overslaan is hier juist correct.
         console.log(`[WhatsApp] berichttype "${message.type}" overgeslagen`);
-        await eventWork;
-        return;
+        return null;
       }
       nietTekst = `[De lead stuurde ${soort}. Je kunt de inhoud hiervan NIET zien of beluisteren. `
         + `Zeg dat vriendelijk, vraag of hij het wil typen, en ga verder met het gesprek.]`;
@@ -265,16 +280,14 @@ module.exports = _errors.vangAf(async function handler(req, res) {
     // Without dedup the AI would reply twice to the same lead message.
     if (message.id && _dedupSeen(message.id)) {
       console.log(`[WhatsApp] Duplicate webhook voor message ${message.id}. overgeslagen`);
-      await eventWork;
-      return;
+      return null;
     }
     /* Dezelfde vraag over ALLE instanties heen (audit L-1): de Map hierboven
        ziet alleen deze instantie. Zonder Upstash of bij een storing geeft dit
        true en gaat alles zoals voorheen. */
     if (message.id && !(await _lock.eenmalig('wa-msg:' + message.id, 15 * 60 * 1000))) {
       console.log(`[WhatsApp] message ${message.id} al opgepakt door een andere instantie. overgeslagen`);
-      await eventWork;
-      return;
+      return null;
     }
 
     const phone = message.from;           // e.g. "32478123456"
@@ -336,7 +349,23 @@ module.exports = _errors.vangAf(async function handler(req, res) {
         throw err;
       });
     waitUntil(work);
-    await Promise.all([work, eventWork]);
+    return work;
+    };
+
+    const werk = [];
+    for (const item of berichten) {
+      try {
+        const w = await verwerkBericht(item);
+        if (w) werk.push(w);
+      } catch (err) {
+        /* Eén kapot bericht mag de rest van de bundel niet meenemen. */
+        console.error('[WhatsApp] Fout bij voorbewerking van een bericht:', err.message);
+      }
+    }
+    const uitslag = await Promise.allSettled([...werk, eventWork]);
+    for (const u of uitslag) {
+      if (u.status === 'rejected') console.error('[WhatsApp] Fout in handler:', u.reason && u.reason.message);
+    }
 
   } catch (err) {
     console.error('[WhatsApp] Fout in handler:', err.message);
