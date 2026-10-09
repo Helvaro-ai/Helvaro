@@ -14,6 +14,36 @@ enige eerlijke datum voor "uitgerold" is de dag dat `main` deployt.
 
 ## Nog niet uitgerold
 
+### Voorraad: je wagens verdwijnen of verdubbelen niet meer door een storing
+
+- **Storing bij het lezen = niets aanpassen.** Is je voorraad of je
+  advertentielijst even niet te lezen (time-out, storing), dan stopt de
+  synchronisatie en meldt het. Eerst werd dat gelezen als "leeg", waardoor elke
+  wagen uit je feed een tweede keer werd aangemaakt.
+- **Geen dubbele wagens meer** als twee synchronisaties tegelijk lopen: er loopt
+  er per dealer maar een. Dubbele rijen die al bestaan worden vanzelf opgeruimd:
+  een blijft staan, de andere gaat naar het archief (niets wordt gewist, je
+  leads blijven gekoppeld) en staat niet meer als beschikbaar op je website.
+- **Verkocht-melding die mislukt wordt opnieuw geprobeerd.** Een wagen die uit
+  je feed verdween maar niet op verkocht kon worden gezet, bleef eerder voor
+  altijd "beschikbaar". Nu probeert de volgende run het opnieuw.
+- **Beveiliging tegen een kapotte feed is strenger, ook voor kleine voorraden.**
+  Valt de helft of meer van je wagens weg (vanaf 2 wagens), of meer dan 30% bij
+  10 of meer wagens, dan zet Helvaro niets op verkocht tot je het bevestigt, en
+  krijg je een melding. Ook "alles staat ineens op verkocht" in de feed telt zo.
+- **Meer statuswoorden herkend** (actief, te koop, in voorraad, for sale,
+  disponible, a vendre, verfuegbar, used/new ...): je voorraad verdwijnt niet meer
+  van je website omdat je feed een ander woord voor "beschikbaar" gebruikt.
+- **AutoScout24-profiel zonder bruikbaar totaal:** wagens worden wel toegevoegd
+  en bijgewerkt, maar er wordt niets op verkocht gezet omdat niet te controleren
+  is of de lijst compleet was.
+- **Meta-catalogusfeed:** staan er wagens te koop maar valt er geen enkele in de
+  feed (bv. omdat een verplicht veld als kleur ontbreekt), dan krijgt Meta een
+  foutmelding en houdt de vorige feed, in plaats van je hele catalogus leeg te maken.
+- **Beveiliging:** webadressen die naar het interne netwerk van de server wijzen
+  via IPv6-schrijfwijzen worden nu geweigerd (website-lezer, feedadres en
+  CRM-webhook).
+
 ### Voorraad: officiele koppelingen, bestand uploaden, betere meldingen
 
 - **mobile.de leest nu echt** (officiele Seller API). Vraag de Seller API-
