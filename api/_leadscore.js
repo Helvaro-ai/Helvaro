@@ -93,7 +93,7 @@ function bereken(signalen) {
     /* EEN van de drie, nooit de som -- zie de kop hierboven. */
     if (afspraak.gevraagd === true) {
       const type = String(afspraak.type || '').trim().toLowerCase();
-      if (type === 'proefrit') geef('proefrit', PUNTEN.proefrit);
+      if (type === 'proefrit' || type === 'testrit') geef('proefrit', PUNTEN.proefrit);
       else if (type === 'bezichtiging') geef('bezichtiging', PUNTEN.bezichtiging);
       else geef('afspraak', PUNTEN.afspraak);
     }

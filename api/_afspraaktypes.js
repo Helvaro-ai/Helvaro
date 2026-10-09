@@ -100,7 +100,16 @@ function duurMin(type, terugval) {
   return def && def.duurMin ? def.duurMin : terugval;
 }
 
+/** Alle sleutels die ergens een type kunnen zijn, de oorspronkelijke vier eerst. */
+function alleSleutels() { return Object.keys(TYPES); }
+
+/** Is dit letterlijk een sleutel van dit segment (zonder alias)? */
+function geldigVoor(type, segment) {
+  return typesVoor(segment).indexOf(String(type == null ? '' : type).trim()) !== -1;
+}
+
 module.exports = {
+  alleSleutels, geldigVoor,
   TYPES, SEGMENT_TYPES, ALIAS, STANDAARD,
   typesVoor, normaliseer, kiesType, label, isRit, duurMin,
 };

@@ -396,7 +396,7 @@ async function bereken(projectCode, opts = {}) {
   const verschenen = leads.filter((l) => verschenenUitNotities(l.notities)).length;
   const proefrit = leads.filter((l) => {
     const k = koopByLead.get(l.id);
-    return !!(k && k.afspraak === 'proefrit' && verschenenUitNotities(l.notities));
+    return !!(k && (k.afspraak === 'proefrit' || k.afspraak === 'testrit') && verschenenUitNotities(l.notities));
   }).length;
   let verkocht = 0;
   for (const lead of leads) {

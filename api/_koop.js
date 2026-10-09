@@ -21,15 +21,17 @@
  * Onderstreepje voorop.
  */
 
+const _afspraaktypes = require('./_afspraaktypes');
+
 const FINANCIERING = Object.freeze(['cash', 'goedgekeurd', 'nodig']);
 const TERMIJN       = Object.freeze(['kort', 'middel', 'lang']);
 const INTENTIE      = Object.freeze(['sterk', 'matig', 'laag']);
 /* Wat voor afspraak de klant ZELF vroeg -- niet wat er uiteindelijk geboekt
    werd (dat staat al op de Appointment zelf), maar het SIGNAAL dat hij erom
-   vroeg. Zelfde vier waarden als api/_dealer-boeking.js AFSPRAAK_TYPES; die
-   twee lijsten moeten gelijk blijven lopen, want dit veld voedt zowel de
-   prompt (KOOP_OPDRACHT) als het BOOK-type in api/whatsapp.js. */
-const AFSPRAAK      = Object.freeze(['proefrit', 'bezichtiging', 'ophaling', 'gesprek']);
+   vroeg. De sleutels komen uit api/_afspraaktypes.js (de ene bron). Hier staan
+   ze ALLEMAAL (alle segmenten): wat er bewaard mag worden is breder dan wat
+   het model te zien krijgt -- de prompt toont per segment zijn eigen lijst. */
+const AFSPRAAK      = Object.freeze(_afspraaktypes.alleSleutels());
 
 const VELDEN = Object.freeze(['financiering', 'termijn', 'intentie', 'budget', 'maandbudget', 'inruil', 'afspraak']);
 

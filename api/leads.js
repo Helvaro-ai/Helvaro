@@ -30,6 +30,8 @@ const _stijl     = require('./_form-stijl');   // vormgeving van het leadformuli
 const _waEigenTpl = require('./_wa-eigen-templates'); // sjablonen op het eigen nummer van een klant
 const _waSend    = require('./_wa-send');      // de enige deur naar WhatsApp
 const _voertuigslot  = require('./_voertuigslot');   // afspraakbescherming per voertuig (Fase 2b)
+const _afspraaktypes = require('./_afspraaktypes'); // soorten afspraak per segment
+const _segment   = require('./_segment');   // auto of motor binnen dealership
 const _dealerBoeking = require('./_dealer-boeking'); // DE boekingspoort voor dealership (Fase 2b/3)
 const _dealerMelding = require('./_dealer-melding'); // werknemersmelding bij een dealership-afspraak (Fase 3)
 const _activiteit    = require('./_activiteit');     // het activiteitenlogboek (Fase 2b/3)
@@ -1877,7 +1879,15 @@ module.exports = _errors.vangAf(async function handler(req, res) {
          de logica een tweede keer op te schrijven. */
       const bodyVehicleCode = String(body.vehicleCode || '').trim();
       const bodyType = String(body.type || '').trim();
-      if (bodyType && _dealerBoeking.AFSPRAAK_TYPES.indexOf(bodyType) === -1) {
+      /* Buiten de standaardvier is een type alleen geldig als het segment van
+         DEZE klant het kent (motor: testrit/onderhoud/waardering). */
+      const typeKlopt = async (t) => {
+        try {
+          const cf = await getClientFieldsForProject(projectCode, AIRTABLE_TOKEN, BASE_ID, CLIENTS_TABLE);
+          return _afspraaktypes.geldigVoor(t, _segment.van(cf));
+        } catch (_) { return false; }
+      };
+      if (bodyType && _dealerBoeking.AFSPRAAK_TYPES.indexOf(bodyType) === -1 && !(await typeKlopt(bodyType))) {
         return res.status(400).json({ error: 'Ongeldig afspraaktype' });
       }
 
