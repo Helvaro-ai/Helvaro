@@ -151,9 +151,9 @@ const CSV1 = 'id;make;model;price;mileage\nG1;BMW;X5;50000;40000\nG2;Audi;A4;300
 
   console.log('\nUpload: meer dan de helft weg = bevestiging vragen, nooit stil verkocht');
   {
-    /* Vier actieve wagens; het nieuwe bestand laat er twee vallen: precies de helft, dat mag. */
-    let r = await inv.syncUpload('DEALERA', { provider: 'gocar', tekst: 'id;make;model;price\nG1;BMW;X5;50000\nG2;Audi;A4;30000\n', door: 'test', ...snel });
-    ck('de helft weg: wel verwerkt, twee op verkocht', r.ok && r.upload.dalingGeblokkeerd === false && r.upload.verkocht === 2 && bijMerk('Fiat').fields.Status === 'verkocht' && bijMerk('Opel').fields.Status === 'verkocht', r.upload);
+    /* Vier actieve wagens; het nieuwe bestand laat er twee vallen: precies de helft: sinds audit F4 tegengehouden, de dealer bevestigt. */
+    let r = await inv.syncUpload('DEALERA', { provider: 'gocar', tekst: 'id;make;model;price\nG1;BMW;X5;50000\nG2;Audi;A4;30000\n', door: 'test', bevestigDaling: true, ...snel });
+    ck('de helft weg (bevestigd): wel verwerkt, twee op verkocht', r.ok && r.upload.dalingGeblokkeerd === false && r.upload.verkocht === 2 && bijMerk('Fiat').fields.Status === 'verkocht' && bijMerk('Opel').fields.Status === 'verkocht', r.upload);
     ck('en de verkoopdatum staat erbij (de bewaartermijn loopt)', Boolean(bijMerk('Fiat').fields['Sold At']));
     /* Twee actieve (G1, G2); het bestand heeft alleen een nieuwe wagen: beide vallen weg = 100%. */
     const voor = JSON.stringify(vanA().map((v) => [v.fields.Make, v.fields.Status]));
@@ -164,11 +164,11 @@ const CSV1 = 'id;make;model;price;mileage\nG1;BMW;X5;50000;40000\nG2;Audi;A4;300
     ck('een geblokkeerde upload kan niet als onveranderd worden overgeslagen: bevestigen werkt meteen', (await inv.syncUpload('DEALERA', { provider: 'gocar', tekst: 'id;make;model;price\nG9;Tesla;Model 3;40000\n', bevestigDaling: true, door: 'test', ...snel })).upload.verkocht === 2);
     ck('na bevestiging: BMW en Audi op verkocht', bijMerk('BMW').fields.Status === 'verkocht' && bijMerk('Audi').fields.Status === 'verkocht');
     ck('en de wagens zijn niet gewist', vanA().filter((v) => v.fields.Make === 'BMW').length === 1);
-    /* Een klein bestand: een feed laat de grens pas bij 5 gelden, een upload al bij 1. */
+    /* Een klein bestand: een feed laat de grens bij 2 gelden, een upload al bij 1. */
     const bestaand = [1, 2, 3].map((n) => ({ id: 'rec' + n, code: 'V' + n, merk: 'M' + n, model: 'X', status: 'beschikbaar', gearchiveerd: false, bron: 'feed', bronId: 'G' + n, vin: '', autoscout: '', link: '' }));
     const rijen = [1, 2, 3].map((n) => ({ provider: 'gocar', externalId: 'G' + n, vehicleCode: 'V' + n, status: 'ACTIVE', gezien: '2026-10-05T00:00:00.000Z' }));
     const bronnen = [{ provider: 'gocar', verdwenen: 'verkocht', voertuigen: [{ bronId: 'G9', merk: 'Nieuw', model: 'X' }] }];
-    ck('een feed met drie wagens die allemaal verdwijnen wordt niet tegengehouden (ondergrens 5)', vsync.verzoenAlles(bestaand, rijen, bronnen, { nu: '2026-10-05T10:00:00.000Z', legacyProvider: 'gocar' }).dalingGeblokkeerd === false);
+    ck('een feed met drie wagens die allemaal verdwijnen wordt tegengehouden (ondergrens 2, audit F4)', vsync.verzoenAlles(bestaand, rijen, bronnen, { nu: '2026-10-05T10:00:00.000Z', legacyProvider: 'gocar' }).dalingGeblokkeerd === true);
     ck('een upload met dezelfde cijfers wel (dalingMin 1)', vsync.verzoenAlles(bestaand, rijen, bronnen, { nu: '2026-10-05T10:00:00.000Z', legacyProvider: 'gocar', dalingMin: 1 }).dalingGeblokkeerd === true);
   }
 

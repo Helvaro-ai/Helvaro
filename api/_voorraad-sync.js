@@ -61,8 +61,32 @@ const GEZIEN_VERS_MS = DAG_MS;     // Last Seen At van een advertentie: hoogsten
    het een groot deel is van wat er uit de bron actief stond. Alleen het tweede
    zou een kleine dealer die twee van zijn drie wagens verkoopt blokkeren;
    alleen het eerste een grote dealer die een drukke week heeft. */
-const DALING_MIN = 5;
+/* Drempels (audit F4). Eerst was het "minstens 5 EN meer dan de helft", en
+   dat liet gaten: een afgekapte feed van een dealer met 8 wagens (4 weg) of 4
+   wagens (3 weg) zette gewoon alles op verkocht, en 20 wagens met 40% weg ook.
+     - minstens DALING_MIN (2) wagens tegelijk uit de actieve voorraad, EN
+     - de helft of meer (DALING_AANDEEL, 50%) van wat deze bron actief toonde
+       (precies de helft telt mee: een feed die halverwege afbreekt is het
+       klassieke geval);
+     - bij DALING_GROOT_VANAF (10) wagens of meer al meer dan
+       DALING_AANDEEL_GROOT (30%): op die omvang is een derde in een uur geen
+       verkoopdag meer maar een kapotte feed.
+   Een enkele verkoop is nooit abnormaal (min 2), ook niet bij een dealer met
+   1 wagen. Meetellen: weg uit de feed, status verkocht in de feed, en status
+   die ineens onbekend wordt (een woord dat we niet kennen, audit F5) --
+   alle drie halen de wagen van de website. De dealer kan altijd bevestigen
+   (bevestigDaling), dan gaat het plan wel door. */
+const DALING_MIN = 2;
 const DALING_AANDEEL = 0.5;
+const DALING_GROOT_VANAF = 10;
+const DALING_AANDEEL_GROOT = 0.3;
+
+/** Is dit aantal uitvallers abnormaal voor deze voorraad? Pure functie. */
+function isDalingVerdacht(aantal, voorraad, min) {
+  const ondergrens = Number.isFinite(min) ? min : DALING_MIN;
+  const aandeel = voorraad >= DALING_GROOT_VANAF ? DALING_AANDEEL_GROOT : DALING_AANDEEL;
+  return aantal >= ondergrens && (voorraad >= DALING_GROOT_VANAF ? aantal > voorraad * aandeel : aantal >= voorraad * aandeel);
+}
 
 /* Hoeveel losse voertuiggebeurtenissen één sync in het activiteitenlogboek
    mag zetten. Een eerste import van tweehonderd wagens hoort daar als één
@@ -190,7 +214,7 @@ function vinSleutel(x) {
  *     legacyProvider      wiens id een kaal Source Record ID is (standaard: de eerste bron)
  *     geconfigureerd      alle providers die de dealer nog heeft; advertenties van
  *                         een provider die er niet meer tussen staat tellen niet mee
- *     dalingMin           vanaf hoeveel verdwenen wagens de dalingswacht geldt (standaard DALING_MIN)
+ *     dalingMin           vanaf hoeveel uitvallende wagens de dalingswacht geldt (standaard DALING_MIN = 2)
      codesToewijzen      geef nieuwe wagens meteen hun Helvaro-code (nodig om er
  *                         advertenties aan te hangen); zonder dit doet pasToe het
  * @returns {{nieuw, bijwerken, weg, ongewijzigd, geadopteerd, verdwenenAantal,
@@ -212,8 +236,45 @@ function verzoenAlles(bestaand, listings, bronnen, opties = {}) {
   const bekend = Array.from(new Set((opties.geconfigureerd || bronnen.map((b) => b.provider)).concat([legacy])));
   const geconfigureerd = new Set(opties.geconfigureerd || bronnen.map((b) => b.provider));
   /* Kopieen: het plan beschrijft wat er moet gebeuren, en raakt de lijst van de aanroeper niet aan. */
-  const werk = (bestaand || []).map((v) => Object.assign({}, v));
-  const codes = werk.map((v) => v.code);
+  const alleRijen = (bestaand || []).map((v) => Object.assign({}, v));
+  /* Alle codes, ook die van dubbelen: een code wordt nooit hergebruikt. */
+  const codes = alleRijen.map((v) => v.code);
+
+  /* ── Dubbelen heelmaken (audit F2) ─────────────────────────────────────────
+     Twee syncs tegelijk (of een afgebroken lijst, audit F1) maakten in het
+     verleden dezelfde bronwagen twee keer aan: zelfde tenant, zelfde bron, zelfde
+     Source Record ID, vaak zelfs dezelfde V-code. Eentje blijft de wagen; de
+     andere gaat uit aanbod en in het archief, zodat hij nergens meer als
+     beschikbaar telt of op de website staat -- ook niet nadat de bronwagen
+     verdwijnt. Niets wordt verwijderd: aan een rij kunnen leads hangen.
+     Welke blijft: die waar de advertentietabel naar wijst, dan een actieve, dan
+     de oudste (Airtable geeft bij een code-opzoeking de oudste rij het eerst).
+     Alleen wagens uit een bron; een met de hand ingevoerde wagen heeft geen
+     bron-ID en wordt nooit als dubbel gezien. */
+  const adCode = new Map();
+  for (const l of listings || []) {
+    if (l && l.provider && l.externalId && l.status !== 'REMOVED') adCode.set(lkSleutel(l.provider, l.externalId), l.vehicleCode);
+  }
+  const bronGroepen = new Map();
+  alleRijen.forEach((v, i) => {
+    if (v.bron !== 'feed' || !v.bronId) return;
+    const s = splitsBronId(v.bronId, legacy, bekend);
+    const k = lkSleutel(s.provider, s.externalId);
+    if (!bronGroepen.has(k)) bronGroepen.set(k, []);
+    bronGroepen.get(k).push({ v, i, k });
+  });
+  const dubbel = new Set();
+  const heel = [];
+  for (const groep of bronGroepen.values()) {
+    if (groep.length < 2) continue;
+    const rang = (x) => [adCode.get(x.k) === x.v.code ? 0 : 1, isActief(x.v) ? 0 : 1, Date.parse(x.v.aangemaakt || '') || Infinity, x.i];
+    groep.sort((a, b) => { const ra = rang(a), rb = rang(b); for (let j = 0; j < ra.length; j++) if (ra[j] !== rb[j]) return ra[j] < rb[j] ? -1 : 1; return 0; });
+    for (const extra of groep.slice(1)) {
+      dubbel.add(extra.v);
+      if (isActief(extra.v)) heel.push(extra.v);
+    }
+  }
+  const werk = alleRijen.filter((v) => !dubbel.has(v));
 
   /* ── Wat al bekend is ──────────────────────────────────────────────────── */
   const lk = new Map();                 // provider|id -> advertentie
@@ -271,11 +332,20 @@ function verzoenAlles(bestaand, listings, bronnen, opties = {}) {
     ongewijzigd: 0, geadopteerd: 0,
     verdwenenAantal: 0, dalingGeblokkeerd: false,
     gebeurtenissen: [], listings: [], perBron: {}, dubbelGemeld: 0,
+    heel: [],                           // dubbele rijen die uit aanbod + gearchiveerd gaan
   };
   const gebeurtenis = (soort, v, extra) => {
-    plan.gebeurtenissen.push(Object.assign({ soort, code: v && v.code, bronId: v && v.bronId,
-      titel: [v && v.merk, v && v.model].filter(Boolean).join(' ') }, extra || {}));
+    const g = Object.assign({ soort, code: v && v.code, bronId: v && v.bronId,
+      titel: [v && v.merk, v && v.model].filter(Boolean).join(' ') }, extra || {});
+    plan.gebeurtenissen.push(g);
+    return g;
   };
+  const statusUitval = {};               // provider -> [{ entry, aanvullen, ev }]: wagens die via de feedstatus uit de actieve voorraad gaan
+
+  for (const v of heel) {
+    plan.heel.push({ id: v.id, code: v.code, invoer: { status: 'uit aanbod', gearchiveerd: true, gesynct: nu } });
+    gebeurtenis('vehicle_archived', v, { via: 'dubbel', verkochtOp: v.verkochtOp });
+  }
 
   const schrijven = new Map();          // advertenties die weggeschreven moeten worden
   const gezien = {};                    // provider -> Set(voertuigcode)
@@ -304,6 +374,7 @@ function verzoenAlles(bestaand, listings, bronnen, opties = {}) {
     const P = S.provider;
     const st = plan.perBron[P] = { nieuw: 0, bijgewerkt: 0, ongewijzigd: 0, geadopteerd: 0, gekoppeld: 0, verdwenen: 0, verwijderd: 0, dalingGeblokkeerd: false, gezien: 0 };
     gezien[P] = new Set();
+    statusUitval[P] = [];
 
     const kandidaat = (f) => {
       const goed = (v) => v && !gezien[P].has(v.code) && !heeftActief(v.code, P);
@@ -410,13 +481,20 @@ function verzoenAlles(bestaand, listings, bronnen, opties = {}) {
       if (vo !== undefined) invoer.verkochtOp = vo;
       /* De herkomst van een wagen die al een andere bron heeft blijft die. */
       if (oud.bron && (oud.bron !== 'feed' || bronSleutel(oud.bronId) !== bronSleutel(invoer.bronId))) { delete invoer.bron; delete invoer.bronId; }
-      plan.bijwerken.push({ id: oud.id, code: oud.code, invoer, wijzigingen, adoptie });
+      const regel = { id: oud.id, code: oud.code, invoer, wijzigingen, adoptie };
+      plan.bijwerken.push(regel);
       st.bijgewerkt++;
       if (adoptie) { plan.geadopteerd++; st.geadopteerd++; }
 
       if (wijzigingen.indexOf('prijs') !== -1) gebeurtenis('vehicle_price_changed', oud, { van: oud.prijs, naar: f.prijs });
-      if (nieuweStatus === 'verkocht' && oudeStatus !== 'verkocht') gebeurtenis('vehicle_marked_sold', oud, { via: 'bron' });
-      else if (wijzigingen.length) gebeurtenis('vehicle_updated', oud, { velden: wijzigingen });
+      let ev = null;
+      if (nieuweStatus === 'verkocht' && oudeStatus !== 'verkocht') ev = gebeurtenis('vehicle_marked_sold', oud, { via: 'bron' });
+      else if (wijzigingen.length) ev = gebeurtenis('vehicle_updated', oud, { velden: wijzigingen });
+      /* Een actieve wagen die via de feedstatus verkocht of onbekend wordt: telt
+         mee voor de dalingswacht hieronder (audit F4/F5). */
+      if (isActief(oud) && wijzigingen.indexOf('status') !== -1 && (nieuweStatus === 'verkocht' || (nieuweStatus === 'onbekend' && oudeStatus !== 'onbekend'))) {
+        statusUitval[P].push({ regel, aanvullen: aanvullen.length > 0, ev, nieuweStatus });
+      }
     }
   }
 
@@ -440,9 +518,31 @@ function verzoenAlles(bestaand, listings, bronnen, opties = {}) {
     plan.verdwenenAantal += verdwenen.length;
     st.verdwenen = verdwenen.length;
     const modus = MODI.indexOf(S.verdwenen) !== -1 ? S.verdwenen : 'verkocht';
-    if (modus === 'negeren' || !verdwenen.length) continue;
-    const verdacht = verdwenen.length >= (Number.isFinite(opties.dalingMin) ? opties.dalingMin : DALING_MIN) && verdwenen.length > gehouden.size * DALING_AANDEEL;
-    if (verdacht && !opties.bevestigDaling) { plan.dalingGeblokkeerd = true; st.dalingGeblokkeerd = true; continue; }
+    const uitval = statusUitval[P] || [];
+    const telVerdwenen = modus === 'negeren' ? 0 : verdwenen.length;
+    if (!telVerdwenen && !uitval.length) continue;
+    const totaalUit = telVerdwenen + uitval.length;
+    const verdacht = isDalingVerdacht(totaalUit, Math.max(gehouden.size, totaalUit), opties.dalingMin);
+    if (verdacht && !opties.bevestigDaling) {
+      plan.dalingGeblokkeerd = true; st.dalingGeblokkeerd = true;
+      st.dalingDetail = { voorraad: gehouden.size, verdwenen: telVerdwenen, statusVerkocht: uitval.filter((u) => u.nieuweStatus === 'verkocht').length, statusOnbekend: uitval.filter((u) => u.nieuweStatus === 'onbekend').length };
+      /* De statuswijzigingen die de wacht tegenhoudt NIET uitvoeren: alleen de
+         status terug, de rest van de feedregel (prijs, km) mag gewoon door. */
+      plan.verdwenenAantal += uitval.length;
+      for (const u of uitval) {
+        delete u.regel.invoer.status; delete u.regel.invoer.verkochtOp;
+        u.regel.wijzigingen = u.regel.wijzigingen.filter((k) => k !== 'status');
+        if (!u.regel.wijzigingen.length && !u.regel.adoptie && !u.aanvullen && u.regel.invoer.gearchiveerd === undefined) {
+          plan.bijwerken.splice(plan.bijwerken.indexOf(u.regel), 1); st.bijgewerkt--;
+        }
+        if (u.ev) {
+          if (u.ev.soort === 'vehicle_marked_sold') plan.gebeurtenissen.splice(plan.gebeurtenissen.indexOf(u.ev), 1);
+          else if (Array.isArray(u.ev.velden)) { u.ev.velden = u.ev.velden.filter((k) => k !== 'status'); if (!u.ev.velden.length) plan.gebeurtenissen.splice(plan.gebeurtenissen.indexOf(u.ev), 1); }
+        }
+      }
+      continue;
+    }
+    if (!telVerdwenen) continue;
     weggelaten[P] = new Set(verdwenen.map((v) => v.code));
     modusVan[P] = modus;
     st.verwijderd = verdwenen.length;
@@ -551,7 +651,7 @@ function maakSchrijver(opties = {}) {
   const I = vehicles._intern;
   const max = Number.isFinite(opties.max) ? opties.max : 400;
   const pauze = Number.isFinite(opties.pauze) ? opties.pauze : 220;
-  const staat = { geschreven: 0, failed: 0, zonderVerkochtVeld: false, afgekapt: false, zonderVelden: new Set() };
+  const staat = { geschreven: 0, failed: 0, zonderVerkochtVeld: false, afgekapt: false, zonderVelden: new Set(), gelukt: new Set() };
   /* Optionele velden (Sold At, VIN) die op deze base nog niet bestaan: een 422
      erover laat de run opnieuw proberen zonder die velden, en de rest van de
      run ook. De schemamigratie maakt ze aan; tot dan werkt de sync gewoon. */
@@ -582,6 +682,9 @@ function maakSchrijver(opties = {}) {
           console.warn('[voorraadsync] batch', method, r.status, deel.length, 'wagens');
         }
       }
+      /* Welke rijen echt geschreven zijn: de aanroeper moet weten of een
+         "verkocht"-PATCH aankwam voor hij daar iets op baseert (audit F3). */
+      if (r.ok) for (const rec of deel) if (rec.id) staat.gelukt.add(rec.id);
       staat.geschreven += deel.length;
       if (pauze) await wacht(pauze);
     }
@@ -617,17 +720,35 @@ async function pasToe(projectCode, plan, opties = {}) {
   });
 
   await batch('POST', nieuweRecords);
+  /* Dubbelen heelmaken eerst: een zeldzame, kleine groep die niet door de
+     schrijfgrens van een grote import mag worden afgekapt. */
+  await batch('PATCH', patch(plan.heel || []));
   await batch('PATCH', patch(plan.bijwerken));
   await batch('PATCH', patch(plan.weg));
 
-  const totaal = nieuweRecords.length + plan.bijwerken.length + plan.weg.length;
+  const totaal = nieuweRecords.length + (plan.heel || []).length + plan.bijwerken.length + plan.weg.length;
   return {
     geschreven: staat.geschreven,
     failed: staat.failed,
     afgekapt: staat.afgekapt,
     totaal,
     zonderVerkochtVeld: staat.zonderVerkochtVeld,
+    gelukt: staat.gelukt,              // ids van de rijen die echt geschreven zijn
   };
+}
+
+/**
+ * Welke advertentierijen mogen na pasToe() weggeschreven worden? Een advertentie
+ * die op REMOVED gaat omdat de wagen verdween, wordt pas geschreven NADAT de
+ * "verkocht"-PATCH van die wagen aankwam. Mislukte of door de schrijfgrens
+ * afgekapte PATCH + toch REMOVED = een wagen die voor altijd beschikbaar blijft
+ * (hij is geen "gehouden" kandidaat meer zonder actieve advertentie, audit F3).
+ * Blijft de advertentie ACTIVE, dan ziet de volgende run de wagen opnieuw als
+ * verdwenen en probeert hij het opnieuw.
+ */
+function advertentiesNaSchrijven(plan, gelukt) {
+  const wegId = new Map((plan.weg || []).map((w) => [w.code, w.id]));
+  return (plan.listings || []).filter((l) => !(l.status === 'REMOVED' && wegId.has(l.vehicleCode) && !(gelukt && gelukt.has(wegId.get(l.vehicleCode)))));
 }
 
 /**
@@ -673,7 +794,7 @@ function logGebeurtenissen(projectCode, lijst) {
 }
 
 module.exports = {
-  BEWAAR_DAGEN, DALING_MIN, DALING_AANDEEL, MAX_GEBEURTENISSEN, VERGELIJK,
-  verzoen, verzoenAlles, bronIdVoor, splitsBronId, planArchief, telling, pasToe, archiveerVerkocht, logGebeurtenissen,
+  BEWAAR_DAGEN, DALING_MIN, DALING_AANDEEL, DALING_GROOT_VANAF, DALING_AANDEEL_GROOT, isDalingVerdacht, MAX_GEBEURTENISSEN, VERGELIJK,
+  verzoen, verzoenAlles, bronIdVoor, splitsBronId, planArchief, telling, pasToe, advertentiesNaSchrijven, archiveerVerkocht, logGebeurtenissen,
   _test: { gelijk, linkSleutel, autoscoutUit, isActief, maakSchrijver, kenmerkSleutel },
 };

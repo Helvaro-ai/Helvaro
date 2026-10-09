@@ -187,7 +187,7 @@ const stand = () => JSON.parse(klanten.DEALERA.fields['Inventory State'] || '{}'
   {
     const bestaand = [wagen({ code: 'V1', bron: 'feed', bronId: 'A1', vin: VIN1 }), wagen({ code: 'V2', bron: 'feed', bronId: 'A2' })];
     const rijen = [adv('feed', 'A1', 'V1'), adv('gocar', 'G1', 'V1'), adv('feed', 'A2', 'V2')];
-    const opt = { nu: NU, legacyProvider: 'feed', geconfigureerd: ['feed', 'gocar'] };
+    const opt = { nu: NU, legacyProvider: 'feed', geconfigureerd: ['feed', 'gocar'], bevestigDaling: true };
     const toon = (provider, items) => ({ provider, verdwenen: 'verkocht', voertuigen: items });
     const mislukt = (provider) => ({ provider, verdwenen: 'verkocht', voertuigen: null });
 
@@ -445,7 +445,7 @@ const stand = () => JSON.parse(klanten.DEALERA.fields['Inventory State'] || '{}'
     klanten.DEALERA.fields['Inventory State'] = '';
     feeds[FEED_A].items = [{ id: 'Z1', make: 'Fiat', model: 'Panda', price: 8000 }];
     geopend.length = 0;
-    r = await inv.sync('DEALERA', { door: 'test', ...snel });
+    r = await inv.sync('DEALERA', { door: 'test', bevestigDaling: true, ...snel });
     ck('de sync slaagt zonder een foutmelding voor die bronnen', r.ok === true && r.lastResult === 'ok', { ok: r.ok, res: r.lastResult });
     ck('er is niets opgehaald bij een ander adres dan de feed', geopend.every((u) => u === FEED_A), geopend);
     ck('de AutoScout24-API zonder gegevens van Helvaro ook: overgeslagen, geen verzoek', stand().bronnen.autoscout24_api.lastResult === 'skipped' && !stand().bronnen.autoscout24_api.lastErrorCode, stand().bronnen.autoscout24_api);
