@@ -233,7 +233,7 @@ console.log('\n— de meldingen zijn aan echte gebeurtenissen gekoppeld —');
   /* Zonder await en met .catch: de lead is het product, de melding een
      extraatje. Een storing bij OneSignal mag een lead nooit kosten. */
   ck('en blokkeert het opslaan van de lead niet',
-     /stuurVertaald\(\{[\s\S]{0,300}\}\)\.catch\(\(\) => \{\}\);/.test(form), null);
+     /stuurVertaald\(\{[\s\S]{0,300}\}\)\)*\.catch\(\(\) => \{\}\);/.test(form), null);
   ck('bij 80% van de credits ook',  /push\.credit80\.title/.test(credits), null);
   ck('en bij de limiet',            /push\.credit100\.title/.test(credits), null);
 }

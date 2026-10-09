@@ -1104,7 +1104,7 @@ var PROJECT  = '${escJs(project)}';
    over welke woning of auto dit gesprek gaat. Leeg = het algemene formulier.
    Tot 2026-09-26 ging bij een dealer alleen de pandcode mee -- en die is daar
    altijd leeg, dus elke aanvraag vanaf een autopagina kwam zonder auto aan. */
-var PAND     = '${escJs(pand ? pand.code : (voertuig ? voertuig.code : pandCode))}';
+var PAND     = '${escJs(pand ? pand.code : (voertuig ? voertuig.code : (pandNietBeschikbaar ? pandCode : '')))}';
 /* true = de code is wel doorgegeven maar het aanbod is niet meer te zien. */
 var PAND_WEG = ${pandNietBeschikbaar ? 'true' : 'false'};
 var AI_FIRST = '${escJs(firstName)}';
