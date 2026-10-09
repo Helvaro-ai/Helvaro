@@ -58,5 +58,10 @@ async function login(email, password) {
   // 3. geen tijdsorakel: onbekend adres doet ook een bcrypt-vergelijking
   const t0 = Date.now(); await login('onbekend@test.be', 'x'); const onbekendMs = Date.now() - t0;
   assert.ok(onbekendMs >= 25, 'onbekend adres rekent ook bcrypt (kost ' + onbekendMs + ' ms)');
+  // 4. een geslaagde wachtwoordreset haalt het account uit de begrenzer (anders
+  //    kan wie je adres kent je buitensluiten).
+  const bron = require('fs').readFileSync(path.join(__dirname, '..', 'api', 'auth.js'), 'utf8');
+  const reset = bron.slice(bron.indexOf("Wachtwoord aangepast. Je kan nu inloggen.") - 700, bron.indexOf("Wachtwoord aangepast. Je kan nu inloggen."));
+  assert.ok(/_rl\.reset\('login-account', String\(emailFromToken/.test(reset), 'reset wist de accountteller');
   console.log('login-per-account: ok');
 })().catch(e => { console.error(e); process.exit(1); });

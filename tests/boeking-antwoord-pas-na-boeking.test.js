@@ -38,5 +38,20 @@ ck('schrappen herschrijft de assistent-beurt in de geschiedenis',
    /history\[i\] = \{ \.\.\.history\[i\], content: String\(correctie/.test(schrap) && /'Conversation History': JSON\.stringify\(history\)/.test(schrap), schrap.slice(0, 300));
 ck('geen kale antwoordInWachtrij = false meer buiten de helpers', (b.match(/antwoordInWachtrij = false;/g) || []).length === 2);
 
+// Review 2026-10-09: vangnet bij een fout tussen vasthouden en versturen.
+ck('processMessage krijgt een nood-object', /async function processMessage\(phone, text, scopedProjectCode, inkomendId, nood = \{\}\)/.test(b));
+const red = b.slice(b.indexOf('nood.redding = async'), b.indexOf('nood.redding = async') + 500);
+ck('redding: afspraak staat -> antwoord alsnog', /if \(afspraakStaat\) \{ await stuurAntwoordInWachtrij\(\); return; \}/.test(red), red.slice(0, 200));
+ck('redding: geen afspraak -> correctie, geen Ingepland', /schrapAntwoordInWachtrij\(correctie\)/.test(red) && /sendWA\(phone, correctie/.test(red));
+ck('afspraakStaat wordt gezet vlak voor de geslaagde flush', /afspraakStaat = true;\s*\n\s*await stuurAntwoordInWachtrij\(\);   \/\/ L-02: pas NU/.test(b));
+ck('de aanroeper roept de redding aan bij een fout', /\.catch\(async \(err\) => \{\s*\n[\s\S]{0,300}nood\.redding\(\)/.test(b));
+ck('lead heeft al een afspraak: geen Ingepland, wel de melding',
+   /lead heeft al een afspraak lopen[^\n]*\n[\s\S]{0,400}schrapAntwoordInWachtrij\(alGepland\)/.test(b));
+const _lang = require(path.join(__dirname, '..', 'api', '_lang.js'));
+ck('al-gepland-melding in nl/fr/en/de', ['nl', 'fr', 'en', 'de'].every(t => _lang.buildAlreadyBookedMessage(t).length > 20) && _lang.buildAlreadyBookedMessage('nl') !== _lang.buildAlreadyBookedMessage('en'));
+// dedupe-sleutel overleeft het logmasker (geen 8+ cijfers op rij)
+const dd = b.slice(b.indexOf('const dedupeRef ='), b.indexOf('const dedupeRef =') + 260);
+ck('dedupe-sleutel zonder telefoonnummer en zonder cijferreeksen', !/\$\{phone\}/.test(dd) && /ghijklmnop/.test(dd), dd);
+
 console.log(`\n${fail === 0 ? 'ALLES GROEN' : 'ER IS IETS STUK'} — ${pass} ok, ${fail} fout\n`);
 process.exit(fail === 0 ? 0 : 1);

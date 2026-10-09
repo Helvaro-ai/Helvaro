@@ -44,9 +44,9 @@ console.log('\n  het id komt echt binnen');
    gooit ELK inkomend bericht een ReferenceError en krijgt geen enkele lead nog
    antwoord. node --check ziet dat niet -- het is geldige syntaxis. */
 ck('processMessage neemt het bericht-id als parameter aan',
-  /async function processMessage\(phone, text, scopedProjectCode, inkomendId\)/.test(src), null);
+  /async function processMessage\(phone, text, scopedProjectCode, inkomendId(, nood = \{\})?\)/.test(src), null);
 ck('en de aanroeper geeft message.id door',
-  /processMessage\(phone, text, scopedProjectCode, message\.id\)/.test(src), null);
+  /processMessage\(phone, text, scopedProjectCode, message\.id(, nood)?\)/.test(src), null);
 {
   /* Geen enkele verwijzing naar `message.` binnen processMessage, behalve
      aiResponse.message -- dat is een ander object. */

@@ -528,6 +528,10 @@ module.exports = _errors.vangAf(async function handler(req, res) {
       // clear their cookies so they land on a clean login rather than a
       // session that is about to start failing.
       _session.clearSessionCookies(res);
+      /* De begrenzer per account kan door iemand anders vol gezet worden (wie je
+         e-mailadres kent, stuurt tien foute wachtwoorden). Wie via de mail
+         bewijst dat het zijn adres is, mag meteen weer inloggen. */
+      await _rl.reset('login-account', String(emailFromToken || '').toLowerCase()).catch(() => {});
       return res.status(200).json({ ok: true, message: 'Wachtwoord aangepast. Je kan nu inloggen.' });
     }
 

@@ -337,11 +337,15 @@ module.exports = _errors.vangAf(async function handler(req, res) {
     /* Eén kenmerk voor dit bericht op elke logregel van de verwerking
        (api/_trace.js, audit L-5): zoek [wa-xxxxxx] in de Vercel-logs. */
     const traceId = _trace.maakId('wa', message.id);
+    const nood = {};
     const work = opDeRij(phone, scopedProjectCode, () => _trace.met(traceId, () => {
       console.log(`[WhatsApp] bericht in verwerking (project ${scopedProjectCode || '?'})`);
-      return processMessage(phone, text, scopedProjectCode, message.id);
+      return processMessage(phone, text, scopedProjectCode, message.id, nood);
     }))
       .catch(async (err) => {
+        /* Was er een antwoord vastgehouden voor een boeking, dan nu alsnog
+           afhandelen (zie nood.redding in processMessage). */
+        if (typeof nood.redding === 'function') await nood.redding().catch(() => {});
         /* Verwerking mislukt: het bericht-id weer vrijgeven, zodat een
            herbezorging het opnieuw mag proberen in plaats van als dubbel
            overgeslagen te worden. */
@@ -685,7 +689,7 @@ async function alertTemplateCategoryChange(value) {
 
 /* inkomendId is het bericht-id van Meta. Optioneel en achteraan, zodat een
    aanroeper die het niet meegeeft precies het oude gedrag houdt. */
-async function processMessage(phone, text, scopedProjectCode, inkomendId) {
+async function processMessage(phone, text, scopedProjectCode, inkomendId, nood = {}) {
   // 1. Find lead by phone. When scopedProjectCode is set (the inbound webhook
   // arrived on a client's OWN WhatsApp number — see the handler above), the
   // lookup is scoped to (phone, that client) directly and the Task 1
@@ -1559,7 +1563,9 @@ async function processMessage(phone, text, scopedProjectCode, inkomendId) {
   async function stuurAntwoordInWachtrij() {
     if (!antwoordInWachtrij) return true;
     antwoordInWachtrij = false;
-    return sendWA(phone, replyText, clientPhoneNumberId, { projectCode }).catch(() => false);
+    const ok = await sendWA(phone, replyText, clientPhoneNumberId, { projectCode }).catch(() => false);
+    if (!ok) console.error(`[whatsapp] vastgehouden antwoord naar ${maskPhone(phone)} niet aangekomen (${projectCode})`);
+    return ok;
   }
   /* Wordt het vastgehouden antwoord geschrapt (de boeking botste), dan staat het
      wel al in Conversation History: die is in stap 10 bewaard, vóór de boeking.
@@ -1581,6 +1587,20 @@ async function processMessage(phone, text, scopedProjectCode, inkomendId) {
       console.error('[whatsapp] geschiedenis na mislukte boeking niet bijgewerkt:', e && e.message);
     }
   }
+  /* Vangnet (review 2026-10-09). Tussen het vasthouden van het antwoord en het
+     versturen ervan liggen awaits die kunnen gooien (Airtable, CRM, ...). Vroeger
+     ging het antwoord eerst uit, dus een fout daarna liet de lead niet met lege
+     handen; nu wel. De aanroeper (opDeRij hierboven) roept bij een fout
+     nood.redding() aan: staat de afspraak al, dan gaat het antwoord alsnog uit;
+     anders krijgt de lead de correctie, nooit een "Ingepland" zonder afspraak. */
+  let afspraakStaat = false;
+  nood.redding = async () => {
+    if (!antwoordInWachtrij) return;
+    if (afspraakStaat) { await stuurAntwoordInWachtrij(); return; }
+    const correctie = _lang.buildSlotConflictMessage(effectiveLang);
+    await schrapAntwoordInWachtrij(correctie);
+    await sendWA(phone, correctie, clientPhoneNumberId, { projectCode }).catch(() => false);
+  };
   const updateFields = { 'Last Message': text };
   if (sendOk) {
     // `ts` stamps outbound turns too (not just inbound, see step 4's push
@@ -1994,7 +2014,11 @@ async function processMessage(phone, text, scopedProjectCode, inkomendId) {
     // want een andere foutmelding is nog steeds hetzelfde onderliggende
     // probleem voor de eigenaar vandaag).
     const vandaag = new Date().toISOString().slice(0, 10);
-    const dedupeRef = `boeking_mislukt:${phone}:${vandaag}`;
+    /* Een hash van het nummer, niet het nummer zelf: het activiteitenlog maskeert
+       telefoonnummers in de opgeslagen sleutel, waardoor een sleutel met het
+       kale nummer nooit meer terug te vinden was en elke mislukte boeking de
+       eigenaar opnieuw wekte (review 2026-10-09). */
+    const dedupeRef = `boeking_mislukt:${require('crypto').createHash('sha256').update(String(phone)).digest('hex').slice(0, 16).replace(/[0-9]/g, (c) => 'ghijklmnop'[c])}:${vandaag}`;   // letters: het logmasker raakt geen cijferreeksen
     const alGemeld = await _activiteit.alGemeldBinnen(projectCode, 'appointment_creation_failed', dedupeRef, 24 * 3600 * 1000);
     if (alGemeld) return;
 
@@ -2104,6 +2128,13 @@ async function processMessage(phone, text, scopedProjectCode, inkomendId) {
           console.log(`[whatsapp] BOOK genegeerd (al geboekt, idempotent) voor ${maskPhone(phone)} (${projectCode})`);
         } else if (!dealerControle.ok && dealerControle.reden === 'lead_heeft_afspraak') {
           console.warn(`[whatsapp] BOOK geweigerd: lead heeft al een afspraak lopen voor ${maskPhone(phone)} (${projectCode})`);
+          /* Het vastgehouden "Ingepland" klopt hier niet: er komt geen tweede
+             afspraak bij. De lead krijgt te horen dat er al een staat. */
+          {
+            const alGepland = _lang.buildAlreadyBookedMessage(effectiveLang);
+            await schrapAntwoordInWachtrij(alGepland);
+            await sendWA(phone, alGepland, clientPhoneNumberId, { projectCode }).catch(() => false);
+          }
         } else if (!dealerControle.ok) {
           /* Een voertuigreden (verkocht/uit_aanbod/gereserveerd/afspraak_bestaat/
              onbekend). Zelfde behandeling als de Google-slot-conflictbranch
@@ -2360,6 +2391,7 @@ async function processMessage(phone, text, scopedProjectCode, inkomendId) {
             // creation failed" (it already exists at this point) — log it
             // distinctly instead.
             try {
+              afspraakStaat = true;
               await stuurAntwoordInWachtrij();   // L-02: pas NU, de afspraak staat
               const when = formatApptDateTime(appt.start, effectiveLang, regio.tz);
               const confirmSent = await sendWA(phone, _lang.buildConfirmMessage(effectiveLang, clientName, when, address), clientPhoneNumberId, { projectCode });

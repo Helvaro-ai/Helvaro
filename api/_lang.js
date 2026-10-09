@@ -620,6 +620,20 @@ function buildSlotConflictMessage(code) {
 // machine translation of a message about someone's purchase is worse than
 // plain English. Add a native `unavailable`/`legacyUnavailable` entry per
 // language once matchLeadLanguage sees real non-nl/fr/en dealership usage.
+// Sent when the AI confirmed a NEW appointment while this lead already has an
+// active one (api/_dealer-boeking.js: lead_heeft_afspraak). Native nl/fr/en/de,
+// English fallback, same rule as the builders around it.
+const AL_GEPLAND = {
+  nl: 'Je hebt al een afspraak bij ons staan, dus ik heb geen tweede ingepland. Wil je die verzetten of iets anders bespreken? Laat het me weten.',
+  fr: 'Vous avez déjà un rendez-vous chez nous, je n’en ai donc pas planifié un deuxième. Souhaitez-vous le déplacer ou discuter d’autre chose ? Dites-le-moi.',
+  en: 'You already have an appointment with us, so I haven’t booked a second one. Would you like to move it or discuss something else? Just let me know.',
+  de: 'Sie haben bereits einen Termin bei uns, deshalb habe ich keinen zweiten eingeplant. Möchten Sie ihn verschieben oder etwas anderes besprechen? Sagen Sie mir Bescheid.',
+};
+function buildAlreadyBookedMessage(code) {
+  const k = String(code || '').slice(0, 2).toLowerCase();
+  return AL_GEPLAND[k] || AL_GEPLAND.en;
+}
+
 function buildVehicleUnavailableMessage(code) {
   const entry = getLanguage(code);
   const val = entry.legacyUnavailable || entry.unavailable;
@@ -855,6 +869,7 @@ module.exports = {
   buildConfirmMessage,
   buildSlotConflictMessage,
   buildVehicleUnavailableMessage,
+  buildAlreadyBookedMessage,
   buildVehicleFactCheckMessage,
   buildCancelledMessage,
   buildNoShowMessage,

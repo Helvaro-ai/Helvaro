@@ -783,13 +783,30 @@ async function syncBinnenSlot(tenant, { door = 'systeem', trigger = 'handmatig',
      - de tweede mislukte feed-sync op rij (één keer haperen is normaal)
      - een geblokkeerde massale verdwijning (eerste run met die blokkade)
    Push zonder namen; vuur-en-vergeet. */
+/* Een geblokkeerde daling blijft geblokkeerd tot de dealer bevestigt. Eén push
+   bij de overgang was te weinig: een kleine dealer die twee van zijn vier
+   wagens verkocht, zag ze dagenlang beschikbaar en boekbaar op zijn website
+   staan (review 2026-10-09). Daarom: één herinnering per volle dag dat de
+   blokkade aanhoudt, gerekend vanaf de eerste geblokkeerde run die nog in de
+   geschiedenis staat. */
+function dagHerinnering(run, vorige) {
+  const DAG = 24 * 60 * 60 * 1000;
+  let begin = null;
+  for (const r of vorige) { if (r && r.daling) begin = r.at; else break; }
+  if (!begin || !vorige[0] || !vorige[0].at) return false;
+  const t0 = Date.parse(begin), tVorige = Date.parse(vorige[0].at), tNu = Date.parse(run.at || new Date().toISOString());
+  if (!Number.isFinite(t0) || !Number.isFinite(tVorige) || !Number.isFinite(tNu)) return false;
+  return Math.floor((tNu - t0) / DAG) > Math.floor((tVorige - t0) / DAG);
+}
+
 function meldVoorraadAlsNodig(tenant, bron, staat, run, resultaat) {
   if (!bron || bron.type !== 'feed') return;
   const vorige = (Array.isArray(staat && staat.runs) ? staat.runs : []);
   let tekstSleutel = '', vars;
   if (!run.ok && vorige[0] && vorige[0].ok === false && !(vorige[1] && vorige[1].ok === false)) {
     tekstSleutel = 'push.voorraad.mislukt';
-  } else if (run.ok && resultaat && resultaat.dalingGeblokkeerd && !(vorige[0] && vorige[0].daling)) {
+  } else if (run.ok && resultaat && resultaat.dalingGeblokkeerd
+             && (!(vorige[0] && vorige[0].daling) || dagHerinnering(run, vorige))) {
     tekstSleutel = 'push.voorraad.daling';
     vars = { aantal: Number(resultaat.verdwenenAantal) || 0 };
   }
@@ -1289,6 +1306,7 @@ module.exports = {
   // voor tests
   verrijkMeta,
   _test: {
+    dagHerinnering,
     noemtGetal, hashVan, probeNative, klantnummerBezet, isInternIp, syncBronnen, saneerBronItem, providerKaart, vorigeVan, bronStaatVan, isUploadBron,
     parseCsv: feedModule.parseCsv, parseJson: feedModule.parseJson, parseXml: feedModule.parseXml,
     parseFeed: feedModule.parseFeed, mapRegel: feedModule.mapRegel,

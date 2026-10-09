@@ -862,6 +862,17 @@ lokale teller, dus dit verandert niets zolang Upstash niet is aangesloten.
 
 ## 9 oktober 2026 — beveiliging
 
+- **Een lead krijgt altijd antwoord, ook als er bij het inplannen iets misloopt.**
+  Ging er tussen "ingepland" en de bevestiging iets fout, dan kreeg de lead
+  sinds vandaag helemaal niets. Nu gaat het antwoord alsnog uit als de afspraak
+  staat, en anders de vraag om een ander moment. Heeft de lead al een afspraak,
+  dan hoort hij dat, in plaats van een tweede "ingepland" dat niet klopt.
+- **Eén melding per dag bij een mislukte boeking van dezelfde lead**, niet bij
+  elke poging opnieuw.
+- **Buitengesloten door iemand die je e-mailadres kent?** Een nieuw wachtwoord
+  via "wachtwoord vergeten" laat je meteen weer binnen.
+- **Een geblokkeerde voorraadwijziging blijft niet stil liggen:** zolang je ze
+  niet bevestigt, krijg je elke dag één herinnering.
 - **Het inlogtoken bevat je vaste API-sleutel niet meer.** Wie een token in
   handen kreeg, kon die sleutel er vroeger uit lezen en blijven gebruiken, ook
   na uitloggen of een nieuw wachtwoord. Bestaande sessies lopen gewoon af.
