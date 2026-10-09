@@ -1265,7 +1265,7 @@ async function processMessage(phone, text, scopedProjectCode, inkomendId) {
           let alternatieven = [];
           try {
             const voorraadVoorAlternatieven = await _vehicles.list(projectCode, { alleenPubliek: true });
-            alternatieven = _vehicles.alternatieven(voorraadVoorAlternatieven, { voertuig: herkendVoertuig, wens: bekendeWens }, 3);
+            alternatieven = _vehicles.alternatieven(voorraadVoorAlternatieven, { voertuig: herkendVoertuig, wens: bekendeWens, segment }, 3);
           } catch (e) {
             console.warn('[WhatsApp] alternatieven opzoeken overgeslagen:', e && e.message);
           }
@@ -1291,14 +1291,23 @@ async function processMessage(phone, text, scopedProjectCode, inkomendId) {
             .filter((m) => m && m.role === 'user')
             .slice(-6)
             .map((m) => String(m.content || ''));
-          const wensNu = _wens.normaliseer(Object.assign({}, bekendProfiel.wens || {},
-            _wens.uitTekst(laatsteBerichten, { merken }) || {}));
-          const gerangschikt = _vehicles.rangschik(voorraad, { wens: wensNu, kandidaten: uitkomst.kandidaten });
+          /* Auto: ongewijzigd. Motor krijgt het segment mee (cc, rijbewijs,
+             motortypes) -- aparte takken zodat het autopad letterlijk blijft
+             wat het was. */
+          const wensNu = segment === 'motor'
+            ? _wens.normaliseer(Object.assign({}, bekendProfiel.wens || {},
+                _wens.uitTekst(laatsteBerichten, { merken, segment }) || {}))
+            : _wens.normaliseer(Object.assign({}, bekendProfiel.wens || {},
+                _wens.uitTekst(laatsteBerichten, { merken }) || {}));
+          const gerangschikt = segment === 'motor'
+            ? _vehicles.rangschik(voorraad, { wens: wensNu, kandidaten: uitkomst.kandidaten, segment })
+            : _vehicles.rangschik(voorraad, { wens: wensNu, kandidaten: uitkomst.kandidaten });
           voertuigenInContext = gerangschikt.lijst.slice();
           pandSectie = _ai.prompts.voertuigen.index(gerangschikt.lijst, {
             zoekt: _wens.omschrijf(wensNu),
             genoemd: gerangschikt.genoemd,
             passend: gerangschikt.passend,
+            uitgesloten: gerangschikt.uitgesloten,
           }, segment);
         }
       }

@@ -32,6 +32,11 @@
    Mercedes onder de 30.000" zegt heeft een bruikbare wens, en hem dwingen tot
    een volledig profiel is precies het verhoor dat we niet willen. */
 const VELDEN = Object.freeze(['merk', 'model', 'maxPrijs', 'maxKm', 'minJaar', 'brandstof', 'transmissie', 'carrosserie']);
+/* Motorsegment (api/_segment.js): cilinderinhoud (cc) en het rijbewijs dat de
+   KOPER heeft. Ze worden bewaard als ze er zijn, maar tellen alleen mee voor
+   segment 'motor' -- zie scoor(). */
+const VELDEN_MOTOR = Object.freeze(['minCc', 'maxCc', 'rijbewijs']);
+const _segment = require('./_segment');
 
 function getal(v) {
   if (v === null || v === undefined || v === '') return null;
@@ -59,6 +64,9 @@ function normaliseer(ruw) {
 
   const p = getal(ruw.maxPrijs); if (p !== null && p > 0)          w.maxPrijs = Math.round(p);
   const k = getal(ruw.maxKm);    if (k !== null && k > 0)          w.maxKm    = Math.round(k);
+  const cMin = getal(ruw.minCc); if (cMin !== null && cMin >= 1 && cMin <= 10000) w.minCc = Math.round(cMin);
+  const cMax = getal(ruw.maxCc); if (cMax !== null && cMax >= 1 && cMax <= 10000) w.maxCc = Math.round(cMax);
+  const klasse = _segment.normRijbewijs(ruw.rijbewijs); if (klasse) w.rijbewijs = klasse;
   const j = getal(ruw.minJaar);
   /* Een bouwjaar buiten dit bereik is een typfout of een verzinsel, en een
      wens met minJaar 20190 laat nooit meer iets matchen. */
@@ -151,6 +159,48 @@ const SOORTEN = Object.freeze({
     bestelwagen: ['bestelwagen', 'bestelwagens', 'lichte vracht', 'utilitaire', 'utility'],
   },
 });
+/* ── Motortypes ──────────────────────────────────────────────────────────────
+ * Voor het motorsegment vervangt dit de autogroepen onder 'carrosserie': daar
+ * stond 'touring' bij de stationwagen en 'roadster' bij de cabrio, en een koper
+ * die een touring-motor zocht kreeg een break. De volgorde is gedrag:
+ * adventure vóór touring (anders is een 'adventure touring' een touring), en
+ * 'sport touring' staat bij touring vóór 'sport'. Gevonden termen worden uit de
+ * tekst gehaald voor de volgende groep kijkt. Softail en sportster zijn
+ * cruisers: wie een cruiser zoekt wil ze zien. */
+const MOTORTYPES = Object.freeze({
+  adventure: ['adventure touring', 'adventure-touring', 'adventure', 'enduro', 'trail', 'dual sport', 'dual-sport', 'travel enduro'],
+  trike:     ['trike', 'trikes', 'driewieler', 'tricycle', 'dreirad'],
+  sportster: ['sportster'],
+  softail:   ['softail'],
+  naked:     ['naked bike', 'naked', 'nakedbike', 'streetfighter', 'street fighter'],
+  touring:   ['sport touring', 'sport-touring', 'grand touring', 'touring', 'tourer', 'toermotor', 'reismotor', 'tourenmotorrad'],
+  sport:     ['supersport', 'superbike', 'sportbike', 'sportmotor', 'sportmotorrad', 'sport'],
+  cruiser:   ['cruiser', 'cruisers', 'chopper', 'bagger', 'low rider'],
+  scooter:   ['scooter', 'scooters', 'maxiscooter'],
+});
+const MOTORTYPE_IMPLICIET = Object.freeze({ softail: 'cruiser', sportster: 'cruiser' });
+
+/** Alle motortypes waar deze tekst bij hoort ('Cruiser Softail' -> cruiser, softail). */
+function motortypesVan(tekst) {
+  let t = ' ' + String(tekst == null ? '' : tekst).toLowerCase() + ' ';
+  const uit = [];
+  for (const groep of Object.keys(MOTORTYPES)) {
+    let geraakt = false;
+    for (const term of MOTORTYPES[groep]) {
+      if (woordIn(t, term)) {
+        geraakt = true;
+        const esc = term.replace(/[.*+?^${}()|[\]\\-]/g, '\\$&');
+        t = t.replace(new RegExp('(^|[^a-z0-9à-ÿ])' + esc + '(?=$|[^a-z0-9à-ÿ])', 'gi'), '$1 ');
+      }
+    }
+    if (geraakt) {
+      uit.push(groep);
+      if (MOTORTYPE_IMPLICIET[groep] && uit.indexOf(MOTORTYPE_IMPLICIET[groep]) === -1) uit.push(MOTORTYPE_IMPLICIET[groep]);
+    }
+  }
+  return uit;
+}
+
 /* Alleen in een VELD, nooit uit een zin gehaald. */
 const ALLEEN_VELD = Object.freeze({ transmissie: { automaat: ['auto', 'at'], manueel: ['mt'] }, carrosserie: { bestelwagen: ['van'] } });
 
@@ -160,7 +210,10 @@ function woordIn(hooi, naald) {
 }
 
 /** De groep waar deze waarde bij hoort ('Petrol' -> 'benzine'), of ''. */
-function soortVan(soort, waarde, alleenTekst) {
+function soortVan(soort, waarde, alleenTekst, segment) {
+  if (soort === 'carrosserie' && segment === 'motor') {
+    return motortypesVan(waarde)[0] || '';
+  }
   const v = String(waarde == null ? '' : waarde).toLowerCase().trim();
   const groepen = SOORTEN[soort];
   if (!v || !groepen) return '';
@@ -181,10 +234,14 @@ function soortVan(soort, waarde, alleenTekst) {
  * Past de waarde van een auto bij wat de koper zocht? Zelfde groep, of (zoals
  * altijd al) de wens staat letterlijk in het veld.
  */
-function zelfdeSoort(soort, veldwaarde, wenswaarde) {
+function zelfdeSoort(soort, veldwaarde, wenswaarde, segment) {
   const v = String(veldwaarde == null ? '' : veldwaarde).toLowerCase();
   const w = String(wenswaarde == null ? '' : wenswaarde).toLowerCase();
   if (!v || !w) return false;
+  if (soort === 'carrosserie' && segment === 'motor') {
+    const wg = motortypesVan(w)[0];
+    return wg ? motortypesVan(v).indexOf(wg) !== -1 : v.indexOf(w) !== -1;
+  }
   if (v.indexOf(w) !== -1) return true;
   const a = soortVan(soort, v, false);
   return !!a && a === soortVan(soort, w, false);
@@ -193,9 +250,42 @@ function zelfdeSoort(soort, veldwaarde, wenswaarde) {
 const TOLERANTIE_PRIJS = 0.10;   // 10% boven het budget mag nog
 const TOLERANTIE_KM     = 0.20;  // 20% boven de kilometergrens mag nog
 
-function scoor(wens, voertuig) {
+/**
+ * De HARDE grenzen van het motorsegment: cilinderinhoud en rijbewijsklasse.
+ * Een harde eis van de koper wordt nooit stilletjes genegeerd: een motor die
+ * niet voldoet -- of waarvan we het NIET KUNNEN BEVESTIGEN omdat het veld leeg
+ * is -- komt niet door. Geen toleranties zoals bij het budget.
+ *
+ * @returns {{ok:boolean, reden:string}}  reden: '' | cc_te_laag | cc_te_hoog |
+ *   cc_onbekend | rijbewijs_nee | rijbewijs_onbekend
+ */
+function hardeGrenzen(wens, voertuig) {
+  const w = normaliseer(wens);
+  if (!w || !voertuig) return { ok: true, reden: '' };
+  if (w.minCc || w.maxCc) {
+    const cc = getal(voertuig.cc);
+    if (cc === null || cc === 0) return { ok: false, reden: 'cc_onbekend' };
+    if (w.minCc && cc < w.minCc) return { ok: false, reden: 'cc_te_laag' };
+    if (w.maxCc && cc > w.maxCc) return { ok: false, reden: 'cc_te_hoog' };
+  }
+  if (w.rijbewijs) {
+    const r = _segment.mogelijkMetRijbewijs(voertuig, w.rijbewijs);
+    if (r === 'nee') return { ok: false, reden: 'rijbewijs_nee' };
+    if (r === 'onbekend') return { ok: false, reden: 'rijbewijs_onbekend' };
+  }
+  return { ok: true, reden: '' };
+}
+
+/* De tekst waarin het motortype van een voertuig te vinden is: het veld
+   Body, maar ook de modelnaam ('Softail Standard'). */
+function typeTekst(v) {
+  return [v && v.carrosserie, v && v.model, v && v.uitvoering].filter(Boolean).join(' ');
+}
+
+function scoor(wens, voertuig, opties) {
   const w = normaliseer(wens);
   if (!w || !voertuig) return null;
+  const motor = !!(opties && opties.segment === 'motor');
 
   const redenen = [];
   let punten = 0;
@@ -247,6 +337,15 @@ function scoor(wens, voertuig) {
     }
   }
 
+  /* Motor: de harde grenzen (cc, rijbewijs). Alleen voor dit segment -- een
+     auto heeft geen cc en mag er nooit op afvallen. */
+  if (motor) {
+    const h = hardeGrenzen(w, voertuig);
+    if (!h.ok) return null;
+    if (w.minCc || w.maxCc) { maximum += 10; punten += 10; redenen.push('cilinderinhoud past'); }
+    if (w.rijbewijs)        { maximum += 10; punten += 10; redenen.push('past bij zijn rijbewijs'); }
+  }
+
   for (const [sleutel, veld, label] of [
     ['brandstof', 'brandstof', 'brandstof klopt'],
     ['transmissie', 'transmissie', 'transmissie klopt'],
@@ -254,7 +353,10 @@ function scoor(wens, voertuig) {
   ]) {
     if (!w[sleutel]) continue;
     maximum += 10;
-    if (zelfdeSoort(sleutel, voertuig[veld], w[sleutel])) { punten += 10; redenen.push(label); }
+    const klopt = motor && sleutel === 'carrosserie'
+      ? zelfdeSoort('carrosserie', typeTekst(voertuig), w[sleutel], 'motor')
+      : zelfdeSoort(sleutel, voertuig[veld], w[sleutel]);
+    if (klopt) { punten += 10; redenen.push(motor && sleutel === 'carrosserie' ? 'motortype klopt' : label); }
   }
 
   /* Hier stond een controle op `maximum === 0`, bedoeld als vangnet voor een
@@ -297,7 +399,7 @@ function matchLeads(leads, voertuig, opties = {}) {
     const wens = l.wens ? normaliseer(l.wens) : uitNotities(l.notities || l.Notities || '');
     if (!wens) continue;
 
-    const m = scoor(wens, voertuig);
+    const m = scoor(wens, voertuig, opties);
     if (!m || m.score < minScore) continue;
 
     uit.push({
@@ -356,16 +458,58 @@ function laatste(re, t) {
   return uit;
 }
 
+/* Cilinderinhoud uit tekst (alleen motorsegment). "Twijfel = niets": een kaal
+   "1200cc" zonder onder- of bovengrens is geen eis. */
+const CC_ONDER = '(?:vanaf|minstens|minimaal|minimum|min\\.?|meer dan|boven|groter dan|at least|over|more than|from|au moins|plus de|dès|des|ab|mindestens|mehr als|über)';
+const CC_BOVEN = '(?:tot|max(?:imum|imaal)?\\.?|onder|minder dan|hoogstens|niet meer dan|up to|under|less than|jusqu[\'’]?(?:à|a)|moins de|bis|unter|höchstens|weniger als)';
+const CC_GETAL = '(\\d{1,3}(?:[.,\\s]\\d{3})+|\\d+)\\s*(?:cc|cm3|cm³|ccm|cubic)\\b';
+const RIJBEWIJS_WOORD = '(?:rijbewijs|permis|licen[cs]e|führerschein|fuehrerschein|klasse|class|categorie|catégorie|categorie|cat\\.?)';
+
 function uitTekst(berichten, opties) {
-  const lijst = (Array.isArray(berichten) ? berichten : [berichten])
-    .map((b) => String(b == null ? '' : b).toLowerCase()).filter(Boolean);
+  const motor = !!(opties && opties.segment === 'motor');
+  const ruwLijst = (Array.isArray(berichten) ? berichten : [berichten])
+    .map((b) => String(b == null ? '' : b)).filter((b) => b.toLowerCase());
+  const lijst = ruwLijst.map((b) => b.toLowerCase());
   const merken = ((opties && opties.merken) || []).map((m) => String(m || '').toLowerCase().trim()).filter((m) => m.length >= 2);
   const KM     = new RegExp(BOVENGRENS + '\\s*' + GETAL + '\\s*(?:km|kilometer)', 'g');
   const KM_WEG = new RegExp(GETAL + '\\s*(?:km|kilometer)', 'g');
   const PRIJS  = new RegExp(BOVENGRENS + '\\s*(?:€|eur(?:o)?\\s*)?\\s*' + GETAL + '\\s*(?:€|eur(?:o)?)?', 'g');
   const w = {};
 
-  for (const t of lijst) {
+  const CC_MIN = new RegExp(CC_ONDER + '\\s*' + CC_GETAL, 'g');
+  const CC_MAX = new RegExp(CC_BOVEN + '\\s*' + CC_GETAL, 'g');
+  const CC_WEG = new RegExp(CC_GETAL, 'g');
+  /* Rijbewijsklasse. 'a2' of 'a1' is eenduidig; een kale 'A' alleen als hij met
+     een hoofdletter staat (in het ORIGINELE bericht): 'a licence', 'permis a
+     été' of 'ik heb a' zijn geen klasse A. */
+  const KLASSE_GETAL = [new RegExp('\\b' + RIJBEWIJS_WOORD + '\\s*:?\\s*(a\\s?[12])(?![a-z0-9])', 'g'),
+                        new RegExp('(?:^|[^a-z0-9])(a\\s?[12])\\s*[- ]?\\s*(?:rijbewijs|permis|licen[cs]e|führerschein|fuehrerschein)\\b', 'g')];
+  const KLASSE_KAAL = [new RegExp('\\b' + RIJBEWIJS_WOORD + '\\s*:?\\s*(A)(?![A-Za-z0-9])', 'gi'),
+                       new RegExp('(?:^|[^A-Za-z0-9])(A)\\s*[- ]?\\s*(?:rijbewijs|permis|licen[cs]e|führerschein)\\b', 'g')];
+
+  for (let i = 0; i < lijst.length; i++) {
+    const t0 = lijst[i], raw = ruwLijst[i];
+    /* Motor: cc-hoeveelheden eerst weghalen voor budget en kilometers lezen,
+       want 'max 1200 cc' is geen budget van 1200 euro. */
+    const t = motor ? t0.replace(CC_WEG, ' ') : t0;
+    if (motor) {
+      const cMin = laatste(CC_MIN, t0), cMax = laatste(CC_MAX, t0);
+      if (cMin !== null && cMin >= 50 && cMin <= 10000) w.minCc = cMin;
+      if (cMax !== null && cMax >= 50 && cMax <= 10000) w.maxCc = cMax;
+      let k = '';
+      for (const re of KLASSE_GETAL) {
+        re.lastIndex = 0;
+        let m;
+        while ((m = re.exec(t0))) k = _segment.normRijbewijs(m[1].replace(/\s/g, '')) || k;
+      }
+      for (const re of KLASSE_KAAL) {
+        /* De kale A: alleen met hoofdletter in het originele bericht. */
+        re.lastIndex = 0;
+        let m;
+        while ((m = re.exec(raw))) if (m[1] === 'A') k = 'A';
+      }
+      if (k) w.rijbewijs = k;
+    }
     /* Budget: kilometers eerst weghalen, want 'max 100.000 km' is geen budget. */
     const prijs = laatste(PRIJS, t.replace(KM_WEG, ' '));
     if (IN_BEREIK(prijs)) w.maxPrijs = prijs;
@@ -386,7 +530,7 @@ function uitTekst(berichten, opties) {
     }
 
     for (const soort of ['brandstof', 'transmissie', 'carrosserie']) {
-      const g = soortVan(soort, t, true);
+      const g = soortVan(soort, t, true, motor ? 'motor' : undefined);
       if (g) w[soort] = g;
     }
 
@@ -409,6 +553,9 @@ function omschrijf(wens) {
   if (w.carrosserie) d.push(w.carrosserie);
   if (w.brandstof)   d.push(w.brandstof);
   if (w.transmissie) d.push(w.transmissie);
+  if (w.minCc)       d.push('min ' + Math.round(w.minCc).toLocaleString('nl-BE') + ' cc');
+  if (w.maxCc)       d.push('max ' + Math.round(w.maxCc).toLocaleString('nl-BE') + ' cc');
+  if (w.rijbewijs)   d.push('rijbewijs ' + w.rijbewijs);
   if (w.minJaar)     d.push('vanaf ' + w.minJaar);
   if (w.maxKm)       d.push('max ' + Math.round(w.maxKm).toLocaleString('nl-BE') + ' km');
   if (w.maxPrijs)    d.push('tot € ' + Math.round(w.maxPrijs).toLocaleString('nl-BE'));
@@ -417,6 +564,10 @@ function omschrijf(wens) {
 
 module.exports = {
   VELDEN,
+  VELDEN_MOTOR,
+  MOTORTYPES,
+  motortypesVan,
+  hardeGrenzen,
   TOLERANTIE_PRIJS,
   TOLERANTIE_KM,
   normaliseer,

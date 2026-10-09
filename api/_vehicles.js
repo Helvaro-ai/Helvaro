@@ -208,6 +208,7 @@ function alternatieven(voorraad, context, max) {
   const lijst = Array.isArray(voorraad) ? voorraad : [];
   const doel = ctx.voertuig || null;
   const wens = ctx.wens || null;
+  const motor = ctx.segment === 'motor';
   const doelCode = doel ? normCode(doel.code) : '';
   const limiet = Math.max(0, Number(max) || 3);
 
@@ -216,6 +217,11 @@ function alternatieven(voorraad, context, max) {
     if (!v || !v.code) continue;
     if (doelCode && normCode(v.code) === doelCode) continue;
     if (!boekbaar(v, []).ok) continue;
+    /* Motor: een alternatief dat zijn cilinderinhoud of rijbewijs niet haalt
+       is geen alternatief. Alleen voor dit segment. */
+    if (motor && wens) {
+      try { if (!require('./_wens').hardeGrenzen(wens, v).ok) continue; } catch (_) { /* _wens optioneel */ }
+    }
 
     let punten = 0;
     const redenen = [];
@@ -254,7 +260,7 @@ function alternatieven(voorraad, context, max) {
 
     if (wens) {
       try {
-        const m = require('./_wens').scoor(wens, v);
+        const m = require('./_wens').scoor(wens, v, { segment: motor ? 'motor' : undefined });
         /* Gewicht ruim onder de kleinste trap hierboven (2): dit mag bij een
            gelijkspel de doorslag geven, nooit een hogere trap inhalen. */
         if (m && m.score > 0) { punten += m.score / 100; redenen.push('past bij wens'); }
@@ -297,13 +303,30 @@ function rangschik(voorraad, context) {
   let _wens = null;
   if (ctx.wens) { try { _wens = require('./_wens'); } catch (_) { _wens = null; } }
 
-  const gescoord = lijst.map((v) => {
+  /* Motorsegment: de HARDE grenzen (cilinderinhoud, rijbewijs) halen motoren
+     uit de lijst die het model te zien krijgt -- niet naar onderen, ERUIT. Een
+     harde eis van de koper die het model toch voorgeschoteld krijgt, is een
+     eis die genegeerd wordt. Wat eruit viel staat in `uitgesloten`, met reden,
+     zodat de prompt kan zeggen DAT er iets is weggelaten (zonder het te
+     noemen). Auto: niets hiervan. */
+  const motor = ctx.segment === 'motor';
+  const uitgesloten = [];
+  let kandidaten = lijst;
+  if (motor && _wens) {
+    kandidaten = [];
+    for (const v of lijst) {
+      const h = _wens.hardeGrenzen(ctx.wens, v);
+      if (h.ok) kandidaten.push(v); else uitgesloten.push({ voertuig: v, reden: h.reden });
+    }
+  }
+
+  const gescoord = kandidaten.map((v) => {
     const code = normCode(v.code);
     let punten = 0;
     const plek = genoemdeCodes.indexOf(code);
     if (plek !== -1) { punten += 1e6 - plek; genoemd.add(code); }
     if (_wens) {
-      const m = _wens.scoor(ctx.wens, v);
+      const m = _wens.scoor(ctx.wens, v, { segment: motor ? 'motor' : undefined });
       if (m && m.score > 0) {
         punten += m.score;
         /* 'Passend' is strenger dan een score: alles wat hij met NAAM vroeg --
@@ -313,14 +336,18 @@ function rangschik(voorraad, context) {
            de rest van de lijst. */
         const w = m.wens;
         const allesKlopt = (!w.model || String(v.model || '').toLowerCase().indexOf(w.model) !== -1)
-          && ['brandstof', 'transmissie', 'carrosserie'].every((k) => !w[k] || _wens.zelfdeSoort(k, v[k], w[k]));
+          && ['brandstof', 'transmissie', 'carrosserie'].every((k) => !w[k] || (motor && k === 'carrosserie'
+            ? _wens.zelfdeSoort(k, [v.carrosserie, v.model, v.uitvoering].filter(Boolean).join(' '), w[k], 'motor')
+            : _wens.zelfdeSoort(k, v[k], w[k])));
         if (allesKlopt) { punten += 1000; passend.add(code); }
       }
     }
     return { v, code, punten };
   });
   gescoord.sort((a, b) => (b.punten - a.punten) || a.code.localeCompare(b.code, 'nl', { numeric: true }));
-  return { lijst: gescoord.map((x) => x.v), genoemd, passend };
+  const uit = { lijst: gescoord.map((x) => x.v), genoemd, passend };
+  if (motor) uit.uitgesloten = uitgesloten;
+  return uit;
 }
 
 /* ── Airtable ────────────────────────────────────────────────────────────── */

@@ -837,7 +837,8 @@ const voertuigen = {
   index(lijst, opties, segment) {
     const t = termen(segment);
     const autos = (lijst || []).filter((v) => v && (String(v.status) === 'beschikbaar' || String(v.status) === 'gereserveerd'));
-    if (!autos.length) return '';
+    const uitgesloten = (opties && Array.isArray(opties.uitgesloten)) ? opties.uitgesloten.length : 0;
+    if (!autos.length && !(t.motor && uitgesloten)) return '';
     const r = ['VOERTUIGEN DIE DEZE DEALER NU AANBIEDT:'];
     const o = opties || null;
     /* Twaalf is het dak, om dezelfde reden als bij panden: deze tekst gaat bij
@@ -869,6 +870,11 @@ const voertuigen = {
       groep((genoemd.size || passend.size) ? 'VERDER IN DE VOORRAAD:' : 'IN DE VOORRAAD:',
         (v) => !genoemd.has(code(v)) && !passend.has(code(v)));
       if (autos.length > 12) r.push('- (en nog ' + (autos.length - 12) + ' andere)');
+      if (t.motor && uitgesloten) {
+        r.push('HARDE EISEN: ' + uitgesloten + ' andere ' + (uitgesloten === 1 ? 'motor' : 'motoren')
+             + ' in de voorraad voldoen NIET aan zijn cilinderinhoud of rijbewijs (of dat is niet te bevestigen). '
+             + 'Die staan hier met opzet niet bij. Stel ze nooit voor, ook niet als hij aandringt: zeg dat je het navraagt bij de verkoper.');
+      }
       if (o.zoekt && !passend.size) {
         r.push('Niets in de voorraad past echt bij wat hij zoekt. Zeg dat eerlijk, stel hoogstens iets voor dat '
              + 'in de buurt komt en zeg waarin het afwijkt, en leg vast wat hij zoekt (WENS).');

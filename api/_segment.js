@@ -96,6 +96,10 @@ function vereistRijbewijs(m) {
   if (Number.isFinite(kw) && kw > 35) return 'A';
   const cc = m && m.cc != null && m.cc !== '' ? Number(m.cc) : NaN;
   if (Number.isFinite(cc) && cc > 125 && Number.isFinite(kw) && kw > 11 && kw <= 35) return 'A2';
+  /* Vanaf 1000 cc zonder vermogen: behandeld als klasse A. Een beperkte A2-
+     uitvoering van zo'n blok bestaat, maar de veilige kant is dat we hem niet
+     aan iemand met A2 aanbieden zonder dat de dealer de klasse invult. */
+  if (Number.isFinite(cc) && cc >= 1000 && !Number.isFinite(kw)) return 'A';
   if (Number.isFinite(cc) && cc > 125 && !Number.isFinite(kw)) return 'onbekend';
   if (Number.isFinite(cc) && cc <= 125 && Number.isFinite(kw) && kw <= 11) return 'A1';
   return 'onbekend';
