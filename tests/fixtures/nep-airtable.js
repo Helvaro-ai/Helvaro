@@ -46,6 +46,10 @@ function evalueer(expr, f) {
   if (m) return String(f[m[1]] || '').slice(0, Number(m[2])) === unesc(m[3]);
   m = expr.match(/^\{([^}]+)\}="((?:[^"\\]|\\.)*)"$/);
   if (m) return String(f[m[1]] == null ? '' : f[m[1]]) === unesc(m[2]);
+  // Kaal veld, zoals Airtable het leest: waar als het gevuld/aangevinkt is
+  // (gebruikt door NOT({Archived}) in api/_vehicles.js list()).
+  m = expr.match(/^\{([^}]+)\}$/);
+  if (m) { const v = f[m[1]]; return !(v === undefined || v === null || v === false || v === '' || v === 0); }
   throw new Error('nep-airtable snapt formule niet: ' + expr);
 }
 
