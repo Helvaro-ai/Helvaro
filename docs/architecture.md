@@ -229,13 +229,13 @@ Beschermd via `ADMIN_KEY` (timing-safe compare). Bv. POST /api/admin → mode-ba
 ## AI prompting
 
 ### Conversation AI (whatsapp.js)
-Model: `claude-haiku-4-5-20251001`
+Model: `claude-haiku-5-5`
 - System prompt = klant-specifiek (AI Name + Client Name + Niche-vragen + AI Instructions)
 - Conversation messages = de hele history
 - Output = JSON met `{message, done?, qualified?, reason?, summary?, leadScore?, ...}`
 
 ### Reply suggestions (leads.js → suggest-replies mode)
-Model: `claude-haiku-4-5-20251001`
+Model: `claude-haiku-5-5`
 - System prompt = "Geef 3 korte WhatsApp-antwoord suggesties"
 - Returns: `{replies: ['suggestie 1', 'suggestie 2', 'suggestie 3']}`
 

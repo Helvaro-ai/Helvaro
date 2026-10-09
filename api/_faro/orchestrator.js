@@ -327,7 +327,7 @@ async function runTurn({ res, ctx, conversationId, history, userContent, tier })
       meta: {
         tier, iterations,
         tokensIn: usage.inputTokens, tokensOut: usage.outputTokens,
-        costEur: charge.costEur, priced: charge.priced,
+        costEur: charge.costEur, realCostEur: charge.realCostEur, priced: charge.priced,
       },
     }).catch(() => {}));
 

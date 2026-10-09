@@ -474,7 +474,7 @@ Voor productie moet Vercel deze allemaal hebben (`vercel.com → Helvaro → Set
 
 | Variable | Doel | Waar te vinden |
 |----------|------|----------------|
-| `ANTHROPIC_KEY` | AI Haiku 4.5 calls | console.anthropic.com → API Keys |
+| `ANTHROPIC_KEY` | AI Haiku 5.5 calls | console.anthropic.com → API Keys |
 | `API_AIRTABLE` | Airtable read/write | airtable.com/create/tokens |
 | `BASE_AIRTABLE` | Airtable base ID | URL van je base (begint met `app...`) |
 | `WHATSAPP_TOKEN` | Meta Graph API send | business.facebook.com → System Users → Tokens |

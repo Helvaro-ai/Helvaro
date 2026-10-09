@@ -28,6 +28,8 @@
  * gebruiker terecht te komen.
  */
 
+const _registry = require('../registry');
+
 class ProviderError extends Error {
   constructor(message, code, status) {
     super(message);
@@ -110,6 +112,15 @@ const anthropic = {
       msgs = kopie;
     }
 
+    /* Haiku 5.5: een gesprek dat op een assistant-beurt eindigt (prefill) geeft
+       400. Geen aanroeper doet dat (alle paden sluiten met een gebruikersbeurt),
+       maar dit vangt het af mocht dat ooit veranderen. Alleen voor Haiku 5.5, zodat
+       andere modellen byte-voor-byte hetzelfde verzoek houden. */
+    if (_registry.haikuVijf(model) && msgs.length && msgs[msgs.length - 1].role === 'assistant') {
+      console.warn('[ai] gesprek eindigde op een assistant-beurt; neutrale gebruikersbeurt toegevoegd (geen prefill bij Haiku 5.5).');
+      msgs = msgs.concat([{ role: 'user', content: '…' }]);
+    }
+
     const r = await fetchMetTimeout('https://api.anthropic.com/v1/messages', {
       method: 'POST',
       headers: {
@@ -117,7 +128,11 @@ const anthropic = {
         'x-api-key': key,
         'anthropic-version': '2023-06-01',
       },
-      body: JSON.stringify({ model, max_tokens: maxTokens, system, messages: msgs }),
+      // modelVerzoekExtra is {} voor niet-Haiku-5.5: dan is de body ongewijzigd.
+      body: JSON.stringify({
+        model, max_tokens: _registry.maxTokensVoor(model, maxTokens), system, messages: msgs,
+        ..._registry.modelVerzoekExtra(model),
+      }),
     }, signal);
 
     const data = await r.json().catch(() => ({}));
@@ -142,10 +157,20 @@ const anthropic = {
         `Anthropic weigerde het verzoek (HTTP ${r.status}${type ? ', ' + type : ''}, model ${model}).`,
         r.status === 429 ? 'rate_limited' : 'provider_error', r.status);
     }
+    // Op `type` selecteren, nooit op positie: Haiku 5.5 kan met een thinking-blok beginnen.
     const text = (data.content || [])
       .filter((b) => b && b.type === 'text')
       .map((b) => b.text)
       .join('');
+    /* Geweigerd door de veiligheidslaag: er is geen server-side fallback, dus
+       een eigen foutcode zodat de router doorschuift (zelfde pad als elke andere
+       providerfout) en er nooit een lege/afgekapte reply naar een lead gaat. */
+    if (data.stop_reason === 'refusal') {
+      throw new ProviderError(`Anthropic weigerde te antwoorden (refusal, model ${model}).`, 'refusal');
+    }
+    if (data.stop_reason === 'max_tokens' && !text.trim()) {
+      throw new ProviderError(`Anthropic gaf geen tekst binnen max_tokens (model ${model}).`, 'max_tokens_empty');
+    }
     return {
       text,
       inputTokens:  (data.usage && data.usage.input_tokens)  || 0,

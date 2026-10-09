@@ -33,6 +33,7 @@
  */
 
 const { ProviderError } = require('./index');
+const _registry = require('../../_ai/registry');
 
 const API_URL = 'https://api.anthropic.com/v1/messages';
 const API_VERSION = '2023-06-01';
@@ -182,6 +183,13 @@ function handleEvent(evt, state) {
     case 'message_delta':
       if (evt.usage) out.push({ type: 'usage', inputTokens: 0, outputTokens: evt.usage.output_tokens || 0 });
       if (evt.delta && evt.delta.stop_reason) state.stopReason = evt.delta.stop_reason;
+      /* Geweigerd (geen server-side fallback): als fout behandelen zodat de
+         orchestrator zijn gewone foutpad volgt in plaats van een leeg antwoord
+         als gelukt te tonen. Niet retryable: dezelfde vraag geeft dezelfde weigering. */
+      if (state.stopReason === 'refusal') {
+        console.error('[faro/claude] refusal');
+        throw new ProviderError('Hier kan Faro niet op antwoorden. Probeer je vraag anders te formuleren.', { code: 'refusal', retryable: false });
+      }
       break;
 
     case 'message_stop':
@@ -232,13 +240,17 @@ function parseFrames(buffer) {
 async function* streamChat({ system, messages, tools, model, signal }) {
   const body = {
     model,
-    max_tokens: MAX_TOKENS,
+    max_tokens: _registry.maxTokensVoor(model, MAX_TOKENS),
     system,
     messages: toAnthropicMessages(messages),
     stream: true,
   };
   const defs = toAnthropicTools(tools);
   if (defs.length) body.tools = defs;
+  // Haiku 5.5: thinking uit + effort laag ({} voor andere modellen). Faro's
+  // berichten eindigen altijd op een gebruikersbeurt (vraag of tool_result),
+  // dus geen prefill. Thinking-deltas worden in handleEvent genegeerd.
+  Object.assign(body, _registry.modelVerzoekExtra(model));
 
   let res;
   try {

@@ -65,6 +65,11 @@ const PRICING = Object.freeze({
   // Anthropic, lijstprijs.
   'claude-haiku-4-5-20251001': { inPerM: 1.00,  outPerM: 5.00,  bron: 'lijstprijs', bijgewerkt: '2026-08-01' },
   'claude-haiku-4-5':          { inPerM: 1.00,  outPerM: 5.00,  bron: 'lijstprijs', bijgewerkt: '2026-08-01' },
+  /* Haiku 5.5: 0,10 / 0,50 voor prompts t/m 100.000 tokens; daarboven wordt het
+     HELE verzoek tegen 0,50 / 2,50 gerekend (geen gesplitste staffel). De 4.5-rijen
+     hierboven blijven staan: historische usage-rijen verwijzen ernaar. */
+  'claude-haiku-5-5':          { inPerM: 0.10,  outPerM: 0.50,  bron: 'lijstprijs', bijgewerkt: '2026-10-09',
+                                 boven: { vanafInputTokens: 100000, inPerM: 0.50, outPerM: 2.50 } },
   'claude-sonnet-5':           { inPerM: 3.00,  outPerM: 15.00, bron: 'lijstprijs', bijgewerkt: '2026-08-01' },
   'claude-opus-5':             { inPerM: 5.00,  outPerM: 25.00, bron: 'lijstprijs', bijgewerkt: '2026-08-01' },
   // OpenAI beeld: per generatie, afhankelijk van kwaliteit (zie _media-models.js).
@@ -113,10 +118,10 @@ const PROVIDERS = Object.freeze({
     kanBeeld: false,
     kanVideo: false,
     modellen: Object.freeze({
-      [TIERS.CHEAP]:          env('ANTHROPIC_MODEL_CHEAP',  'claude-haiku-4-5-20251001'),
-      [TIERS.CONVERSATIONAL]: env('ANTHROPIC_MODEL_CONV',   'claude-haiku-4-5-20251001'),
+      [TIERS.CHEAP]:          env('ANTHROPIC_MODEL_CHEAP',  'claude-haiku-5-5'),
+      [TIERS.CONVERSATIONAL]: env('ANTHROPIC_MODEL_CONV',   'claude-haiku-5-5'),
       [TIERS.REASONING]:      env('ANTHROPIC_MODEL_REASON', 'claude-sonnet-5'),
-      [TIERS.VISION]:         env('ANTHROPIC_MODEL_VISION', 'claude-haiku-4-5-20251001'),
+      [TIERS.VISION]:         env('ANTHROPIC_MODEL_VISION', 'claude-haiku-5-5'),
       [TIERS.IMAGE]:          '',
       [TIERS.VIDEO]:          '',
     }),
@@ -250,10 +255,56 @@ function modelVoor(providerId, tier) {
   return (p && p.modellen[tier]) || '';
 }
 
+/* ── Haiku 5.5: vaste verzoekinstellingen (één plek) ─────────────────────────
+   Haiku 5.5 denkt standaard adaptief na en antwoord kan met een `thinking`-blok
+   beginnen. Haiku 4.5 draaide zonder denken; om het gedrag zo dicht mogelijk bij
+   4.5 te houden (en geen thinking-blokken terug te hoeven geven in Faro's
+   gereedschapslussen) sturen we thinking uit en effort laag. Alleen voor
+   claude-haiku-5*: Sonnet/Opus-verzoeken blijven byte-voor-byte gelijk.
+   temperature/top_p/top_k worden nergens gestuurd (andere waarden = 400). */
+const HAIKU_VIJF_TOKEN_FACTOR = 1.3;   // dezelfde tekst ~30% meer tokens
+
+function haikuVijf(model) {
+  return /^claude-haiku-5/.test(String(model || ''));
+}
+
+/** Extra velden voor de request-body van dit model ({} voor alle andere). */
+function modelVerzoekExtra(model) {
+  return haikuVijf(model)
+    ? { thinking: { type: 'disabled' }, output_config: { effort: 'low' } }
+    : {};
+}
+
+/** max_tokens voor dit model: Haiku 5.5 krijgt 1,3x ruimte zodat korte limieten niet afkappen. */
+function maxTokensVoor(model, maxTokens) {
+  const n = Number(maxTokens);
+  return haikuVijf(model) && Number.isFinite(n) ? Math.ceil(n * HAIKU_VIJF_TOKEN_FACTOR) : maxTokens;
+}
+
+/* ── Klant-credits blijven op het OUDE tarief ─────────────────────────────────
+   creditsForChatTurn (api/_credits.js) leidt credits af van de providerkost. Is
+   een model 10x goedkoper, dan zouden de credits van klanten stilzwijgend 10x
+   langer meegaan -- een prijsbeslissing voor de eigenaar, geen bijwerking van
+   een modelwissel. Daarom rekenen credits met het REFERENTIETARIEF hieronder
+   (het Haiku 4.5-tarief van vóór de migratie), terwijl kostenUsd() voor het
+   kostenrapport het echte tarief blijft gebruiken. Wil de eigenaar de besparing
+   wel doorgeven: haal de regel hier weg. */
+const CREDIT_REFERENTIE = Object.freeze({
+  'claude-haiku-5-5': 'claude-haiku-4-5-20251001',
+});
+
+/** Het model waarvan het tarief voor KLANT-credits geldt. */
+function creditModel(model) {
+  return CREDIT_REFERENTIE[model] || model;
+}
+
 /** Geschatte kosten in USD. Onbekend model -> null, nooit een verzonnen getal. */
 function kostenUsd({ model, inputTokens = 0, outputTokens = 0, images = 0, quality = 'medium' } = {}) {
-  const prijs = PRICING[model];
-  if (!prijs) return null;
+  const basis = PRICING[model];
+  if (!basis) return null;
+  let prijs = basis;
+  // Hogere staffel: het hele verzoek (input en output) wanneer de prompt de drempel overschrijdt.
+  if (basis.boven && (Number(inputTokens) || 0) > basis.boven.vanafInputTokens) prijs = basis.boven;
   if (prijs.perImage) {
     const per = prijs.perImage[quality];
     return Number.isFinite(per) ? per * (images || 1) : null;
@@ -281,4 +332,5 @@ function watOntbreekt(tier) {
 module.exports = {
   TIERS, PROVIDERS, PRICING, VOORKEUR, WA_PRICING_EUR,
   heeftSleutel, kanTier, keten, modelVoor, kostenUsd, watOntbreekt, waKostenEur,
+  haikuVijf, modelVerzoekExtra, maxTokensVoor, creditModel, HAIKU_VIJF_TOKEN_FACTOR,
 };

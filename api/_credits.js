@@ -194,7 +194,11 @@ const _priceWarned = new Set();
  */
 function creditsForChatTurn({ inputTokens = 0, outputTokens = 0, model = '' } = {}) {
   const flat = WEIGHTS[FEATURES.FARO_CHAT];
-  const usd = model ? _registry.kostenUsd({ model, inputTokens, outputTokens }) : null;
+  /* Credits rekenen met het referentietarief (registry.creditModel), NIET met de
+     echte providerprijs: een goedkoper model mag klant-credits niet stilzwijgend
+     laten verlengen. De echte kost staat apart in realCostEur. */
+  const usd = model ? _registry.kostenUsd({ model: _registry.creditModel(model), inputTokens, outputTokens }) : null;
+  const echtUsd = model ? _registry.kostenUsd({ model, inputTokens, outputTokens }) : null;
   if (!Number.isFinite(usd)) {
     if (model && !_priceWarned.has(model)) {
       _priceWarned.add(model);
@@ -209,7 +213,10 @@ function creditsForChatTurn({ inputTokens = 0, outputTokens = 0, model = '' } = 
   const raw = Math.ceil((costEur / 0.015) * CHAT_MARGIN);
   // Nooit minder dan het platte tarief: een piepklein vraagje mag goedkoop
   // zijn, maar niet gratis — er zit ook infrastructuur achter.
-  return { credits: Math.max(flat, raw), costEur, priced: true };
+  return {
+    credits: Math.max(flat, raw), costEur, priced: true,
+    realCostEur: Number.isFinite(echtUsd) ? echtUsd * USD_TO_EUR : costEur,
+  };
 }
 
 /* ── Wat een video kost ───────────────────────────────────────────────────────

@@ -40,7 +40,7 @@ const MODELS = Object.freeze({
     /* Per niveau te overschrijven met FARO_MODEL_FAST / _STANDARD / _PRECISE: een
        modelnaam die Anthropic niet kent geeft "400 invalid_request_error" op
        elke vraag, en dat moet met een instelling te herstellen zijn. */
-    fast:     (process.env.FARO_MODEL_FAST || '').trim()     || 'claude-haiku-4-5-20251001',
+    fast:     (process.env.FARO_MODEL_FAST || '').trim()     || 'claude-haiku-5-5',
     standard: (process.env.FARO_MODEL_STANDARD || '').trim() || 'claude-sonnet-5',
     precise:  (process.env.FARO_MODEL_PRECISE || '').trim()  || 'claude-opus-5',
   }),
