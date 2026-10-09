@@ -465,6 +465,12 @@ const CC_BOVEN = '(?:tot|max(?:imum|imaal)?\\.?|onder|minder dan|hoogstens|niet 
 const CC_GETAL = '(\\d{1,3}(?:[.,\\s]\\d{3})+|\\d+)\\s*(?:cc|cm3|cm³|ccm|cubic)\\b';
 const RIJBEWIJS_WOORD = '(?:rijbewijs|permis|licen[cs]e|führerschein|fuehrerschein|klasse|class|categorie|catégorie|categorie|cat\\.?)';
 
+/** Tekst zonder cc-hoeveelheden ("tot 1200 cc"), zodat een getal daarin niet als
+ *  budget of kilometers gelezen wordt. Alleen voor het motorsegment. */
+function zonderCc(tekst) {
+  return String(tekst == null ? '' : tekst).replace(new RegExp(CC_GETAL, 'gi'), ' ');
+}
+
 function uitTekst(berichten, opties) {
   const motor = !!(opties && opties.segment === 'motor');
   const ruwLijst = (Array.isArray(berichten) ? berichten : [berichten])
@@ -568,6 +574,8 @@ module.exports = {
   MOTORTYPES,
   motortypesVan,
   hardeGrenzen,
+  zonderCc,
+  typeTekst,
   TOLERANTIE_PRIJS,
   TOLERANTIE_KM,
   normaliseer,

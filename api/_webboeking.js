@@ -189,6 +189,12 @@ async function boekOpGeclaimdMoment(t, start, o) {
   const _vehicles = require('./_vehicles');
   const _dealerBoeking = require('./_dealer-boeking');
   let voertuig = null, apptId = '';
+  /* Auto of motor: bepaalt het woord in de foutmelding en het afspraaktype
+     (proefrit / testrit). Niet te lezen = auto, dus nooit een nieuwe fout. */
+  let segment = 'auto';
+  if (o.voertuigCode) {
+    try { segment = require('./_segment').van(await klantVelden(t)); } catch (e) { segment = 'auto'; }
+  }
   if (o.voertuigCode) {
     voertuig = await _vehicles.getByCode(t, o.voertuigCode).catch(() => null);
     if (!voertuig) throw new BoekFout('Deze wagen staat niet meer in het aanbod.', 'vehicle_unavailable');
@@ -196,7 +202,9 @@ async function boekOpGeclaimdMoment(t, start, o) {
     if (!controle.ok) {
       if (controle.reden === 'al_geboekt') return { ok: true, alGeboekt: true, startISO: start.toISOString() };
       if (controle.reden === 'lead_heeft_afspraak') throw new BoekFout('Je hebt al een afspraak staan; het team neemt contact op.', 'lead_has_appointment');
-      throw new BoekFout('Deze wagen kan nu geen proefrit meer krijgen. Het team stelt een alternatief voor.', 'vehicle_unavailable');
+      throw new BoekFout(segment === 'motor'
+        ? 'Deze motor kan nu geen testrit meer krijgen. Het team stelt een alternatief voor.'
+        : 'Deze wagen kan nu geen proefrit meer krijgen. Het team stelt een alternatief voor.', 'vehicle_unavailable');
     }
     apptId = controle.apptId;
   }
@@ -211,7 +219,7 @@ async function boekOpGeclaimdMoment(t, start, o) {
     Status: 'booked', Source: 'website', Notes: String((o.notitie || 'Geboekt via de websiteassistent') + (o.agendaNietGelezen ? '\n\n[LET OP] De Google agenda kon op het moment van boeken niet gelezen worden. Dit moment is NIET gecontroleerd op dubbele afspraken — kijk het even na.' : '')).slice(0, 2000),
     'Created At': new Date().toISOString(), Lead: [o.leadId],
   };
-  if (voertuig) { fields['Vehicle Code'] = voertuig.code; fields['Appointment Type'] = 'proefrit'; }
+  if (voertuig) { fields['Vehicle Code'] = voertuig.code; fields['Appointment Type'] = require('./_afspraaktypes').kiesType('', segment); }
   const r = await at(APPOINTMENTS_TABLE, { method: 'POST', body: { fields, typecast: true } });
   if (!r.ok) {
     const txt = await r.text().catch(() => '');
