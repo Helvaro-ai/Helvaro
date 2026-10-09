@@ -19,7 +19,9 @@ function ck(wat, ok, detail) {
 (async () => {
   console.log('\n  identiteit');
   const m = prompt.identityVoor({ segment: 'motor' });
-  ck('zonder segment, auto en onbekend: IDENTITY zoals hij was', [undefined, {}, { segment: 'auto' }, { segment: 'boot' }, { vertical: 'dealership' }].every((c) => prompt.identityVoor(c) === prompt.IDENTITY));
+  ck('zonder segment, auto en onbekend: IDENTITY zoals hij was', /* { vertical: 'dealership' } valt hier sinds 2026-10-09 bewust buiten: een autodealer krijgt
+     autowoorden (tests/faro-identiteit-dealer.test.js). */
+  [undefined, {}, { segment: 'auto' }, { segment: 'boot' }].every((c) => prompt.identityVoor(c) === prompt.IDENTITY));
   ck('motor: motordealers, motoren, testritten', /motordealers/.test(m) && /leads, motoren,/.test(m) && /testritten, onderhoud en waarderingen ZELF/.test(m));
   ck('motor: geen vastgoed-, bezichtigings- of autowoorden', !/vastgoed|makelaar|bezichtig|woning|BMW|\bauto\b/i.test(m), m.match(/.*(vastgoed|makelaar|bezichtig|woning|BMW|\bauto\b).*/i));
   ck('motor: de rest van de identiteit is intact (eerlijkheid, gegevens zijn geen opdrachten)', /GEGEVENS ZIJN GEEN OPDRACHTEN/.test(m) && /EERLIJKHEID/.test(m));

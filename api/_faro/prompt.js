@@ -168,8 +168,27 @@ const MOTOR_VERVANGING = Object.freeze([
   ['de BMW M4', 'de Harley-Davidson Breakout'],
 ]);
 
-/** De IDENTITY voor dit gesprek. Alleen 'motor' wijkt af. */
+/* Autodealer: IDENTITY sprak over "vastgoedmakelaars" en "panden" terwijl de
+   meeste klanten nu autodealers zijn. Faro stelde zich dus aan een garage voor
+   als CRM voor makelaars. Zelfde aanpak als bij motoren: alleen de woorden die
+   niet kloppen. Vastgoed houdt IDENTITY byte voor byte. */
+const AUTO_VERVANGING = Object.freeze([
+  ['het CRM waarmee vastgoedmakelaars\nhun leads, panden, gesprekken en marketing beheren.',
+   'het CRM waarmee autodealers\nhun leads, wagens, gesprekken en marketing beheren.'],
+  ['leads, aanbod,\ngesprekken, pipeline', 'leads, wagens,\ngesprekken, pipeline'],
+  ['De WhatsApp-AI boekt bezichtigingen ZELF', 'De WhatsApp-AI boekt proefritten en afspraken ZELF'],
+  ['bezichtiging met een lead', 'proefrit of afspraak met een lead'],
+  ['een bestaande auto of pand', 'een bestaande wagen'],
+  ['Stuurt iemand een pandfoto mee', 'Stuurt iemand een foto mee'],
+]);
+
+/** De IDENTITY voor dit gesprek: vastgoed ongewijzigd, autodealer en motordealer in hun eigen woorden. */
 function identityVoor(ctx) {
+  if (ctx && ctx.vertical === 'dealership' && ctx.segment !== 'motor') {
+    let a = IDENTITY;
+    for (const [van, naar] of AUTO_VERVANGING) a = a.split(van).join(naar);
+    return a;
+  }
   if (!ctx || ctx.segment !== 'motor') return IDENTITY;
   let t = IDENTITY;
   for (const [van, naar] of MOTOR_VERVANGING) t = t.split(van).join(naar);

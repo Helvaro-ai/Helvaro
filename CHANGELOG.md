@@ -897,6 +897,9 @@ lokale teller, dus dit verandert niets zolang Upstash niet is aangesloten.
 
 ## 9 oktober 2026 — beveiliging
 
+- **Faro stelde zich aan autodealers voor als CRM voor vastgoedmakelaars.** Hij
+  sprak over panden en bezichtigingen. Voor een autodealer gaat het nu over
+  wagens, proefritten en afspraken; voor makelaars verandert er niets.
 - **Een lead krijgt altijd antwoord, ook als er bij het inplannen iets misloopt.**
   Ging er tussen "ingepland" en de bevestiging iets fout, dan kreeg de lead
   sinds vandaag helemaal niets. Nu gaat het antwoord alsnog uit als de afspraak
