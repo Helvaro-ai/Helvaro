@@ -33,6 +33,8 @@ const { getPlanState } = require('./_plan');
 const _lang = require('./_lang');
 const _ai = require('./_ai');
 const _properties = require('./_properties'); // welk pand deze lead bedoelt
+const _segment   = require('./_segment');    // auto of motor binnen dealership; leeg = auto
+const _afspraaktypes = require('./_afspraaktypes');   // de soorten afspraak, per segment
 const _vertical  = require('./_vertical');   // vastgoed of dealership -- de enige plek die dat weet
 const _vehicles  = require('./_vehicles');   // welke auto deze lead bedoelt
 const _autoscout = require('./_autoscout');  // de AutoScout24-link uit zijn bericht
@@ -1179,6 +1181,9 @@ async function processMessage(phone, text, scopedProjectCode, inkomendId, nood =
      Leeg veld = vastgoed. Zie api/_vertical.js voor waarom dat de enige veilige
      standaard is: elke bestaande klant heeft dit veld leeg. */
   const vertical = _vertical.van(client.fields);
+  /* Auto of motor (alleen binnen dealership; leeg = auto, dus voor elke
+     bestaande dealer verandert er niets). Zie api/_segment.js. */
+  const segment = _segment.van(client.fields);
 
   let pandSectie = '';
   let herkendPand = null;
@@ -1264,7 +1269,7 @@ async function processMessage(phone, text, scopedProjectCode, inkomendId, nood =
           let alternatieven = [];
           try {
             const voorraadVoorAlternatieven = await _vehicles.list(projectCode, { alleenPubliek: true });
-            alternatieven = _vehicles.alternatieven(voorraadVoorAlternatieven, { voertuig: herkendVoertuig, wens: bekendeWens }, 3);
+            alternatieven = _vehicles.alternatieven(voorraadVoorAlternatieven, { voertuig: herkendVoertuig, wens: bekendeWens, segment }, 3);
           } catch (e) {
             console.warn('[WhatsApp] alternatieven opzoeken overgeslagen:', e && e.message);
           }
@@ -1272,6 +1277,9 @@ async function processMessage(phone, text, scopedProjectCode, inkomendId, nood =
           voertuigenInContext = alternatieven.slice();
         }
 
+        /* Het segment reist mee in de context (fiche(...)'s vierde plek bestaat ook,
+           maar dit houdt de aanroep zelf zoals hij was). */
+        fichecontext = Object.assign({}, fichecontext, { segment });
         pandSectie = _ai.prompts.voertuigen.fiche(herkendVoertuig, kortingsgrenzen, fichecontext);
         console.log(`[WhatsApp] voertuig ${herkendVoertuig.code} herkend via ${uitkomst.via} voor lead ${lead.id}`);
       } else {
@@ -1287,15 +1295,24 @@ async function processMessage(phone, text, scopedProjectCode, inkomendId, nood =
             .filter((m) => m && m.role === 'user')
             .slice(-6)
             .map((m) => String(m.content || ''));
-          const wensNu = _wens.normaliseer(Object.assign({}, bekendProfiel.wens || {},
-            _wens.uitTekst(laatsteBerichten, { merken }) || {}));
-          const gerangschikt = _vehicles.rangschik(voorraad, { wens: wensNu, kandidaten: uitkomst.kandidaten });
+          /* Auto: ongewijzigd. Motor krijgt het segment mee (cc, rijbewijs,
+             motortypes) -- aparte takken zodat het autopad letterlijk blijft
+             wat het was. */
+          const wensNu = segment === 'motor'
+            ? _wens.normaliseer(Object.assign({}, bekendProfiel.wens || {},
+                _wens.uitTekst(laatsteBerichten, { merken, segment }) || {}))
+            : _wens.normaliseer(Object.assign({}, bekendProfiel.wens || {},
+                _wens.uitTekst(laatsteBerichten, { merken }) || {}));
+          const gerangschikt = segment === 'motor'
+            ? _vehicles.rangschik(voorraad, { wens: wensNu, kandidaten: uitkomst.kandidaten, segment })
+            : _vehicles.rangschik(voorraad, { wens: wensNu, kandidaten: uitkomst.kandidaten });
           voertuigenInContext = gerangschikt.lijst.slice();
           pandSectie = _ai.prompts.voertuigen.index(gerangschikt.lijst, {
             zoekt: _wens.omschrijf(wensNu),
             genoemd: gerangschikt.genoemd,
             passend: gerangschikt.passend,
-          });
+            uitgesloten: gerangschikt.uitgesloten,
+          }, segment);
         }
       }
       /* Wat al bekend is uit eerdere beurten, zodat hij het niet opnieuw
@@ -1420,6 +1437,9 @@ async function processMessage(phone, text, scopedProjectCode, inkomendId, nood =
       ? Boolean(voertuigBoekbaarheid && voertuigBoekbaarheid.ok) && !(voorraadVertrouwen && voorraadVertrouwen.niveau === 'onzeker')
       : (herkendPand ? _properties.kanBezichtigen(herkendPand.status) : true),
     pandCode: herkendVoertuig ? herkendVoertuig.code : (herkendPand ? herkendPand.code : ''),
+    /* Wie er 'verwittigd' wordt in de afzegtekst. Alleen voor het motorsegment
+       een ander woord; voor al het andere blijft het 'makelaar' zoals het was. */
+    eigenaarWoord: segment === _segment.MOTOR ? 'verkoper' : undefined,
     /* Alleen het MOMENT gaat mee, niet het record-id. De AI hoeft niet te weten
        welke rij het is -- hij zegt "de afspraak" af en deze code zoekt hem er
        zelf bij. Een id in een prompt is een id dat een model kan verzinnen. */
@@ -2305,12 +2325,19 @@ async function processMessage(phone, text, scopedProjectCode, inkomendId, nood =
              staat; anders (leeg, getypt, hallucinatie) valt het terug op de
              standaard voor deze markt, precies zoals voorheen. */
           const gevraagdType = String((appt && appt.type) || '').trim().toLowerCase();
+          /* Per segment: auto kent de bestaande vier, motor testrit/onderhoud/
+             waardering erbij (api/_afspraaktypes.js). Een alias als 'proefrit'
+             wordt bij motor testrit. Ongeldig of leeg = de standaard. */
           const dealerType = vertical === _vertical.DEALERSHIP
-            ? (_dealerBoeking.AFSPRAAK_TYPES.indexOf(gevraagdType) !== -1 ? gevraagdType : _dealerBoeking.standaardType(vertical))
+            ? (segment === _segment.MOTOR
+                ? _afspraaktypes.kiesType(gevraagdType, segment)
+                : (_dealerBoeking.AFSPRAAK_TYPES.indexOf(gevraagdType) !== -1 ? gevraagdType : _dealerBoeking.standaardType(vertical)))
             : '';
           const apptResult = await createAppointment({
             startTime:     appt.start,
-            duration:      appt.duration || appointmentDuration,
+            duration:      segment === _segment.MOTOR
+              ? _afspraaktypes.duurMin(dealerType, appt.duration || appointmentDuration)
+              : (appt.duration || appointmentDuration),
             projectCode,
             leadId:        lead.id,
             leadName,

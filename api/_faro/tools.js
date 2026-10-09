@@ -1176,6 +1176,8 @@ const actTools = [
         kw: { type: 'number', description: 'Voertuig: vermogen in kW.' },
         carrosserie: { type: 'string', description: 'Voertuig: carrosserie, bv. SUV, break, coupé.' },
         kleur: { type: 'string', description: 'Voertuig: kleur.' },
+        cc: { type: 'number', description: 'Motor: cilinderinhoud in cc (alleen motordealers).' },
+        rijbewijs: { type: 'string', description: 'Motor: vereiste rijbewijsklasse A1, A2 of A (alleen motordealers).' },
         adres: { type: 'string', description: 'Pand: het adres.' },
         plaats: { type: 'string', description: 'Pand: de gemeente.' },
         postcode: { type: 'string', description: 'Pand: postcode.' },
@@ -1250,8 +1252,11 @@ const actTools = [
          de modules zelf begrenzen en normaliseren (status, getallen, lengtes). */
       const VELDEN_ALLE = ['prijs', 'status', 'omschrijving', 'troeven', 'fotos', 'link'];
       const VELDEN_AUTO = ['maxKorting', 'faroKorting', 'merk', 'model', 'uitvoering', 'km', 'inschrijving', 'brandstof', 'transmissie', 'kw', 'carrosserie', 'kleur'];
+      /* Alleen voor het motorsegment (api/_segment.js): zie _vehicles.naarVelden. */
+      const VELDEN_MOTOR = ['cc', 'rijbewijs'];
       const VELDEN_PAND = ['adres', 'plaats', 'postcode', 'type', 'transactie', 'slaapkamers', 'badkamers', 'oppervlakte', 'grond', 'bouwjaar', 'epc'];
-      for (const k of VELDEN_ALLE.concat(dealer ? VELDEN_AUTO : VELDEN_PAND)) {
+      const motor = dealer && ctx && ctx.segment === 'motor';
+      for (const k of VELDEN_ALLE.concat(dealer ? VELDEN_AUTO.concat(motor ? VELDEN_MOTOR : []) : VELDEN_PAND)) {
         const v = args && args[k];
         if (v === undefined || v === null) continue;
         if (Array.isArray(v)) { if (v.length) velden[k] = v; continue; }
@@ -1294,7 +1299,9 @@ const actTools = [
       if (!naam) {
         return {
           summary: dealer
-            ? 'Ik weet nog niet welke auto het is. Geef een AutoScout24-link, of merk en model.'
+            ? (ctx && ctx.segment === 'motor'
+              ? 'Ik weet nog niet welke motor het is. Geef een link naar de advertentie, of merk en model.'
+              : 'Ik weet nog niet welke auto het is. Geef een AutoScout24-link, of merk en model.')
             : 'Ik weet nog niet welk pand het is. Geef een link naar het zoekertje, of het adres.',
           data: { pending: false }, components: [],
         };

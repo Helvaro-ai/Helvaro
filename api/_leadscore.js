@@ -94,6 +94,7 @@ function bereken(signalen) {
     if (afspraak.gevraagd === true) {
       const type = String(afspraak.type || '').trim().toLowerCase();
       if (type === 'proefrit') geef('proefrit', PUNTEN.proefrit);
+      else if (type === 'testrit') geef('testrit', PUNTEN.proefrit);   // motor: zelfde gewicht, eigen woord
       else if (type === 'bezichtiging') geef('bezichtiging', PUNTEN.bezichtiging);
       else geef('afspraak', PUNTEN.afspraak);
     }

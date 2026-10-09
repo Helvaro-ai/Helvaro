@@ -31,6 +31,7 @@ const _persona    = require('./_dash/persona-sjablonen'); // voorbeeldteksten, v
 const _agenda     = require('./_dash/agenda');     // de agenda, client-side
 const _integraties = require('./_dash/integraties'); // Instellingen: integraties (automotive), client-side
 const _wizardVol  = require('./_dash/wizard-volledig'); // wizard: meldingen/uren, voorraadbronnen, klaar-checklist, client-side
+const _segmentDash = require('./_dash/segment'); // auto|motor in het dashboard, client-side
 const _wizardWa   = require('./_dash/wizard-whatsapp'); // eigen WhatsApp-nummer (gedeelde Embedded Signup-kern), WhatsApp- en Meta-kaart in de wizard, client-side
 const _vsync      = require('./_voorraad-sync');          // BEWAAR_DAGEN: één bron voor de 14 dagen
 const _faroUI = require('./_faro/ui');
@@ -2838,6 +2839,7 @@ ${faro.navCta}
               <select class="filter-select" id="set-markt" onchange="marktWisselen(this.value)" aria-label="${T('set.markt.label')}">
                 <option value="real_estate">${T('set.markt.vastgoed')}</option>
                 <option value="dealership">${T('set.markt.dealership')}</option>
+                <option value="motorcycle_dealer">${T('set.markt.motor')}</option>
                 <option value="construction">${T('set.markt.bouw')}</option>
                 <option value="kitchen">${T('set.markt.keuken')}</option>
                 <option value="renovation">${T('set.markt.renovatie')}</option>
@@ -4079,12 +4081,27 @@ ${faro.dock}
             <div class="pd-hint" id="pd-f-pk-hint">${T('veh.f.pkHint')}</div>
           </div>
           <div>
-            <label class="pd-label" for="pd-f-carrosserie">${T('veh.f.carrosserie')}</label>
+            <label class="pd-label" id="pd-l-carrosserie" for="pd-f-carrosserie">${T('veh.f.carrosserie')}</label>
             <input class="pd-input" id="pd-f-carrosserie" type="text" placeholder="Coup&eacute;" maxlength="40">
           </div>
           <div>
             <label class="pd-label" for="pd-f-kleur">${T('veh.f.kleur')}</label>
             <input class="pd-input" id="pd-f-kleur" type="text" placeholder="${T('veh.f.kleurPh')}" maxlength="40">
+          </div>
+        </div>
+
+        <!-- Alleen voor het motorsegment; api/_dash/segment.js toont dit blok. -->
+        <div class="pd-row-2" id="pd-motor-velden" style="display:none">
+          <div>
+            <label class="pd-label" for="pd-f-cc">${T('mot.f.cc')}</label>
+            <input class="pd-input" id="pd-f-cc" type="number" min="1" max="10000" placeholder="1200">
+          </div>
+          <div>
+            <label class="pd-label" for="pd-f-rijbewijs">${T('mot.f.rijbewijs')}</label>
+            <select class="pd-input" id="pd-f-rijbewijs">
+              <option value="">${T('mot.rijbewijs.onbekend')}</option>
+              <option value="A1">A1</option><option value="A2">A2</option><option value="A">A</option>
+            </select>
           </div>
         </div>
 
@@ -7982,6 +7999,7 @@ let _checklistConfigCache = null; // last config-get response — reused by the 
    Standaard vastgoed. Elke bestaande klant heeft dit veld leeg, dus tot
    config-get iets anders zegt gedraagt dit scherm zich exact zoals gisteren. */
 var hvVertical = 'vastgoed';
+var hvSegment = 'auto';   // auto | motor, alleen binnen dealership (api/_dash/segment.js)
 var hvKorting  = { max: 0, faro: 0 };
 
 function isDealer() { return hvVertical === 'dealership'; }
@@ -8041,6 +8059,13 @@ var HV_WOORDEN = {
    navigatie. Ze krijgen tóch een pictogram, want verborgen is niet hetzelfde
    als onbereikbaar: het item bestaat nog, en als het ooit weer getoond wordt
    hoort er niet het pictogram van de vorige markt naast te staan. */
+/* Motorsegment: dezelfde dealerpagina's, andere woorden. Wat hier niet staat
+   valt terug op de dealerwoorden. Zie api/_segment.js en api/_dash/segment.js. */
+var HV_WOORDEN_MOTOR = {
+  een: 'mot.one', meer: 'mot.many', Een: 'mot.One', Meer: 'mot.nav', geen: 'mot.none', toevoegen: 'mot.add',
+  afspraak: 'mot.testride', laadFout: 'mot.loadFailed', leegTekst: 'mot.empty.text', beschrijving: 'mot.desc.ph',
+  linkA11y: 'mot.link.a11y'
+};
 var HV_ICOON_HUIS =
   '<path d="M3 10.5 12 3l9 7.5"/><path d="M5 9.5V21h14V9.5"/><path d="M9.5 21v-6h5v6"/>';
 var HV_ICOON_AUTO =
@@ -8090,6 +8115,7 @@ function vw(sleutel) {
   var sl  = Object.prototype.hasOwnProperty.call(rij, sleutel)
     ? rij[sleutel]
     : HV_WOORDEN.vastgoed[sleutel];
+  if (hvVertical === 'dealership' && hvSegment === 'motor' && HV_WOORDEN_MOTOR[sleutel]) sl = HV_WOORDEN_MOTOR[sleutel];
   if (sl === undefined) return '';
   /* 'tabel' is de enige die geen vertaalsleutel is maar een letterlijke
      Airtable-naam; die gaat niet door tr(). */
@@ -8127,9 +8153,12 @@ function hvVerticalBijSector(sector) {
   }
   return 'vastgoed';
 }
-function hvSectorBijVertical(vertical) {
+function hvSectorBijVertical(vertical, segment) {
   for (var i = 0; i < WIZARD_MARKTEN.length; i++) {
-    if (WIZARD_MARKTEN[i].vertical === vertical) return WIZARD_MARKTEN[i].id;
+    if (WIZARD_MARKTEN[i].vertical === vertical && (WIZARD_MARKTEN[i].segment || 'auto') === (segment || 'auto')) return WIZARD_MARKTEN[i].id;
+  }
+  for (var j = 0; j < WIZARD_MARKTEN.length; j++) {
+    if (WIZARD_MARKTEN[j].vertical === vertical) return WIZARD_MARKTEN[j].id;
   }
   return 'real_estate';
 }
@@ -8148,7 +8177,7 @@ async function marktWisselen(gekozen) {
     await fetch(API_BASE + '/leads', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'x-api-key': state.apiKey },
-      body: JSON.stringify({ mode: 'config-save', sector: gekozen, vertical: nieuweVertical })
+      body: JSON.stringify({ mode: 'config-save', sector: gekozen, vertical: nieuweVertical, segment: segmentVoorSector(gekozen) })
     }).then(function (r) { if (!r.ok) throw new Error('opslaan mislukt'); });
 
     /* De caches leegmaken: AI-persoonlijkheid en Facturatie tonen de sector
@@ -8158,6 +8187,7 @@ async function marktWisselen(gekozen) {
     if (typeof _checklistConfigCache !== 'undefined' && _checklistConfigCache) {
       _checklistConfigCache.sector = gekozen;
       _checklistConfigCache.vertical = nieuweVertical;
+      _checklistConfigCache.segment = segmentVoorSector(gekozen);
     }
 
     zetVertical(nieuweVertical, _checklistConfigCache || {});
@@ -8172,7 +8202,7 @@ async function marktWisselen(gekozen) {
     /* Terugzetten wat er stond. Een keuzelijst die op de nieuwe waarde blijft
        staan terwijl er niets is opgeslagen, is erger dan een foutmelding: de
        klant denkt dat het gelukt is. */
-    if (kiezer) kiezer.value = hvSectorBijVertical(vorige);
+    if (kiezer) kiezer.value = hvSectorBijVertical(vorige, hvSegment);
     toast(tr('tst.opslaanMislukt'), 'error');
   } finally {
     if (kiezer) kiezer.disabled = false;
@@ -8190,6 +8220,7 @@ function marktSubtekst(gekozen) {
      keuze. Vastgoed blijft de terugval voor een onbekende waarde. */
   var subSleutel = {
     dealership:   'markt.sub.dealership',
+    motorcycle_dealer: 'markt.sub.motorcycle_dealer',
     other:        'markt.sub.other',
     real_estate:  'markt.sub.vastgoed',
     construction: 'markt.sub.bouw',
@@ -8213,8 +8244,12 @@ function zetVertical(v, config) {
   var nieuw = HV_WOORDEN[gevraagd] ? gevraagd : 'vastgoed';
   hvKorting = { max: Number((config && config.maxDiscount) || 0),
                 faro: Number((config && config.faroDiscount) || 0) };
-  if (nieuw === hvVertical) return;   // niets te doen, en geen herteken
+  /* Het segment hoort bij dealership; elders is het auto. Een config zonder
+     segment leest als auto, net als op de server (api/_segment.js). */
+  var nieuwSegment = (nieuw === 'dealership' && config && config.segment === 'motor') ? 'motor' : 'auto';
+  if (nieuw === hvVertical && nieuwSegment === hvSegment) return;   // niets te doen, en geen herteken
   hvVertical = nieuw;
+  hvSegment = nieuwSegment;
   /* De voorraadcontrole bij inloggen: refreshData() liep al voor de config
      binnen was, dus toen wist het dashboard nog niet dat dit een dealer is.
      Nu wel. (Voor een niet-dealer verbergt dit alleen de kaarten.) */
@@ -8256,6 +8291,7 @@ function zetVertical(v, config) {
   if (leegTxt) leegTxt.textContent = vw('leegTekst');
   var beschr = document.getElementById('pd-f-omschrijving');
   if (beschr) beschr.placeholder = vw('beschrijving');
+  segmentToepassen();   // cc/rijbewijs-velden en het type-label (api/_dash/segment.js)
   var knoppen = document.querySelectorAll('#page-panden .btn-primary-sm');
   for (var i = 0; i < knoppen.length; i++) {
     var laatste = knoppen[i].lastChild;
@@ -8358,7 +8394,7 @@ async function loadOnboardingChecklist(force) {
          hvSectorBijVertical() bestond al en leest WIZARD_MARKTEN: dezelfde
          lijst als de keuzelijst en de wizard. Eén lijst, dus dit kan niet
          opnieuw achterlopen als er een zesde markt bij komt. */
-      var huidig = d.sector === 'other' ? 'other' : hvSectorBijVertical(hvVertical);
+      var huidig = d.sector === 'other' ? 'other' : hvSectorBijVertical(hvVertical, hvSegment);
       mk.value = huidig;
       marktSubtekst(huidig);
     }
@@ -10654,6 +10690,8 @@ ${_integraties.js()}
 ${_wizardVol.js()}
 /* Eigen nummer koppelen (de kern die ook Instellingen gebruikt) en de WhatsApp-/Meta-kaarten staan in api/_dash/wizard-whatsapp.js. */
 ${_wizardWa.js()}
+/* Segment (auto|motor): api/_dash/segment.js. */
+${_segmentDash.js()}
 
 /* ── Custom Calendly booking modal ──────────────────────────── */
 const calBookState = {
@@ -12299,6 +12337,13 @@ var WIZARD_MARKTEN = [
     titel: 'Autohandel',
     sub: 'Voorraad, proefritten, en AutoScout24-leads die zichzelf koppelen.',
     icoon: '<path d="M5 17H3v-5l2-5h14l2 5v5h-2"/><circle cx="7.5" cy="17" r="2"/><circle cx="16.5" cy="17" r="2"/><path d="M9.5 17h5"/>' },
+  /* Motordealer: dezelfde vertical (dealership), met segment motor. Geen eigen
+     vertical -- zie api/_segment.js. Staat achter de autohandel zodat
+     hvSectorBijVertical('dealership') die blijft vinden. */
+  { id: 'motorcycle_dealer', vertical: 'dealership', segment: 'motor',
+    titel: 'Motordealer',
+    sub: 'Voorraad, testritten, onderhoud en waardering.',
+    icoon: '<circle cx="6" cy="16" r="3"/><circle cx="18" cy="16" r="3"/><path d="M6 16l3-6h5l4 6"/><path d="M13 10l-1-3h-2"/>' },
   { id: 'real_estate', vertical: 'vastgoed',
     titel: 'Vastgoed',
     sub: 'Panden, bezichtigingen, en een link per woning.',
@@ -12441,9 +12486,10 @@ async function wizardVolgende() {
          AI-toon stuurt; vertical is wat het dashboard leest. Ze samen
          wegschrijven is de enige manier waarop ze niet uit elkaar lopen --
          en uit elkaar lopen betekent hier: een dealer die over panden leest. */
-      await wizardBewaar({ sector: _wizardMarkt, vertical: gekozen ? gekozen.vertical : 'vastgoed' });
+      await wizardBewaar({ sector: _wizardMarkt, vertical: gekozen ? gekozen.vertical : 'vastgoed', segment: segmentVoorSector(_wizardMarkt) });
       _wizardConfig = _wizardConfig || {};
       _wizardConfig.sector = _wizardMarkt;
+      _wizardConfig.segment = segmentVoorSector(_wizardMarkt);
       /* Meteen toepassen, niet pas na een herlading. Wie "autohandel" kiest en
          daarna nog drie stappen over "panden" leest, denkt dat zijn keuze niet
          is aangekomen. */
@@ -17736,6 +17782,8 @@ function openPandModal(code) {
     zet('pd-f-kw',          pand && pand.kw != null ? pand.kw : '');
     zet('pd-f-carrosserie', pand ? pand.carrosserie : '');
     zet('pd-f-kleur',       pand ? pand.kleur : '');
+    zet('pd-f-cc',          pand && pand.cc != null ? pand.cc : '');
+    zet('pd-f-rijbewijs',   pand && pand.rijbewijs ? pand.rijbewijs : '');
     zet('pd-f-adlink',      pand ? pand.link : '');
     zet('pd-f-maxkorting',  pand && pand.maxKorting != null ? pand.maxKorting : '');
     zet('pd-f-farokorting', pand && pand.faroKorting != null ? pand.faroKorting : '');
@@ -17849,6 +17897,8 @@ async function savePand() {
       kw:           getal('pd-f-kw'),
       carrosserie:  lees('pd-f-carrosserie'),
       kleur:        lees('pd-f-kleur'),
+      cc:           isMotor() ? getal('pd-f-cc') : undefined,
+      rijbewijs:    isMotor() ? lees('pd-f-rijbewijs') : undefined,
       link:         lees('pd-f-adlink'),
       maxKorting:   getal('pd-f-maxkorting'),
       faroKorting:  getal('pd-f-farokorting'),

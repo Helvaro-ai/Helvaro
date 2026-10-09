@@ -50,12 +50,10 @@ const _activiteit  = require('./_activiteit');
 const F_NOTIFY       = 'fldZEApe0gfse07AU';   // Client Config: Notify Phone
 const F_NOTIFY_EXTRA = 'fldxSbRXga4yO1RXy';   // Client Config: Notify Phones Extra
 
-/* Zelfde soorten typen als api/_dealer-boeking.js AFSPRAAK_TYPES. Hier los
-   gehouden en niet geïmporteerd: dit bestand hoeft niets van de boekingslogica
-   te weten, alleen welk woord bij welk type hoort. Twee bestanden die dezelfde
-   vier woorden kennen is goedkoper dan een import voor een lijst van vier
-   strings. */
-const MELDING_TYPE_SLEUTELS = Object.freeze(['proefrit', 'bezichtiging', 'ophaling', 'gesprek']);
+/* De sleutels komen uit api/_afspraaktypes.js (de ene bron; het is zuivere
+   data, dus geen zwaardere import dan een lijst). De WOORDEN staan in
+   api/_i18n.js onder 'melding.type.<sleutel>'. */
+const MELDING_TYPE_SLEUTELS = Object.freeze(require('./_afspraaktypes').alleSleutels());
 
 const TEMP_EMOJI = Object.freeze({ hot: '🔥', warm: '🟡', cold: '⚪' });
 

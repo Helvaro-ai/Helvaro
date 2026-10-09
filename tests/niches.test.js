@@ -124,7 +124,7 @@ console.log('\n  de vier lijsten lopen niet uit elkaar');
   const ids = [...kaarten.matchAll(/\{ id: '([a-z_]+)'/g)].map((m) => m[1]);
   const opties = [...dash.matchAll(/<option value="([a-z_]+)">\$\{T\('set\.markt/g)].map((m) => m[1]);
   /* Vijf markten plus 'iets anders', die op vastgoed uitkomt. */
-  ck('de wizard biedt zes keuzes aan', ids.length === 6, ids);
+  ck('de wizard biedt zeven keuzes aan (motordealer is een segment van dealership)', ids.length === 7, ids);
   ck('en Instellingen dezelfde', ids.slice().sort().join(',') === opties.slice().sort().join(','),
     { wizard: ids, instellingen: opties });
 

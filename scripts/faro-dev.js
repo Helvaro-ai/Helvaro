@@ -67,7 +67,7 @@ const _convo = (leadMsgs, ourMsgs, lastLeadAgoDays) => {
    viel loadPanden() na een marktwissel op "mode not stubbed" -- en dan lijkt
    het wisselen van markt stuk terwijl alleen deze stub ontbrak.
    Zelfde vorm als api/_vehicles.js teruggeeft; zie vanRecord() daar. */
-let _gekozenVertical = 'vastgoed';
+let _gekozenVertical = process.env.FARO_DEV_TENANT === 'motor' ? 'dealership' : 'vastgoed';
 let _gekozenSector = 'real_estate';
 /* Wizard 'meldingen': wat config-save meekreeg, zodat de volgende config-get het teruggeeft. */
 let _wizardVelden = {};
@@ -110,6 +110,18 @@ const _fixtureVoertuigen = [
     publiek: true, gearchiveerd: false, autoscout: '',
     omschrijving: 'Ruime break, recent onderhoud.', troeven: [], fotos: [] },
 ];
+
+/* Referentie-motortenant (api/_faro/fixtures.js): FARO_DEV_TENANT=motor zet de
+   harnas om naar Capital Brussels Harley-Davidson -- dealership + segment motor
+   met vier fixture-motoren (DEMO-codes, [FIXTURE] in elke omschrijving). Alleen
+   configuratie; zonder de variabele is alles zoals het was. */
+const _motorTenant = process.env.FARO_DEV_TENANT === 'motor';
+if (_motorTenant) {
+  const _fx = require('../api/_faro/fixtures');
+  const _vm = require('../api/_vehicles');
+  _fixtureVoertuigen.length = 0;
+  _fx.motorVoorraadRecords().forEach((r) => _fixtureVoertuigen.push(Object.assign(_vm.vanRecord(r), { gearchiveerd: false })));
+}
 
 const _fixturePanden = [
   { code: 'P1', projectCode: 'TELJO', adres: 'Lange Violettestraat 12', postcode: '9000', plaats: 'Gent',
@@ -703,9 +715,10 @@ const server = http.createServer(async (req, res) => {
           return res.status(200).json({ status: 'active', trialEndsAt: null, daysLeft: null });
         case 'config-get':
           return res.status(200).json({
-            aiName: 'Faro', clientName: 'Teljo', autoReplyTpl: '', aiInstructions: '',
+            aiName: 'Faro', clientName: _motorTenant ? require('../api/_faro/fixtures').MOTOR_TENANT.naam : 'Teljo', autoReplyTpl: '', aiInstructions: '',
             welcomeMessage: '', bookingConfirmText: '', bookingMode: 'in_chat',
             vertical: _gekozenVertical, sector: _gekozenSector,
+            ...(_motorTenant ? { segment: 'motor' } : {}),
             reportEmail: 'sarah@immodelva.be', language: 'nl', replyInLeadLanguage: true,
             formStyle: _formStijl.saneer(_gekozenStijl),
             country: 'BE', ..._wizardVelden,
@@ -872,7 +885,7 @@ server.listen(PORT, '127.0.0.1', () => {
   provider   ${cfg.providerName()}${cfg.providerName() === 'demo' ? '  (scripted, no API calls)' : ''}
   fixtures   ${process.env.FARO_DEMO_MODE === '1' ? 'on  (sample leads, not real data)' : 'off'}
   language   ${LOCAL_AUTH.lang}
-  tenant     ${LOCAL_AUTH.projectCode}  (fake — localhost only)
+  tenant     ${LOCAL_AUTH.projectCode}  (fake — localhost only)${_motorTenant ? '\n  profile    motor  (Capital Brussels Harley-Davidson, fixture bikes)' : ''}
 
   Open Faro from the topbar pill, or Ctrl/⌘-J. Try:
     "Wie zijn mijn beste leads?"      → streams + lead cards

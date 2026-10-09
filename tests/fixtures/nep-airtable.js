@@ -40,6 +40,8 @@ function evalueer(expr, f) {
   if (m) return String(f[m[2]] || '').toLowerCase().indexOf(unesc(m[1]).toLowerCase()) !== -1;
   m = expr.match(/^LOWER\(\{([^}]+)\}\)="((?:[^"\\]|\\.)*)"$/);
   if (m) return String(f[m[1]] || '').toLowerCase() === unesc(m[2]);
+  m = expr.match(/^UPPER\(\{([^}]+)\}\)="((?:[^"\\]|\\.)*)"$/);
+  if (m) return String(f[m[1]] || '').toUpperCase() === unesc(m[2]);
   m = expr.match(/^LEFT\(\{([^}]+)\}, (\d+)\)="((?:[^"\\]|\\.)*)"$/);
   if (m) return String(f[m[1]] || '').slice(0, Number(m[2])) === unesc(m[3]);
   m = expr.match(/^\{([^}]+)\}="((?:[^"\\]|\\.)*)"$/);

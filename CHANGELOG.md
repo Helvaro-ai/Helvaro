@@ -40,6 +40,41 @@ enige eerlijke datum voor "uitgerold" is de dag dat `main` deployt.
   persoonsgegevens: `helvaro:lead_form_submitted`, `helvaro:lead_confirmation_viewed`
   en `helvaro:confirmation_cta_clicked`.
 
+### Motordealers: Helvaro werkt nu ook voor motoren
+
+- **Een motordealer is een dealer met een eigen vocabulaire, geen aparte
+  markt.** In Instellingen en in de onboarding staat een nieuwe keuze
+  "Motordealer". De assistent op WhatsApp, op je website en Faro praten over
+  motoren, testritten, cilinderinhoud en rijbewijsklasse in plaats van auto's en
+  proefritten, in het Nederlands, Frans, Engels en Duits. Elke bestaande
+  autodealer en makelaar ziet exact hetzelfde als voorheen.
+- **Cilinderinhoud en rijbewijs zijn harde eisen.** Vraagt iemand "maximum 1300
+  cc" of heeft hij rijbewijs A2, dan krijgt hij alleen motoren die daaraan
+  voldoen. Is de cilinderinhoud of de rijbewijsklasse van een motor niet
+  ingevuld, dan wordt hij in zo'n geval niet aangeboden (niet te bevestigen is
+  niet aanbieden); de assistent zegt dat hij het navraagt. "Touring" geeft een
+  touring-motor, geen stationwagen.
+- **Soorten afspraak staan op één plek.** Een motordealer kan een testrit,
+  onderhoud of een waardering inplannen (een testrit duurt standaard 60
+  minuten); een autodealer houdt proefrit, bezichtiging, ophaling en gesprek.
+  Meldingen aan de verkoper noemen het juiste woord.
+- **Het voertuigformulier** toont voor een motordealer cilinderinhoud en
+  rijbewijsklasse en noemt het veld Carrosserie "Type motor".
+- **Actie:** voeg in Airtable de volgende velden toe, tenzij ze er al staan:
+  `Vehicle Segment` (Single line text) op Client Config, en op vehicles
+  `Engine CC` (Number, 0 decimalen) en `Licence Class` (Single line text; A1, A2
+  of A). Snelste weg: draai de admin-actie `ops-schema` met `commit:true`; die
+  maakt ze aan, mits de Airtable-token schema-rechten heeft (zonder dry-run
+  zie je eerst wat er zou gebeuren). De code maakt deze velden niet zelf aan.
+  Zonder de velden werkt alles voor auto's zoals voorheen en wordt een
+  voertuig gewoon opgeslagen zonder cc en rijbewijs. Een motordealer wordt
+  ook zonder `Vehicle Segment` herkend aan zijn Niche (`motorcycle_dealer`),
+  die de nieuwe keuze "Motordealer" automatisch zet (Airtable maakt de optie
+  zelf aan).
+- Voor ontwikkelaars: `docs/verticals.md`, en een lokale referentietenant
+  (Capital Brussels Harley-Davidson, alleen fixtures) via
+  `FARO_DEV_TENANT=motor node scripts/faro-dev.js`.
+
 ### Leads, kanalen en boekingen: geen valse beloftes meer
 
 - **Een afspraak wordt pas bevestigd als ze er ook echt staat.** In het
@@ -4369,4 +4404,4 @@ Alles onder dit kopje staat sinds vandaag op `main` en draait in productie.
 <!-- Het merkteken hieronder zegt tot welke commit dit bestand bijgewerkt is.
      scripts/changelog.js leest het en toont alleen wat erna kwam. Bijwerken bij
      elke changelog-aanvulling. -->
-<!-- changelog-tot: 44b6de2 -->
+<!-- changelog-tot: a23829a -->

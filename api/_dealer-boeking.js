@@ -50,16 +50,19 @@
 const _voertuigslot = require('./_voertuigslot');
 const _vehicles     = require('./_vehicles');
 const _vertical      = require('./_vertical');
+const _afspraaktypes = require('./_afspraaktypes');
 const _wens          = require('./_wens');
 const _koop          = require('./_koop');
 const _leadscore     = require('./_leadscore');
 const _activiteit    = require('./_activiteit');
 
-const AFSPRAAK_TYPES = Object.freeze(['proefrit', 'bezichtiging', 'ophaling', 'gesprek']);
+/* De bron van deze lijst is api/_afspraaktypes.js. Dit is de standaardlijst
+   (auto); voor een ander segment: _afspraaktypes.typesVoor(segment). */
+const AFSPRAAK_TYPES = _afspraaktypes.typesVoor('auto');
 
-/** Welk afspraaktype hoort standaard bij deze markt. */
-function standaardType(vertical) {
-  if (vertical === _vertical.DEALERSHIP) return 'proefrit';
+/** Welk afspraaktype hoort standaard bij deze markt (en dit segment). */
+function standaardType(vertical, segment) {
+  if (vertical === _vertical.DEALERSHIP) return _afspraaktypes.kiesType('', segment);
   if (vertical === _vertical.VASTGOED) return 'bezichtiging';
   return 'gesprek';
 }
