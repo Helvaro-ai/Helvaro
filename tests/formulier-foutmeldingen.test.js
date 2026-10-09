@@ -80,7 +80,7 @@ console.log('\n  en de pagina kiest de code boven de serverzin');
      `d.error || I18N.srvErr[...]`, dan wint de Nederlandse zin weer en is al
      het bovenstaande onzichtbaar -- zonder dat er iets stukgaat. */
   ck('srvErr wordt eerst geprobeerd',
-    /I18N\.srvErr\[d\.code\]\) \|\| I18N\.errGeneric/.test(page), null);
+    /\(code && I18N\.srvErr\[code\]\)\s*\|\|[^;]*BEV_T\.errControle/.test(page), null);
   ck('en d.error wordt niet meer rechtstreeks getoond',
     !/throw new Error\(d\.error/.test(page), null);
   ck('de tabel wordt ook echt in de pagina gezet',

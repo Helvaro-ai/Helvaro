@@ -142,7 +142,7 @@ async function stuur(body) {
         ck('WhatsApp blijft de standaard: het nummerveld is verplicht', /<input id="tel"[^>]*required>/.test(html));
         ck('de e-mailcontrole overleeft de template-literal (\\s, niet s)', html.includes('/^[^\\s@]+@[^\\s@]+\\.[^\\s@]{2,}$/.test(email)'));
         ck('het adres gaat mee met de aanvraag', /JSON\.stringify\(\{ name: name, phone: phone, email: email,/.test(html));
-        ck('de bedankpagina belooft geen WhatsApp bij alleen e-mail', /if \(d\.kanaal === 'email' \|\| \(!d\.kanaal && !phone && email\)\) \{\s*document\.getElementById\('ok-text'\)\.textContent = I18N\.successMail;/.test(html));
+        ck('de bedankpagina belooft geen WhatsApp bij alleen e-mail', /d\.success === true\) \{ klaar\(d, name, !!phone, !!email\)/.test(html) && html.includes("if (d.kanaal === 'whatsapp' && d.status === 'verzonden') kanaal = 'whatsapp';") && html.includes("else if (d.kanaal === 'email') kanaal = 'email';"));
         ck('de toestemming noemt e-mail zodra je voor e-mail kiest', /mid\.textContent = I18N\.consentMidMail/.test(html));
       }
     }

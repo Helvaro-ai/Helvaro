@@ -14,6 +14,32 @@ enige eerlijke datum voor "uitgerold" is de dag dat `main` deployt.
 
 ## Nog niet uitgerold
 
+### Bevestiging na het leadformulier: wat gebeurt er nu
+
+- **Na het versturen ziet de koper een rustig "wat gebeurt er nu"-paneel** in plaats
+  van een kaal bedankje. Vier stappen: aanvraag ontvangen (afgerond, alleen omdat de
+  server de opslag bevestigde), aanvraag bekeken, het team neemt contact op, volgende
+  stap (nog in afwachting). Stap 2 tot 4 staan nooit op afgerond. Elke stap heeft een
+  icoon en een woord, niet alleen een kleur. Horizontaal op een groot scherm, verticaal
+  op een telefoon, in de huisstijl van de dealer, in nl/fr/en/de.
+- **De tekst belooft alleen het kanaal dat ook echt gebruikt wordt.** Een WhatsApp
+  wordt alleen beloofd als de server er een klaarzette; bij alleen e-mail, bij een
+  gestopte dienst of bij een aanvraag die het team al had staat er wat wel klopt.
+- **Autokaart en knoppen alleen met echte gegevens**: foto, titel en prijs van het
+  voertuig, "Bekijk de auto" (alleen met een advertentielink), "Terug naar de website"
+  (alleen als de dealer een website heeft) en "Bel ..." (zie Actie).
+- **Foutherstel op het formulier**: dubbelklikken of Enter verstuurt maar één keer;
+  bij een netwerk- of serverfout blijft alles ingevuld en staat er een juiste,
+  herhaalbare melding (voorheen kon een kapot serverantwoord een technische tekst
+  tonen). Lukt het tonen van het paneel niet, dan verschijnt een korte bevestiging en
+  wordt er nooit opnieuw verstuurd.
+- **Actie:** wil een dealer een "Bel"-knop, vul dan in Client Config het nieuwe
+  (nog aan te maken) tekstveld `Public Phone` in. Het bestaande `Phone`-veld is het
+  nummer van de aanmelder en wordt bewust niet publiek getoond.
+- Staat de pagina in een iframe, dan krijgt de ouder drie berichten zonder
+  persoonsgegevens: `helvaro:lead_form_submitted`, `helvaro:lead_confirmation_viewed`
+  en `helvaro:confirmation_cta_clicked`.
+
 ### Leads, kanalen en boekingen: geen valse beloftes meer
 
 - **Een afspraak wordt pas bevestigd als ze er ook echt staat.** In het

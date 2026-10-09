@@ -270,7 +270,7 @@ const blobVan = (id) => JSON.parse(rijen[id][NOT]);
     ck('Duits ingesteld: de pagina is Duits', /<html lang="de">/.test(de) && /Ihre WhatsApp-Nummer/.test(de) && !/Je WhatsApp nummer/.test(de), (de.match(/<html lang="[^"]*"/) || [''])[0]);
     ck('de honeypot staat in het formulier', /name="website_url"/.test(de));
     ck('en de foutcode unknown_project is vertaald', /"unknown_project":/.test(de));
-    ck('de bedankpagina kent een neutrale tekst', /successNeutral:/.test(de) && /ok-step2/.test(de));
+    ck('de bedankpagina kent een neutrale tekst', /s3t_neutraal/.test(de) && /id="ok-s2t"/.test(de));
 
     for (const [taal, woord] of [['nl', 'Dit voertuig is verkocht'], ['fr', 'Ce véhicule est vendu'], ['en', 'This vehicle is sold'], ['de', 'Dieses Fahrzeug ist verkauft']]) {
       klantRecords = [klantRij({ Language: taal, Vertical: 'dealership' })];
