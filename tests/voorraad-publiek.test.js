@@ -78,6 +78,9 @@ async function vraag(pad, query) {
     json(b) { this.body = b; return this; },
     end() { return this; },
   };
+  // Elke vraag hier test het koude pad (verse lezing); het korte geheugen heeft
+  // zijn eigen test onderaan.
+  if (!(query && query.__houdGeheugen)) pub._test.wisKortGeheugen();
   const q = Object.assign({ __voorraad: '1' }, query || {});
   const qs = Object.keys(query || {}).map((k) => k + '=' + encodeURIComponent(query[k])).join('&');
   await pub.handler({ method: 'GET', url: pad + (qs ? '?' + qs : ''), query: q, headers: { 'x-forwarded-for': '1.2.3.4' } }, res);
@@ -237,6 +240,17 @@ async function vraag(pad, query) {
     ck('geen nieuwe Vercel-functie (budget: 12)', fns.length === 12, fns.length);
   }
 
-  console.log(`\n${pass} ok, ${fail} fout`);
+    console.log('\nTEST kort geheugen: querystring-varianten delen één Airtable-lezing');
+  {
+    pub._test.wisKortGeheugen();
+    const oud = global.fetch; let lezingen = 0;
+    global.fetch = async (url, o) => { if (/\/vehicles\?/.test(String(url))) lezingen++; return oud(url, o); };
+    for (let i = 0; i < 5; i++) await vraag('/api/inventory/DEALER1', { x: String(i), __houdGeheugen: '1' });
+    global.fetch = oud;
+    ck('vijf varianten, één lezing van de voertuigentabel', lezingen === 1, lezingen);
+    pub._test.wisKortGeheugen();
+  }
+
+console.log(`\n${pass} ok, ${fail} fout`);
   process.exit(fail ? 1 : 0);
 })().catch((e) => { console.error(e); process.exit(1); });

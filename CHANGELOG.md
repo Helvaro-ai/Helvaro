@@ -836,6 +836,11 @@ lokale teller, dus dit verandert niets zolang Upstash niet is aangesloten.
 
 ## 9 oktober 2026 — beveiliging
 
+- **De publieke voorraadlijst kan de rest van Helvaro niet meer vertragen.**
+  Elke variant van de link (een willekeurig stukje achter het vraagteken) haalde
+  de voorraad opnieuw uit de database die ook WhatsApp en de leads bedient. Nu
+  delen alle varianten een halve minuut lang één opgehaalde lijst. Een storing
+  blijft een storing: er verschijnt nooit een lege etalage.
 - **De dagtaken van het founder-dashboard stonden publiek leesbaar.** Ze zaten
   in het dashboardscript dat iedereen kan downloaden, ook zonder in te loggen,
   met namen en e-mailadressen van prospects erin. Ze komen nu van de server,

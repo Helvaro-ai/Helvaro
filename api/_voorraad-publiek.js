@@ -52,6 +52,8 @@ const APP = 'https://app.helvaro.pro';
 /* Een website haalt de lijst op bij elke paginaweergave van zijn voorraad-
    pagina. Het CDN vangt dat op (s-maxage); dit plafond is voor wie het CDN
    omzeilt. */
+const KORT_GEHEUGEN_MS = 30 * 1000;
+const _kortGeheugen = new Map();
 const RL_MAX = 120;
 const RL_WINDOW_MS = 60 * 1000;
 
@@ -341,18 +343,31 @@ async function handler(req, res) {
   const { code, wagen } = padDelen(req);
   if (!/^[A-Z0-9_]{1,50}$/.test(code)) return stuur(res, 400, { code: 'bad_dealer' });
 
-  const d = await dealer(code);
-  if (d.fout) return stuur(res, 503, { code: 'unavailable' });
-  /* Onbekend, geen dealer, of uitgeschakeld: allemaal dezelfde 404. */
-  if (d.onbekend || !d.dealer || !d.actief) return stuur(res, 404, { code: 'not_found' });
+  /* Kort geheugen per instantie. Het CDN cachet per volledige URL, dus elke
+     willekeurige querystring (?x=1, ?x=2, ...) is een misser die anders twee à
+     drie Airtable-aanroepen kostte -- op dezelfde base waar WhatsApp en de
+     leads op draaien. Filteren en sorteren gebeurt hieronder in het geheugen,
+     dus alle varianten delen één opgehaalde lijst. Alleen een GESLAAGDE lezing
+     wordt onthouden: een storing blijft een 503, nooit een lege etalage. */
+  let d, alle;
+  const kort = _kortGeheugen.get(code);
+  if (kort && Date.now() - kort.ts < KORT_GEHEUGEN_MS) {
+    ({ d, alle } = kort);
+  } else {
+    d = await dealer(code);
+    if (d.fout) return stuur(res, 503, { code: 'unavailable' });
+    /* Onbekend, geen dealer, of uitgeschakeld: allemaal dezelfde 404. */
+    if (d.onbekend || !d.dealer || !d.actief) return stuur(res, 404, { code: 'not_found' });
 
-  if (!(await _vehicles.available())) return stuur(res, 503, { code: 'unavailable' });
-  let alle;
-  try {
-    alle = await _vehicles.list(code, { inclusiefGearchiveerd: true });
-  } catch (e) {
-    console.warn('[voorraad-publiek] lijst mislukt voor', code, e && e.message);
-    return stuur(res, 503, { code: 'unavailable' });
+    if (!(await _vehicles.available())) return stuur(res, 503, { code: 'unavailable' });
+    try {
+      alle = await _vehicles.list(code, { inclusiefGearchiveerd: true });
+    } catch (e) {
+      console.warn('[voorraad-publiek] lijst mislukt voor', code, e && e.message);
+      return stuur(res, 503, { code: 'unavailable' });
+    }
+    if (_kortGeheugen.size > 200) _kortGeheugen.clear();
+    _kortGeheugen.set(code, { ts: Date.now(), d, alle });
   }
   const ctx = { code, clientName: d.clientName };
   const q = req.query || {};
@@ -399,5 +414,5 @@ async function handler(req, res) {
 
 module.exports = {
   handler,
-  _test: { slug, codeUitSlug, publiekeStatus, naarPubliek, jsonLd, facetten, filterEnSorteer, padDelen, jaarUit, CACHE, metaFeed },
+  _test: { wisKortGeheugen: () => _kortGeheugen.clear(), slug, codeUitSlug, publiekeStatus, naarPubliek, jsonLd, facetten, filterEnSorteer, padDelen, jaarUit, CACHE, metaFeed },
 };
