@@ -196,7 +196,8 @@ function check(name, actual, expected) {
   };
   const CLERK_JAN = {
     id: 'user_jan',
-    primaryEmailAddress: { emailAddress: 'jan@makelaar.be' },
+    // Clerk geeft bij een bevestigd adres verification.status 'verified' mee.
+    primaryEmailAddress: { emailAddress: 'jan@makelaar.be', verification: { status: 'verified' } },
     firstName: 'Jan', lastName: 'Peeters',
     publicMetadata: {},           // nog nooit gesynct — dit is de gevaarlijke toestand
   };
@@ -213,6 +214,19 @@ function check(name, actual, expected) {
   check('geen enkele nieuwe rij aangemaakt', writes, []);
   check('Clerk-metadata wijst naar de echte tenant',
         LAST_METADATA && LAST_METADATA.data.publicMetadata.projectCode, 'MAKELAARJAN');
+
+  // Hetzelfde adres, maar NIET bevestigd: geen overname (anders krijgt wie zich
+  // met andermans adres registreert diens leads), en ook geen nieuwe tenant.
+  stubAirtable(JAN);
+  CLAIMS = { sub: 'user_onbevestigd' };
+  CLERK_USER = { ...CLERK_JAN, id: 'user_onbevestigd',
+    primaryEmailAddress: { emailAddress: 'jan@makelaar.be', verification: { status: 'unverified' } } };
+  LAST_METADATA = null;
+  c = fresh();
+  sess = await c.verifySession(bearerReq('GET'));
+  check('onbevestigd adres neemt het bestaande account NIET over', sess && sess.projectCode, undefined);
+  check('onbevestigd adres: in behandeling', sess && sess.pending, true);
+  check('onbevestigd adres: geen metadata geschreven', LAST_METADATA, null);
 
   // Spiegelgeval: een écht nieuwe gebruiker moet wel gewoon een tenant krijgen
   // ZODRA zelfaanmelden openstaat, anders zou de fix hierboven dat stukmaken.

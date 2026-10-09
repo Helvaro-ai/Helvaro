@@ -97,6 +97,14 @@ async function provisionTenant(user) {
   const adopted   = String(uFields.fldbrCpBuQjJBfZsv || uFields['Project Code'] || '').trim();
 
   if (adopted) {
+    /* Overnemen op e-mailadres mag alleen met een BEWEZEN adres. Anders kan
+       iemand die zich in Clerk registreert met het adres van een bestaande klant
+       (en de verificatie nooit afrondt) diens account met alle leads krijgen.
+       Niet geverifieerd: geen overname en ook geen nieuwe tenant -- de aanroeper
+       maakt er "account wordt ingericht" van tot het adres bevestigd is. */
+    const adres = user.primaryEmailAddress || {};
+    const bewezen = adres.verification && adres.verification.status === 'verified';
+    if (!bewezen) throw new Error('e-mailadres nog niet geverifieerd; overname van een bestaand account uitgesteld');
     // Adopt and stop. Deliberately no Client Config write: that row is the
     // customer's real one and predates this sign-in. Only Clerk's metadata is
     // missing, which is exactly what scripts/clerk-sync-users.js would have

@@ -135,17 +135,15 @@ function isRateLimited(ip, max = 120, windowMs = 60_000) {
 // without this, one client hammering test-message (their only backstop was
 // the IP-based rate limiter) risks the shared number getting rate-limited or
 // banned by Meta for every client on the platform.
-const _testMsgCounts = new Map();
 const TEST_MSG_DAILY_LIMIT = 10;
-function isTestMessageQuotaExceeded(projectCode) {
-  const day  = new Date().toISOString().slice(0, 10);
-  const key  = `${projectCode}:${day}`;
-  const next = (_testMsgCounts.get(key) || 0) + 1;
-  _testMsgCounts.set(key, next);
-  if (_testMsgCounts.size > 2000) {
-    for (const k of _testMsgCounts.keys()) if (!k.endsWith(':' + day)) _testMsgCounts.delete(k);
-  }
-  return next > TEST_MSG_DAILY_LIMIT;
+/* Gedeelde teller (Upstash via _ratelimit, met dezelfde in-memory terugval als
+   de rest van de begrenzers). Dit was een Map per serverinstantie: elke koude
+   start of tweede instantie gaf weer tien berichten, waardoor de daglimiet in
+   de praktijk geen limiet was. */
+async function isTestMessageQuotaExceeded(projectCode) {
+  const day = new Date().toISOString().slice(0, 10);
+  const r = await require('./_ratelimit').hit('test-message', `${projectCode}:${day}`, TEST_MSG_DAILY_LIMIT, 24 * 60 * 60 * 1000);
+  return !!(r && r.limited);
 }
 
 function safeEqual(a, b) {
@@ -2390,7 +2388,7 @@ module.exports = _errors.vangAf(async function handler(req, res) {
       if (!message) return res.status(400).json({ error: 'Bericht is leeg' });
 
       // Per-tenant daily quota. See isTestMessageQuotaExceeded() above.
-      if (isTestMessageQuotaExceeded(projectCode)) {
+      if (await isTestMessageQuotaExceeded(projectCode)) {
         return res.status(429).json({ error: `Dagelijkse limiet van ${TEST_MSG_DAILY_LIMIT} test-berichten bereikt voor jouw account. Probeer morgen opnieuw.` });
       }
 

@@ -766,6 +766,16 @@ lokale teller, dus dit verandert niets zolang Upstash niet is aangesloten.
 
 ## 9 oktober 2026 — beveiliging
 
+- **Inloggen wordt nu ook per account begrensd** (10 pogingen per 15
+  minuten), niet alleen per IP-adres. Wie wachtwoorden gokt vanaf veel adressen
+  tegelijk, komt niet meer verder dan tien keer. Een geslaagde login zet de teller
+  terug. Een onbekend e-mailadres antwoordt ook niet meer sneller dan een
+  bestaand, zodat niet te achterhalen is wie een account heeft.
+- **Een bestaand account overnemen via de nieuwe login kan alleen nog met een
+  bevestigd e-mailadres.** Wie zich registreerde met het adres van een klant
+  zonder dat adres te bevestigen, kwam vroeger in diens account.
+- **De daglimiet van 10 testberichten geldt nu echt per dag.** De teller stond
+  per server en begon na elke herstart opnieuw.
 - **Een projectcode werkte tijdelijk als API-sleutel.** Na het koppelen of
   ontkoppelen van een eigen WhatsApp-nummer kon iemand met alleen de publieke
   projectcode (die in de formulierlink staat) tot 30 minuten de instellingen van

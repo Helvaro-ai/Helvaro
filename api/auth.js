@@ -3,6 +3,9 @@ const bcrypt = require('bcryptjs');
 const verify = require('./_verify');
 const _session = require('./_session');
 const _rl      = require('./_ratelimit');
+// Vaste bcrypt-hash (kostfactor 10) van een willekeurige string, alleen om bij een
+// onbekend e-mailadres even lang te rekenen als bij een echt account.
+const DUMMY_HASH = '$2a$10$vnoh6veyUoNgu5vGWeXWNu1KVdXMS44Qqgk4sm7Z3XB1qweyO/5OG';
 const _revoke  = require('./_revocation'); // password-hash fingerprint -> session revocation // shared, cold-start-proof counters // cookie transport + CSRF — see its header // email-ownership verification — see its file header
 const _errors  = require('./_errors');
 
@@ -567,6 +570,16 @@ module.exports = _errors.vangAf(async function handler(req, res) {
       return res.status(400).json({ error: 'Ongeldig e-mailadres' });
     }
 
+    /* Tweede begrenzer, per ACCOUNT. De IP-begrenzer hierboven stopt geen
+       aanvaller die zijn pogingen over veel IP's spreidt (botnet, proxies):
+       elk IP blijft onder de 40, het account krijgt er honderden. Tien
+       pogingen per 15 minuten per e-mailadres is ruim voor een mens; een
+       geslaagde login zet de teller terug op nul. */
+    const accountSleutel = email.toLowerCase();
+    if ((await _rl.hit('login-account', accountSleutel, 10, 15 * 60 * 1000)).limited) {
+      return res.status(429).json({ error: 'Te veel inlogpogingen voor dit account. Wacht 15 minuten, of stel je wachtwoord opnieuw in.' });
+    }
+
     // ── USERS_CONFIG removed ─────────────────────────────────────────────────
     // There used to be an env-var user store here: a JSON blob mapping email ->
     // { password, apiKey, clientName, projectCode }, compared as PLAINTEXT, so
@@ -654,6 +667,10 @@ module.exports = _errors.vangAf(async function handler(req, res) {
     }
 
     if (!userRecord) {
+      /* Even lang rekenen als bij een bestaand account: zonder deze vergelijking
+         antwoordde een onbekend adres meetbaar sneller (geen bcrypt), en dat
+         verraadt welke e-mailadressen een account hebben. */
+      try { bcrypt.compareSync(String(password || ''), DUMMY_HASH); } catch {}
       return res.status(401).json({ error: 'Verkeerd e-mailadres of wachtwoord' });
     }
 
@@ -665,6 +682,7 @@ module.exports = _errors.vangAf(async function handler(req, res) {
     if (!pwCheck.ok) {
       return res.status(401).json({ error: 'Verkeerd e-mailadres of wachtwoord' });
     }
+    _rl.reset('login-account', accountSleutel).catch(() => {});
     // This login matched a plaintext record. Rewrite it as bcrypt right now, so
     // the clear-text password stops existing in Airtable from here on. Runs at
     // most once per account. Best-effort: if the write fails the user is still
