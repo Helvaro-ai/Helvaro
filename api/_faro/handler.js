@@ -85,6 +85,8 @@ async function handle(req, res, auth) {
     const writes = require('./writes');
     const rec = await writes.ownedClient(ctx);
     ctx.vertical = require('../_vertical').van((rec && rec.fields) || null);
+    /* Auto of motor binnen dealership (api/_segment.js); leeg = auto. */
+    ctx.segment = require('../_segment').van((rec && rec.fields) || null);
   } catch (e) {
     /* Best-effort. Faro moet blijven werken als dit ene rondje hapert; hij
        gedraagt zich dan als vastgoed, en dat is precies wat hij tot vandaag

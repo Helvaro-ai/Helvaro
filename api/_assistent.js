@@ -558,7 +558,9 @@ async function momenten({ siteKey, sessie, origin, ip }) {
   const dealer = await controleerToegang({ siteKey, origin, ip, sessie });
   if (verkoopModus(dealer)) return { momenten: [] };
   await leadVanGesprek(dealer.projectCode, sessie);
-  const uit = await require('./_webboeking').vrijeMomenten(dealer.projectCode, { max: 8 });
+  /* Motor: een testrit duurt langer dan een half uur; alleen momenten die ervoor passen. */
+  const uit = await require('./_webboeking').vrijeMomenten(dealer.projectCode, dealer.segment === _segment.MOTOR
+    ? { max: 8, duur: require('./_afspraaktypes').duurMin('testrit', 30) } : { max: 8 });
   return { momenten: uit.momenten };
 }
 

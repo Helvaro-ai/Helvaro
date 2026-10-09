@@ -107,15 +107,15 @@ async function klantVelden(projectCode) {
  * @returns {Promise<{momenten:string[], agenda:boolean}>} hoogstens `max`,
  *   gespreid over de dagen (eerste vrije per dagdeel).
  */
-async function vrijeMomenten(projectCode, { max = 8, nu = Date.now(), alle: allesTerug = false } = {}) {
+async function vrijeMomenten(projectCode, { max = 8, nu = Date.now(), alle: allesTerug = false, duur = DUUR_MIN } = {}) {
   const t = String(projectCode || '').trim();
   const velden = await klantVelden(t);
   const spec = String(velden.fldq5oIqw5MG8fKhc || velden['Working Hours'] || '').trim();
   /* Tijdzone van de klant (api/_regio.js); zonder instelling Europe/Brussels (L-12). */
   const tz = require('./_regio').lees(velden).tz || TZ;
-  const alle = kandidaten(spec, { nu, tz });
+  const alle = kandidaten(spec, { nu, tz, duur });
   if (!alle.length) return { momenten: [], agenda: false };
-  const van = alle[0], tot = new Date(Date.parse(alle[alle.length - 1]) + DUUR_MIN * 60000).toISOString();
+  const van = alle[0], tot = new Date(Date.parse(alle[alle.length - 1]) + duur * 60000).toISOString();
 
   /* Bestaande afspraken in Helvaro in dat venster. */
   let bestaande = [];
@@ -140,7 +140,7 @@ async function vrijeMomenten(projectCode, { max = 8, nu = Date.now(), alle: alle
 
   const vrij = alle.filter((iso) => {
     const ms = Date.parse(iso);
-    return !_afspraken.botsendeAfspraak(bestaande, ms, DUUR_MIN) && !overlapt(ms, DUUR_MIN, bezet);
+    return !_afspraken.botsendeAfspraak(bestaande, ms, duur) && !overlapt(ms, duur, bezet);
   });
   /* Voor de boekingscontrole: ALLE vrije momenten, niet de gespreide selectie. */
   if (allesTerug) return { momenten: vrij, agenda, agendaNietGelezen };
@@ -168,7 +168,17 @@ async function boek(projectCode, o = {}) {
 
   /* Het gekozen moment moet NU nog vrij zijn -- opnieuw berekend, niet wat de
      browser ooit kreeg. */
-  const { momenten, agendaNietGelezen } = await vrijeMomenten(t, { alle: true });
+  /* Auto of motor: bepaalt het afspraaktype (proefrit / testrit) en de duur
+     (motor: een testrit is langer dan een half uur). Een afspraak ZONDER
+     voertuig blijft het gewone halfuur. Niet te lezen = auto = ongewijzigd. */
+  let segment = 'auto';
+  if (o.voertuigCode) {
+    try { segment = require('./_segment').van(await klantVelden(t)); } catch (e) { segment = 'auto'; }
+  }
+  const _at = require('./_afspraaktypes');
+  const type = o.voertuigCode ? _at.kiesType('', segment) : '';
+  const duur = type ? _at.duurMin(type, DUUR_MIN) : DUUR_MIN;
+  const { momenten, agendaNietGelezen } = await vrijeMomenten(t, { alle: true, duur });
   if (momenten.indexOf(start.toISOString()) === -1) throw new BoekFout('Dat moment is intussen niet meer vrij. Kies een ander.', 'slot_bezet');
 
   /* Twee boekingen in dezelfde seconde (website + WhatsApp, of twee
@@ -177,7 +187,7 @@ async function boek(projectCode, o = {}) {
   const slotClaim = await _lock.claim(_lock.slotSleutel(t, start.toISOString()), _lock.SLOT_CLAIM_MS, o.leadId);
   if (!slotClaim.genomen) throw new BoekFout('Dat moment wordt net door iemand anders geboekt. Kies een ander.', 'slot_bezet');
   try {
-    return await boekOpGeclaimdMoment(t, start, { ...o, agendaNietGelezen });
+    return await boekOpGeclaimdMoment(t, start, { ...o, agendaNietGelezen, segment, type, duur });
   } catch (e) {
     await slotClaim.los();
     throw e;
@@ -189,12 +199,7 @@ async function boekOpGeclaimdMoment(t, start, o) {
   const _vehicles = require('./_vehicles');
   const _dealerBoeking = require('./_dealer-boeking');
   let voertuig = null, apptId = '';
-  /* Auto of motor: bepaalt het woord in de foutmelding en het afspraaktype
-     (proefrit / testrit). Niet te lezen = auto, dus nooit een nieuwe fout. */
-  let segment = 'auto';
-  if (o.voertuigCode) {
-    try { segment = require('./_segment').van(await klantVelden(t)); } catch (e) { segment = 'auto'; }
-  }
+  const segment = o.segment || 'auto';
   if (o.voertuigCode) {
     voertuig = await _vehicles.getByCode(t, o.voertuigCode).catch(() => null);
     if (!voertuig) throw new BoekFout('Deze wagen staat niet meer in het aanbod.', 'vehicle_unavailable');
@@ -214,12 +219,12 @@ async function boekOpGeclaimdMoment(t, start, o) {
   }
 
   const fields = {
-    'Appointment ID': apptId, 'Start Time': start.toISOString(), Duration: DUUR_MIN, 'Project Code': t,
+    'Appointment ID': apptId, 'Start Time': start.toISOString(), Duration: o.duur || DUUR_MIN, 'Project Code': t,
     'Lead Name': String(o.naam || '').slice(0, 100), 'Lead Phone': String(o.telefoon || '').slice(0, 30),
     Status: 'booked', Source: 'website', Notes: String((o.notitie || 'Geboekt via de websiteassistent') + (o.agendaNietGelezen ? '\n\n[LET OP] De Google agenda kon op het moment van boeken niet gelezen worden. Dit moment is NIET gecontroleerd op dubbele afspraken — kijk het even na.' : '')).slice(0, 2000),
     'Created At': new Date().toISOString(), Lead: [o.leadId],
   };
-  if (voertuig) { fields['Vehicle Code'] = voertuig.code; fields['Appointment Type'] = require('./_afspraaktypes').kiesType('', segment); }
+  if (voertuig) { fields['Vehicle Code'] = voertuig.code; fields['Appointment Type'] = o.type || 'proefrit'; }
   const r = await at(APPOINTMENTS_TABLE, { method: 'POST', body: { fields, typecast: true } });
   if (!r.ok) {
     const txt = await r.text().catch(() => '');
@@ -237,9 +242,9 @@ async function boekOpGeclaimdMoment(t, start, o) {
     const g = await _afspraken.gcalVoor(t);
     if (g.token) {
       const ev = await _gcal.createEvent(g.token, g.calId, {
-        summary: (voertuig ? 'Proefrit ' + _vehicles.naam(voertuig) : 'Afspraak') + (o.naam ? ' — ' + o.naam : '') + ' (Helvaro)',
+        summary: (voertuig ? (segment === 'motor' ? 'Testrit ' : 'Proefrit ') + _vehicles.naam(voertuig) : 'Afspraak') + (o.naam ? ' — ' + o.naam : '') + ' (Helvaro)',
         description: `Geboekt via de websiteassistent.\nTelefoon: ${o.telefoon || ''}`,
-        startISO: start.toISOString(), durationMin: DUUR_MIN,
+        startISO: start.toISOString(), durationMin: o.duur || DUUR_MIN,
       });
       if (ev && ev.ok && ev.eventId) await at(`${APPOINTMENTS_TABLE}/${rec.id}`, { method: 'PATCH', body: { fields: { 'Google Event ID': ev.eventId } } }).catch(() => {});
     }

@@ -153,6 +153,30 @@ over dezelfde lead maken allebei ongeloofwaardig.
 De aanbevolen actie is al gecontroleerd op uitvoerbaarheid (telefoonnummer,
 24-uursvenster, gekoppelde agenda). Stel geen actie voor die daar niet staat.`;
 
+/* Motordealer: dezelfde Faro, andere woorden. Auto en vastgoed krijgen
+   IDENTITY zoals hij is (byte voor byte); alleen het motorsegment
+   (api/_segment.js) vervangt de woorden die niet kloppen. Een lijst van
+   vervangingen en niet een tweede tekst, zodat de twee niet uit elkaar gaan
+   lopen. De eerste zin wordt vervangen als geheel; de rest zijn losse woorden. */
+const MOTOR_VERVANGING = Object.freeze([
+  ['het CRM waarmee vastgoedmakelaars\nhun leads, panden, gesprekken en marketing beheren.',
+   'het CRM waarmee motordealers\nhun leads, motoren, gesprekken en marketing beheren.'],
+  ['leads, aanbod,\ngesprekken, pipeline', 'leads, motoren,\ngesprekken, pipeline'],
+  ['De WhatsApp-AI boekt bezichtigingen ZELF', 'De WhatsApp-AI boekt testritten, onderhoud en waarderingen ZELF'],
+  ['bezichtiging met een lead', 'testrit of afspraak met een lead'],
+  ['een bestaande auto of pand', 'een bestaande motor'],
+  ['de BMW M4', 'de Harley-Davidson Breakout'],
+]);
+
+/** De IDENTITY voor dit gesprek. Alleen 'motor' wijkt af. */
+function identityVoor(ctx) {
+  if (!ctx || ctx.segment !== 'motor') return IDENTITY;
+  let t = IDENTITY;
+  for (const [van, naar] of MOTOR_VERVANGING) t = t.split(van).join(naar);
+  return t + '\n\nDit is een motordealer: houd het bij motoren, testritten, cilinderinhoud (cc) en '
+    + 'rijbewijsklasse (A1, A2, A). Een afspraak met een lead is een testrit, onderhoud of een waardering.';
+}
+
 /**
  * Orientation block: a compact snapshot of this tenant right now.
  * WIRE TO: the same aggregates the CRM dashboard already computes — reuse,
@@ -269,7 +293,7 @@ async function build(ctx) {
   const lang = ctx.lang || 'nl';
 
   const parts = [
-    IDENTITY,
+    identityVoor(ctx),
     '',
     '── Actuele situatie ──',
     contextBlock,
@@ -306,4 +330,4 @@ async function build(ctx) {
   return parts.join('\n');
 }
 
-module.exports = { build, buildContextBlock, contextSources, IDENTITY };
+module.exports = { build, buildContextBlock, contextSources, IDENTITY, identityVoor };

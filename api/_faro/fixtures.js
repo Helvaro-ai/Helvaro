@@ -155,8 +155,66 @@ function isEnabled() {
   return String(process.env.FARO_DEMO_MODE || '') === '1';
 }
 
+/* ── Referentie-motortenant: Capital Brussels Harley-Davidson ───────────────
+ *
+ * Een CONFIGURATIE, geen code: een Client Config-record met Vertical
+ * 'dealership' en Vehicle Segment 'motor' (api/_segment.js), plus vier
+ * fixture-motoren. Niets hiervan is klantspecifieke logica; hetzelfde record
+ * met andere waarden is elke andere motordealer.
+ *
+ * Alleen de feiten die publiek zijn: naam, adres, telefoonnummer en talen.
+ * Geen openingsuren, e-mailadres of website -- die zijn niet verifieerbaar
+ * aangeleverd en worden dus NIET verzonnen; een testtenant die ze nodig heeft
+ * zet ze zelf.
+ *
+ * ── Fixtures, onmiskenbaar ───────────────────────────────────────────────────
+ * Projectcode en voertuigcodes beginnen met DEMO-, en elke omschrijving begint
+ * met [FIXTURE]. De motoren zijn voorbeelddata voor de ontwikkelharnas en de
+ * tests, geen echt aanbod: zet dit record NOOIT in de productietabellen.
+ * Registration is alleen het jaar (de maand is niet gegeven). Brandstof,
+ * kleur en rijbewijsklasse zijn leeggelaten: onbekend blijft onbekend. Body
+ * (het motortype) is wat een dealer zelf invult; bij de Sportster is het
+ * bewust leeg, om te laten zien dat de modelnaam dan telt (api/_wens.js).
+ */
+const MOTOR_PROJECT = 'DEMO-CBHD';
+const MOTOR_TENANT = Object.freeze({
+  projectCode: MOTOR_PROJECT,
+  naam: 'Capital Brussels Harley-Davidson',
+  adres: 'Ninoofsesteenweg 59, 1700 Dilbeek',
+  telefoon: '+32 2 454 01 54',
+  talen: Object.freeze(['nl', 'fr']),
+  afspraaktypes: Object.freeze(['testrit', 'onderhoud', 'waardering']),
+  /* De Client Config-velden die er echt toe doen voor het segment. */
+  clientVelden: Object.freeze({
+    'Client Name': 'Capital Brussels Harley-Davidson',
+    'Project Code': MOTOR_PROJECT,
+    Vertical: 'dealership',
+    'Vehicle Segment': 'motor',
+    Address: 'Ninoofsesteenweg 59, 1700 Dilbeek',
+  }),
+});
+
+const FIXTURE = '[FIXTURE] Voorbeeldmotor voor tests en de ontwikkelharnas, geen echt aanbod.';
+/* Airtable-vorm (veldnamen van api/_vehicles.js F), zodat een nep-Airtable ze
+   rechtstreeks kan serveren en vanRecord() ze leest zoals in productie. */
+const MOTOR_VOORRAAD_VELDEN = Object.freeze([
+  { 'Vehicle Code': 'DEMO-M1', Make: 'Harley-Davidson', Model: 'Breakout', Body: 'Cruiser', Registration: '2019', 'Engine CC': 1745, Mileage: 26012, Price: 19950, Status: 'beschikbaar', Description: FIXTURE },
+  { 'Vehicle Code': 'DEMO-M2', Make: 'Harley-Davidson', Model: 'Sportster Iron 1200', Registration: '2020', 'Engine CC': 1200, Mileage: 28658, Price: 11900, Status: 'beschikbaar', Description: FIXTURE },
+  { 'Vehicle Code': 'DEMO-M3', Make: 'Harley-Davidson', Model: 'Pan America 1250 S', Body: 'Adventure Touring', Registration: '2024', 'Engine CC': 1250, Mileage: 9749, Price: 17900, Status: 'beschikbaar', Description: FIXTURE },
+  { 'Vehicle Code': 'DEMO-M4', Make: 'Harley-Davidson', Model: 'Heritage 114', Body: 'Cruiser', Registration: '2023', 'Engine CC': 1868, Mileage: 14428, Price: 22900, Status: 'beschikbaar', Description: FIXTURE },
+]);
+
+/** De fixture-motoren als Airtable-records voor deze tenant. */
+function motorVoorraadRecords(projectCode) {
+  return MOTOR_VOORRAAD_VELDEN.map((f, i) => ({
+    id: 'recDEMOMOTOR0000' + (i + 1),
+    fields: Object.assign({ 'Project Code': projectCode || MOTOR_PROJECT, Public: true }, f),
+  }));
+}
+
 module.exports = {
   isEnabled,
+  MOTOR_PROJECT, MOTOR_TENANT, MOTOR_VOORRAAD_VELDEN, motorVoorraadRecords,
   LEADS, PIPELINE, ANALYTICS, ACTIVITY, CONVERSATIONS, MESSAGES, PROJECTS,
   leadCard, searchLeads, euro,
 };
