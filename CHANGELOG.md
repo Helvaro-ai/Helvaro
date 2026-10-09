@@ -14,6 +14,14 @@ enige eerlijke datum voor "uitgerold" is de dag dat `main` deployt.
 
 ## Nog niet uitgerold
 
+### Licht is de standaard, ook op het inlogscherm
+
+- **Iedereen start nu in de lichte versie.** Bij bijna iedereen stond in de browser nog 'donker' bewaard uit de tijd dat donker de standaard was, waardoor de eigenaar de app donker bleef zien. De keuze wordt nu onder een nieuwe sleutel bewaard (`hv-theme-v2`): de oude waarde telt niet meer mee, dus elke browser begint eenmalig licht. De knop rechtsboven werkt gewoon door en onthoudt wat je kiest. Wie donker koos, ziet geen lichte flits bij het laden.
+- **Inloggen en account aanmaken in het licht.** Beide kolommen, de tabs (Inloggen / Account aanmaken), de velden, de knop, de foutmelding, de vinkjes onder het formulier en het paneel met de WhatsApp-demo volgen nu het warme lichte palet van de app (crème paneel, zandknop met een fijne rand, donkerbruine tekst). Het donkere inlogscherm blijft bestaan voor wie zelf voor donker koos. Geen nieuwe blokken of teksten, alleen opmaak.
+- **De taalkeuze onderaan** schuift niet meer over de tekst heen als een foutmelding het formulier hoger maakt; hij staat nu in de kolom, rechts op de voetregel.
+- **Wachtwoord vergeten, nieuw wachtwoord kiezen en de bevestigingspagina** hebben dezelfde lichte opmaak als het inlogscherm.
+- Gemeten (WCAG): gewone tekst haalt op het formulierpaneel 15,61:1 (donkerbruin) en 5,58:1 (gedempt); inactieve tab 4,67:1; plaatshouder 4,80:1; link in zandbruin 6,67:1; foutmelding 5,80:1 op zijn eigen vlak; de rand van een invoerveld 3,29:1 tot 4,17:1 tegen alles wat eraan grenst (eis 3:1).
+
 ### Voorraad: officiele koppelingen, bestand uploaden, betere meldingen
 
 - **mobile.de leest nu echt** (officiele Seller API). Vraag de Seller API-

@@ -3,8 +3,8 @@
  * De drie losse wachtwoordpagina's: /forgot-password, /reset-password en de
  * uitkomst van /verify-email. Ze stonden in api/auth.js in een oude blauwe
  * stijl en alleen in het Nederlands, terwijl de welkomstmail van een nieuwe
- * klant er rechtstreeks naartoe linkt. Nu: hetzelfde donkere podium als het
- * inlogscherm (DESIGN.md: zand als vulling, warme inkt, geen glow), in de taal
+ * klant er rechtstreeks naartoe linkt. Nu: hetzelfde warme licht als het
+ * inlogscherm (donker alleen voor wie zelf voor donker koos) (DESIGN.md: zand als vulling, warme inkt, geen glow), in de taal
  * van de bezoeker (?lang=, cookie, Accept-Language -- zie _i18n.resolveer).
  *
  * De API antwoordt nog in het Nederlands. In het Nederlands tonen we die
@@ -26,38 +26,60 @@ function jsonVoorScript(o) {
 const CSS = `
   @font-face { font-family: 'Inter'; src: url('/fonts/inter-var.woff2') format('woff2'); font-weight: 100 900; font-display: swap; }
   @font-face { font-family: 'Space Grotesk'; src: url('/fonts/space-grotesk-var.woff2') format('woff2'); font-weight: 300 700; font-display: swap; }
-  :root { color-scheme: dark; }
+  /* Licht is de standaard, net als in de app en op het inlogscherm. Zelfde
+     waarden als [data-theme=light] #login-page in api/_dash/styles.js; donker
+     alleen voor wie zelf voor donker koos (hv-theme-v2, zie het scriptje in
+     pagina()). */
+  :root {
+    color-scheme: light;
+    --stage: #F3EDE1; --card: #FAF6EE; --line: #D9CCB0; --field: #FFFDF9; --field-line: #857A63; --field-hover: #6B6252;
+    --text: #1F1D19; --muted: #6B6252; --placeholder: #7A705E; --ink: #6E5320;
+    --fill: #E8D7B1; --fill-edge: #BFA877; --on-fill: #1A1A1A; --ring: rgba(110,83,32,.20); --link-line: rgba(110,83,32,.40);
+    --ok-ink: #226838; --ok-bg: rgba(47,143,78,.10); --ok-line: rgba(47,143,78,.32);
+    --err-ink: #A52D25; --err-bg: rgba(194,53,43,.08); --err-line: rgba(194,53,43,.32);
+    --shadow: 0 1px 2px rgba(23,19,12,.06), 0 12px 32px -12px rgba(23,19,12,.14);
+  }
+  :root[data-theme="dark"] {
+    color-scheme: dark;
+    --stage: #17140F; --card: #211D16; --line: #3A3327; --field: #17140F; --field-line: #706D66; --field-hover: #574B37;
+    --text: #F1E9DA; --muted: #A79B85; --placeholder: #9A9489; --ink: #F0E4C8;
+    --fill: #E8D7B1; --fill-edge: #E8D7B1; --on-fill: #1A1A1A; --ring: rgba(232,215,177,.16); --link-line: rgba(240,228,200,.35);
+    --ok-ink: #B5D3A5; --ok-bg: rgba(127,176,105,.12); --ok-line: rgba(127,176,105,.32);
+    --err-ink: #E7756B; --err-bg: rgba(228,102,90,.10); --err-line: rgba(228,102,90,.28);
+    --shadow: none;
+  }
   * { box-sizing: border-box; }
   html { font-size: 15px; }
   body { margin: 0; min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 24px 16px;
-    background: #17140F; color: #F1E9DA; font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; -webkit-font-smoothing: antialiased; }
-  .kaart { width: 100%; max-width: 440px; background: #211D16; border: 1px solid #3A3327; border-radius: 18px; padding: 36px 32px 28px; }
+    background: var(--stage); color: var(--text); font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; -webkit-font-smoothing: antialiased; }
+  .kaart { width: 100%; max-width: 440px; background: var(--card); border: 1px solid var(--line); border-radius: 18px; padding: 36px 32px 28px; box-shadow: var(--shadow); }
   .logo { display: block; width: 136px; height: auto; margin: 0 0 32px; }
-  h1 { margin: 0 0 10px; font-family: 'Space Grotesk', 'Inter', sans-serif; font-size: 1.8667rem; line-height: 1.15; font-weight: 700; letter-spacing: -0.01em; }
-  .sub { margin: 0 0 28px; color: #A79B85; font-size: 1rem; line-height: 1.55; }
-  label { display: block; margin: 0 0 8px; color: #A79B85; font-size: 0.8667rem; font-weight: 600; }
+  h1 { margin: 0 0 10px; font-family: 'Space Grotesk', 'Inter', sans-serif; font-size: 1.8667rem; line-height: 1.15; font-weight: 700; letter-spacing: -0.02em; color: var(--text); text-wrap: balance; }
+  .sub { margin: 0 0 28px; color: var(--muted); font-size: 1rem; line-height: 1.55; }
+  label { display: block; margin: 0 0 8px; color: var(--muted); font-size: 0.8667rem; font-weight: 600; }
   label + input { margin-bottom: 0; }
   .veld + .veld { margin-top: 16px; }
-  input { width: 100%; height: 48px; padding: 0 14px; background: #17140F; color: #F1E9DA; border: 1px solid #4A4133; border-radius: 10px;
-    font: inherit; font-size: 1rem; caret-color: #E8D7B1; transition: border-color .15s ease, box-shadow .15s ease; }
-  input::placeholder { color: #A79B85; opacity: .6; }
-  input:hover { border-color: #574B37; }
-  input:focus { outline: none; border-color: #E8D7B1; box-shadow: 0 0 0 3px rgba(232,215,177,.18); }
-  button { width: 100%; height: 50px; margin-top: 22px; background: #E8D7B1; color: #1A1A1A; border: 0; border-radius: 10px;
+  input { width: 100%; height: 48px; padding: 0 14px; background: var(--field); color: var(--text); border: 1px solid var(--field-line); border-radius: 10px;
+    font: inherit; font-size: 1rem; caret-color: var(--ink); transition: border-color .15s ease, box-shadow .15s ease; }
+  input::placeholder { color: var(--placeholder); }
+  input:hover { border-color: var(--field-hover); }
+  input:focus { outline: none; border-color: var(--ink); box-shadow: 0 0 0 3px var(--ring); }
+  button { width: 100%; height: 50px; margin-top: 22px; background: var(--fill); color: var(--on-fill); border: 1px solid var(--fill-edge); border-radius: 10px; box-shadow: var(--shadow);
     font-family: 'Space Grotesk', 'Inter', sans-serif; font-size: 1rem; font-weight: 600; cursor: pointer; transition: filter .15s ease, transform .1s ease; }
   button:hover { filter: brightness(1.05); }
   button:active { transform: translateY(1px); }
-  button:disabled { opacity: .55; cursor: default; filter: none; transform: none; }
-  button:focus-visible, a:focus-visible { outline: 2px solid #E8D7B1; outline-offset: 3px; }
+  button:disabled { opacity: .6; cursor: default; filter: none; transform: none; box-shadow: none; }
+  button:focus-visible, a:focus-visible { outline: 2px solid var(--ink); outline-offset: 3px; }
   .melding { margin-top: 16px; padding: 12px 14px; border-radius: 10px; font-size: 0.9333rem; line-height: 1.5; }
   .melding[hidden] { display: none; }
-  .melding.ok { background: rgba(127,176,105,.12); border: 1px solid rgba(127,176,105,.32); color: #B5D3A5; }
-  .melding.fout { background: rgba(228,102,90,.10); border: 1px solid rgba(228,102,90,.28); color: #E7756B; }
-  .terug { display: inline-block; margin-top: 24px; color: #A79B85; font-size: 0.9333rem; text-decoration: underline; text-underline-offset: 3px; text-decoration-color: #574B37; }
-  .terug:hover { color: #F1E9DA; text-decoration-color: #E8D7B1; }
+  .melding.ok { background: var(--ok-bg); border: 1px solid var(--ok-line); color: var(--ok-ink); }
+  .melding.fout { background: var(--err-bg); border: 1px solid var(--err-line); color: var(--err-ink); }
+  .terug { display: inline-block; margin-top: 24px; color: var(--ink); font-size: 0.9333rem; text-decoration: underline; text-underline-offset: 3px; text-decoration-color: var(--link-line); }
+  .terug:hover { color: var(--text); text-decoration-color: currentColor; }
   .teken { width: 44px; height: 44px; border-radius: 999px; margin: 0 0 20px; display: flex; align-items: center; justify-content: center; }
-  .teken.ok { background: rgba(127,176,105,.14); color: #B5D3A5; }
-  .teken.fout { background: rgba(228,102,90,.12); color: #E7756B; }
+  .teken.ok { background: var(--ok-bg); color: var(--ok-ink); }
+  .teken.fout { background: var(--err-bg); color: var(--err-ink); }
+  ::selection { background: rgba(232,215,177,.65); color: var(--text); }
   @media (max-width: 480px) { .kaart { padding: 28px 22px 24px; } h1 { font-size: 1.6rem; } }
   @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
 `;
@@ -71,6 +93,7 @@ function pagina(lang, titel, binnen) {
   <meta name="robots" content="noindex">
   <title>${esc(titel)} · Helvaro</title>
   <link rel="icon" href="/favicon.png" type="image/png">
+  <script>try{if(localStorage.getItem('hv-theme-v2')==='dark')document.documentElement.setAttribute('data-theme','dark')}catch(e){}</script>
   <style>${CSS}</style>
 </head><body>
   <main class="kaart">

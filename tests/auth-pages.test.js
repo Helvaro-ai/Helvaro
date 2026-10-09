@@ -37,7 +37,8 @@ ck('vergeten: Nederlands', /Wachtwoord vergeten\?/.test(nl));
 
 const kwaad = render(pages.renderResetPage, '/reset-password?lang=de&token=' + encodeURIComponent('abc</script><script>alert(1)</script>'));
 ck('reset: Duits', /Wähle ein neues Passwort/.test(kwaad));
-ck('reset: token kan het script niet sluiten', (kwaad.match(/<\/script>/g) || []).length === 1, kwaad.match(/TOKEN = .*/));
+/* 2 = het themascriptje in <head> (licht standaard, hv-theme-v2) + het paginascript. Een ingespoten </script> maakt er 3 van: de test bewaakt nog steeds precies hetzelfde. */
+ck('reset: token kan het script niet sluiten', (kwaad.match(/<\/script>/g) || []).length === 2, kwaad.match(/TOKEN = .*/));
 const scripts = kwaad.match(/<script>([\s\S]*?)<\/script>/);
 let parseert = true;
 try { new vm.Script(scripts[1]); } catch (e) { parseert = e.message; }

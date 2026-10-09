@@ -295,6 +295,11 @@ const T_JS = (sleutel, vars) => "'" + String(_i18n.t(UI_LANG, sleutel, vars))
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<!-- Licht is de standaard. Alleen wie zelf voor donker koos (sleutel hv-theme-v2)
+     krijgt donker, en dat staat er al voordat de pagina getekend wordt -- zo
+     is er geen lichte flits. De oude sleutel hv-theme wordt bewust genegeerd:
+     daar stond bij iedereen "dark" in van voordat licht de standaard werd. -->
+<script>try{if(localStorage.getItem('hv-theme-v2')==='dark')document.documentElement.setAttribute('data-theme','dark')}catch(e){}</script>
 <title>${T('head.title')}</title>
 <link rel="icon" href="/favicon.png" type="image/png">
 <!-- ── Wat het inlogscherm nodig heeft, en niets meer ────────────────────────
@@ -4461,6 +4466,24 @@ var CLERK_APPEARANCE = {
   },
 };
 
+/* Licht is de standaard: dezelfde variabelen, met de lichte --login-* waarden
+   (spiegel van [data-theme=light] #login-page in api/_dash/styles.js). Alleen
+   wie zelf voor donker koos krijgt de donkere waarden hierboven. Wordt bij elke
+   montage opnieuw bepaald, dus een themawissel hoeft niets te onthouden. */
+function clerkAppearance() {
+  if (document.documentElement.getAttribute('data-theme') === 'dark') return CLERK_APPEARANCE;
+  return Object.assign({}, CLERK_APPEARANCE, {
+    variables: Object.assign({}, CLERK_APPEARANCE.variables, {
+      colorPrimary:         '#6E5320',
+      colorText:            '#1F1D19',
+      colorTextSecondary:   '#6B6252',
+      colorInputBackground: '#FFFDF9',
+      colorInputText:       '#1F1D19',
+      colorDanger:          '#A52D25',
+    }),
+  });
+}
+
 // Clerk's UI is English out of the box. Only the strings that actually show up
 // on these two screens are translated — a full locale bundle would be dead
 // weight for a sign-in box with four fields.
@@ -4697,7 +4720,8 @@ function mountClerkSignIn(clerk) {
   var host = clerkHost();
   if (!host) return;
   try {
-    clerk.mountSignIn(host, CLERK_APPEARANCE);
+    var opties = clerkAppearance();
+    clerk.mountSignIn(host, opties);
     oudeVeldenActief(false);
     host.dataset.mounted = 'signin';
     zetModus('inloggen');
@@ -4719,11 +4743,11 @@ function mountClerkSignUp(clerk) {
        is precies de stap waar mensen afhaken -- ze hebben het net al gegeven.
        Clerk's eigen portaal deed dit wel; die reden om daarheen te sturen
        vervalt hiermee. */
-    var opties = CLERK_APPEARANCE;
+    var opties = clerkAppearance();
     try {
       var vooraf = new URL(window.location.href).searchParams.get('email_address');
       if (vooraf && vooraf.indexOf('@') > 0) {
-        opties = Object.assign({}, CLERK_APPEARANCE, {
+        opties = Object.assign({}, clerkAppearance(), {
           initialValues: { emailAddress: vooraf.slice(0, 200) },
         });
       }
@@ -5246,7 +5270,12 @@ function initTheme() {
   // wat de server al rendert (data-theme="light" hierboven in de HTML) --
   // zonder deze wijziging zou de pagina eerst licht renderen en dan naar
   // donker springen zodra dit script draait.
-  const saved = localStorage.getItem('hv-theme') === 'dark' ? 'dark' : 'light';
+  /* Nieuwe sleutel hv-theme-v2: de oude (hv-theme) bevatte bij bijna iedereen
+     'dark' uit de tijd dat donker de standaard was, en zou licht voor altijd
+     overrulen. Door de oude waarde te negeren begint iedereen eenmalig licht;
+     een keuze via de schakelaar wordt vanaf nu onder de nieuwe sleutel bewaard. */
+  let saved = 'light';
+  try { if (localStorage.getItem('hv-theme-v2') === 'dark') saved = 'dark'; } catch (e) {}
   applyTheme(saved);
 }
 
@@ -5259,12 +5288,13 @@ function applyTheme(theme) {
   for (const btn of knoppen) btn.innerHTML = theme === 'dark'
     ? '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>'
     : '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>';
-  localStorage.setItem('hv-theme', theme);
 }
 
 function toggleTheme() {
   const current = document.documentElement.getAttribute('data-theme');
-  applyTheme(current === 'dark' ? 'light' : 'dark');
+  const next = current === 'dark' ? 'light' : 'dark';
+  applyTheme(next);
+  try { localStorage.setItem('hv-theme-v2', next); } catch (e) {}
   // Re-render chart with correct theme colors. renderChart controleert zelf of
   // het canvas er is, dus op het inlogscherm doet dit niets.
   setTimeout(renderChart, 50);

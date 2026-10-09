@@ -271,8 +271,11 @@ function render(lang) {
 /* 2026-10-07: onboarding-wizard volledig (telefoonveld, urenchips, klaar-checklist
    met testbericht): +2.295 bytes, alleen .wiz-tel/.wiz-chip/.wiz-test-regels.
    Vorige waarden: 459109 bytes / 80758abd3fcf3cd7. */
-const CSS_BYTES = 461404;
-const CSS_SHA   = '08d46d0d6a0d78ac';
+/* 2026-10-09: licht als standaard -- inlogscherm volgt het thema (tokens per thema,
+   hex -> var()), foutregels/knop/ring/taalkeuze bijgewerkt. Verwacht verschil:
+   alleen #login-page-regels. Vorige waarden: 461404 tekens / 08d46d0d6a0d78ac. */
+const CSS_BYTES = 460362;
+const CSS_SHA   = '9def835de7c9ce56';
 
 (async () => {
   console.log('\n  het CSS-blok is precies wat er uit dashboard.js kwam');
