@@ -18,6 +18,7 @@ const _vertical   = require('./_vertical');
 const _errors = require('./_errors');   // gedeelde foutentaxonomie, buitenste vangnet
 const _stijl  = require('./_form-stijl'); // vormgeving per klant (Form Style), gesaneerd
 const _regio  = require('./_regio');      // land van de dealer: standaard landcode in het telefoonveld
+const _bev    = require('./_form-bevestiging'); // het "wat gebeurt er nu"-paneel na versturen
 
 module.exports = _errors.vangAf(async function handler(req, res) {
   /* Twee vormen:
@@ -61,6 +62,9 @@ module.exports = _errors.vangAf(async function handler(req, res) {
   let workingHours  = '';     // 'mon-fri 9-18' style; informational for the form-page
   let stijl         = _stijl.saneer({});   // vormgeving per klant; leeg = Helvaro-standaard (donker)
   let dealerLand   = _regio.standaard().land || 'BE';   // landcode die het telefoonveld voorselecteert
+  let dealerRegio  = _regio.standaard();                // voor het publieke telefoonnummer (tel:-knop)
+  let dealerSiteRuw = '';                               // Client Config "Website" -> knop "Terug naar de website"
+  let dealerTelRuw  = '';                               // Client Config "Public Phone" -> knop "Bel ..." (bestaat nog niet overal)
   try {
     const AIRTABLE_TOKEN = process.env.API_AIRTABLE;
     const BASE_ID        = process.env.BASE_AIRTABLE;
@@ -92,7 +96,9 @@ module.exports = _errors.vangAf(async function handler(req, res) {
           trustBadges  = (rec.fields['fld4nzMbnQseuGhnN'] || rec.fields['Trust Badges'] || '').toString().trim();
           workingHours = (rec.fields['fldq5oIqw5MG8fKhc'] || rec.fields['Working Hours'] || '').toString().trim();
           stijl        = _stijl.saneer(rec.fields['Form Style'] || '');
-          try { dealerLand = _regio.lees(rec.fields).land || dealerLand; } catch (_) { /* standaard blijft */ }
+          try { dealerRegio = _regio.lees(rec.fields); dealerLand = dealerRegio.land || dealerLand; } catch (_) { /* standaard blijft */ }
+          dealerSiteRuw = (rec.fields['fldzBclLhryWQ1veO'] || rec.fields['Website'] || '').toString().trim();
+          dealerTelRuw  = (rec.fields['Public Phone'] || '').toString().trim();
           /* In welke markt deze klant zit. Het formulier moet dat weten omdat
              de kaart bovenaan anders een pand zoekt bij een dealer -- en dan
              staat er niets, terwijl de link wel klopte. */
@@ -208,6 +214,17 @@ module.exports = _errors.vangAf(async function handler(req, res) {
   const safeFirstName   = escHtml(firstName);
   const safeClientName  = escHtml(clientName);
 
+  /* ── Bevestiging na versturen: alleen echte gegevens worden een knop of kaart.
+     Zie api/_form-bevestiging.js voor de regels. ───────────────────────────── */
+  const bevTekst     = _bev.TEKST[lang] || _bev.TEKST.nl;
+  const voertuigOk   = !!(voertuig && _vehicles.kanProefrit(voertuig.status));   // afspraak mogelijk -> voertuigflow
+  const voertuigUrl  = voertuig ? _bev.veiligeUrl(voertuig.link) : '';
+  const voertuigFoto = voertuig && Array.isArray(voertuig.fotos) ? _bev.veiligeFoto(voertuig.fotos[0]) : '';
+  const siteUrl      = _bev.veiligeUrl(dealerSiteRuw);
+  const dealerTel    = _bev.dealerTel(dealerTelRuw, dealerRegio, _regio.naarE164);
+  /* Tekst met {dealer} invullen, HTML-veilig (eerst escapen, dan invullen). */
+  const metDealer    = (tpl) => escHtml(tpl).split('{dealer}').join(safeClientName);
+
   /* Frans elideert 'de' voor een klinker: "d'Immo Liège", niet "de Immo Liège".
 
      Dat is geen muggenzifterij. Dit is de EERSTE zin die een Waalse lead van
@@ -270,13 +287,6 @@ module.exports = _errors.vangAf(async function handler(req, res) {
         unknown_project: 'Deze formulierlink klopt niet (meer). Vraag de nieuwe link op.'
       },
       loading:         'Een momentje...',
-      thanks:          'Bedankt,',
-      friend:          'vriend',
-      successText:     'stuurt je nu een persoonlijk bericht via WhatsApp.',
-      step1:           'Check je WhatsApp binnen 1 min',
-      step2:           'Beantwoord',
-      step2Tail:       "'s vraag",
-      step3:           'We plannen een afspraak als jij wil',
       trust1:          'Geen spam, ooit',
       trust2:          'Reactie binnen 1 min',
       trust3:          'Vrijblijvend',
@@ -295,10 +305,6 @@ module.exports = _errors.vangAf(async function handler(req, res) {
       errMail:         'Dat e-mailadres klopt niet helemaal. Kijk het even na.',
       errContact:      'Vul je WhatsApp-nummer of je e-mailadres in.',
       consentMidMail:  'mij via WhatsApp of e-mail contacteert. Zie het',
-      successMail:     'neemt zo snel mogelijk contact met je op via e-mail.',
-      step1Mail:       'Hou je mailbox in de gaten (ook je spam)',
-      successNeutral:  'neemt zo snel mogelijk contact met je op.',
-      step1Neutral:    'We hebben je aanvraag ontvangen',
       wegVoertuig:     'Dit voertuig is {status}. Laat gerust je gegevens achter — {ai} laat je weten wat er nog wél in de voorraad staat.',
       wegWoning:       'Deze woning is {status}. Laat gerust je gegevens achter — {ai} laat je weten wat er nog wél beschikbaar is.',
       nietMeerBeschikbaar: 'Dit aanbod is niet meer beschikbaar. Laat gerust je gegevens achter — {ai} laat je weten wat we nu hebben.',
@@ -343,13 +349,6 @@ module.exports = _errors.vangAf(async function handler(req, res) {
         unknown_project: 'Ce lien de formulaire n’est pas (ou plus) valable. Demandez le nouveau lien.'
       },
       loading:         'Un instant...',
-      thanks:          'Merci,',
-      friend:          'à vous',
-      successText:     'vous envoie un message personnel via WhatsApp.',
-      step1:           'Vérifiez WhatsApp dans 1 minute',
-      step2:           'Répondez à la question de',
-      step2Tail:       '',
-      step3:           'Nous planifions un rendez-vous si vous voulez',
       trust1:          'Pas de spam, jamais',
       trust2:          'Réponse en 1 min',
       trust3:          'Sans engagement',
@@ -368,10 +367,6 @@ module.exports = _errors.vangAf(async function handler(req, res) {
       errMail:         'Cette adresse e-mail ne semble pas correcte. Vérifiez-la.',
       errContact:      'Indiquez votre numéro WhatsApp ou votre adresse e-mail.',
       consentMidMail:  'me contacte via WhatsApp ou par e-mail. Voir la',
-      successMail:     'vous contactera au plus vite par e-mail.',
-      step1Mail:       'Surveillez votre boîte mail (et vos spams)',
-      successNeutral:  'vous contactera dès que possible.',
-      step1Neutral:    'Nous avons bien reçu votre demande',
       wegVoertuig:     'Ce véhicule est {status}. Laissez vos coordonnées — {ai} vous dira ce qu’il y a encore en stock.',
       wegWoning:       'Ce bien est {status}. Laissez vos coordonnées — {ai} vous dira ce qui est encore disponible.',
       nietMeerBeschikbaar: 'Cette offre n’est plus disponible. Laissez vos coordonnées — {ai} vous dira ce que nous avons actuellement.',
@@ -416,13 +411,6 @@ module.exports = _errors.vangAf(async function handler(req, res) {
         unknown_project: 'This form link is not (or no longer) valid. Ask for the new link.'
       },
       loading:         'One moment...',
-      thanks:          'Thanks,',
-      friend:          'friend',
-      successText:     "is sending you a personal WhatsApp message now.",
-      step1:           'Check WhatsApp within 1 minute',
-      step2:           "Answer",
-      step2Tail:       "'s question",
-      step3:           "We'll plan a meeting if you want",
       trust1:          'No spam, ever',
       trust2:          'Reply within 1 min',
       trust3:          'No commitment',
@@ -441,10 +429,6 @@ module.exports = _errors.vangAf(async function handler(req, res) {
       errMail:         'That email address does not look right. Please check it.',
       errContact:      'Enter your WhatsApp number or your email address.',
       consentMidMail:  'may contact me via WhatsApp or email. See the',
-      successMail:     'will get back to you by email as soon as possible.',
-      step1Mail:       'Keep an eye on your inbox (and your spam folder)',
-      successNeutral:  'will get in touch with you as soon as possible.',
-      step1Neutral:    'We have received your request',
       wegVoertuig:     'This vehicle is {status}. Feel free to leave your details — {ai} will tell you what is still in stock.',
       wegWoning:       'This property is {status}. Feel free to leave your details — {ai} will tell you what is still available.',
       nietMeerBeschikbaar: 'This listing is no longer available. Feel free to leave your details — {ai} will tell you what we have right now.',
@@ -489,13 +473,6 @@ module.exports = _errors.vangAf(async function handler(req, res) {
         bad_phone:        'Diese Telefonnummer erkennen wir nicht. Bitte nur Ziffern verwenden.'
       },
       loading:         'Einen Moment...',
-      thanks:          'Danke,',
-      friend:          'Freund',
-      successText:     'schickt Ihnen jetzt eine persönliche Nachricht über WhatsApp.',
-      step1:           'Prüfen Sie WhatsApp innerhalb von 1 Minute',
-      step2:           'Beantworten Sie die Frage von',
-      step2Tail:       '',
-      step3:           'Wir planen einen Termin, wenn Sie möchten',
       trust1:          'Nie Spam',
       trust2:          'Antwort in 1 Min.',
       trust3:          'Unverbindlich',
@@ -514,10 +491,6 @@ module.exports = _errors.vangAf(async function handler(req, res) {
       errMail:         'Diese E-Mail-Adresse scheint nicht zu stimmen. Bitte prüfen Sie sie.',
       errContact:      'Geben Sie Ihre WhatsApp-Nummer oder Ihre E-Mail-Adresse an.',
       consentMidMail:  'mich über WhatsApp oder E-Mail kontaktiert. Siehe die',
-      successMail:     'meldet sich so schnell wie möglich per E-Mail bei Ihnen.',
-      step1Mail:       'Behalten Sie Ihr Postfach im Auge (auch den Spam-Ordner)',
-      successNeutral:  'meldet sich so schnell wie möglich bei Ihnen.',
-      step1Neutral:    'Wir haben Ihre Anfrage erhalten',
       wegVoertuig:     'Dieses Fahrzeug ist {status}. Hinterlassen Sie gerne Ihre Daten — {ai} sagt Ihnen, was noch im Bestand ist.',
       wegWoning:       'Diese Immobilie ist {status}. Hinterlassen Sie gerne Ihre Daten — {ai} sagt Ihnen, was noch verfügbar ist.',
       nietMeerBeschikbaar: 'Dieses Angebot ist nicht mehr verfügbar. Hinterlassen Sie gerne Ihre Daten — {ai} sagt Ihnen, was wir aktuell haben.',
@@ -869,28 +842,101 @@ module.exports = _errors.vangAf(async function handler(req, res) {
   }
   .error:empty { display: none; }
 
-  /* Success state */
-  .success { display: none; padding: 32px 26px 22px; text-align: center; }
-  .success .tick {
-    width: 64px; height: 64px;
-    background: rgba(34,197,94,.12); border: 2px solid rgba(34,197,94,.4);
-    border-radius: 50%; display: flex; align-items: center; justify-content: center;
-    margin: 0 auto 18px; font-size: 30px; color: var(--ok);
+  /* ── Bevestiging: "wat gebeurt er nu" ──────────────────────────────────────
+     Alle kleuren uit de tenant-tokens. Tekst staat op --vlak in --tekst of
+     --mut (die twee worden bewaakt in api/_form-stijl.js); gevulde vlakken zijn
+     --brand met --on-brand. De merkkleur zelf wordt NOOIT als tekstkleur
+     gebruikt: een lichte of donkere tenantkleur zou dan onleesbaar worden.
+     Status is nooit alleen kleur: elk punt heeft een icoon en een woord. */
+  .vh { position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
+  .card.bevestigd .hdr-status, .card.bevestigd .trust { display: none; }
+  .bev { padding: 26px 22px 30px; animation: bevIn .28s ease-out both; }
+  .bev[hidden] { display: none; }
+  @keyframes bevIn { from { opacity: 0; } to { opacity: 1; } }
+  .bev-kop { display: flex; flex-direction: column; align-items: flex-start; gap: 6px; }
+  .bev-vink {
+    width: 44px; height: 44px; border-radius: 50%; margin-bottom: 10px;
+    display: grid; place-items: center; background: var(--brand); color: var(--on-brand);
   }
-  .success h3 { font-size: 18px; font-weight: 700; color: var(--tekst); margin-bottom: 8px; }
-  .success p { color: var(--mut); font-size: 14px; line-height: 1.65; }
-  .success strong { color: var(--ok); }
-  .success-steps {
-    margin-top: 22px; padding: 14px 16px;
-    background: rgba(34,197,94,.06); border: 1px solid rgba(34,197,94,.18);
-    border-radius: 10px; text-align: left;
+  .bev-titel { font-size: 22px; line-height: 1.25; font-weight: 650; letter-spacing: -.01em; color: var(--tekst); overflow-wrap: anywhere; }
+  .bev-titel:focus { outline: none; }
+  .bev-titel:focus-visible { outline: 2px solid var(--tekst); outline-offset: 4px; border-radius: 4px; }
+  .bev-sub { font-size: 14.5px; line-height: 1.55; color: var(--mut); }
+
+  .bev-auto {
+    display: flex; align-items: center; gap: 14px; margin-top: 22px; padding: 12px;
+    border: 1px solid var(--lijn); border-radius: min(var(--hoek-veld), 16px); background: var(--vlak-2);
   }
-  .success-step { display: flex; align-items: center; gap: 10px; padding: 4px 0; font-size: 13px; color: var(--tekst); }
-  .success-step .num {
-    width: 20px; height: 20px; border-radius: 50%;
-    background: var(--ok); color: #fff; font-size: 11px; font-weight: 700;
-    display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+  .bev-auto-foto { flex: none; width: 96px; height: 72px; object-fit: cover; border-radius: min(var(--hoek-veld), 10px); background: var(--vlak); }
+  .bev-auto-tekst { min-width: 0; display: flex; flex-direction: column; gap: 3px; }
+  .bev-auto-label { font-size: 11px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; color: var(--mut); }
+  .bev-auto-titel {
+    font-size: 15px; line-height: 1.35; font-weight: 650; color: var(--tekst); overflow-wrap: anywhere;
+    display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
   }
+  .bev-auto-prijs { font-size: 14px; color: var(--tekst); font-variant-numeric: tabular-nums; }
+
+  .bev-stappen { list-style: none; margin: 28px 0 0; padding: 0; display: flex; flex-direction: column; }
+  .bev-stap { position: relative; display: flex; gap: 14px; padding-bottom: 22px; }
+  .bev-stap:last-child { padding-bottom: 0; }
+  .bev-stap::before { content: ""; position: absolute; left: 13px; top: 32px; bottom: 4px; width: 2px; background: var(--lijn); }
+  .bev-stap.is-klaar::before { background: var(--brand); }
+  .bev-stap:last-child::before { display: none; }
+  .bev-punt {
+    position: relative; z-index: 1; flex: none; width: 28px; height: 28px; border-radius: 50%;
+    display: grid; place-items: center; font-size: 12px; font-weight: 700; line-height: 1; background: var(--vlak);
+  }
+  .is-klaar .bev-punt { background: var(--brand); color: var(--on-brand); }
+  .is-open .bev-punt { border: 2px solid var(--mut); color: var(--mut); }
+  .bev-stap-inhoud { min-width: 0; padding-top: 3px; }
+  .bev-stap-titel { display: block; font-size: 15px; font-weight: 650; line-height: 1.3; color: var(--tekst); }
+  .bev-stap-status {
+    display: inline-flex; align-items: center; gap: 5px; margin-top: 6px; padding: 2px 9px 2px 7px;
+    border-radius: 999px; font-size: 11px; font-weight: 700; letter-spacing: .05em; text-transform: uppercase;
+  }
+  .is-klaar .bev-stap-status { background: color-mix(in srgb, var(--brand) 16%, var(--vlak)); color: var(--tekst); }
+  .is-open .bev-stap-status { border: 1px solid var(--mut); color: var(--mut); }
+  .bev-stap-t { margin-top: 8px; font-size: 13.5px; line-height: 1.5; color: var(--mut); overflow-wrap: anywhere; }
+
+  .bev-acties { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 14px; margin-top: 30px; }
+  .bev-cta {
+    display: inline-flex; flex-direction: column; align-items: center; justify-content: center; gap: 1px;
+    min-height: 46px; padding: 10px 20px; border-radius: var(--hoek-knop);
+    font: inherit; font-size: 15px; font-weight: 650; text-align: center; text-decoration: none;
+    transition: opacity .15s;
+  }
+  .bev-cta:hover { opacity: .92; }
+  .bev-cta-hoofd { background: var(--brand); color: var(--on-brand); border: 1.5px solid var(--brand); }
+  .bev-cta-tweede { background: transparent; color: var(--tekst); border: 1.5px solid var(--mut); }
+  .bev-cta-nr { font-size: 12px; font-weight: 500; color: var(--mut); }
+  .bev-cta-hoofd .bev-cta-nr { color: inherit; }
+  .bev-link { display: inline-flex; align-items: center; min-height: 44px; padding: 0 4px; color: var(--tekst); font-size: 14px; text-decoration: underline; text-underline-offset: 3px; }
+  .bev-cta:focus-visible, .bev-link:focus-visible { outline: 2px solid var(--tekst); outline-offset: 3px; }
+  .bev-minimaal { padding: 28px 22px; font-size: 16px; line-height: 1.5; font-weight: 600; color: var(--tekst); }
+  .bev-minimaal:focus { outline: none; }
+
+  /* Brede schermen: horizontale tracker, en de kaart mag ruimer worden. */
+  @media (min-width: 720px) {
+    body.is-bevestigd .card, body.is-bevestigd.layout-vol .card { max-width: 680px; }
+    .bev { padding: 32px 32px 34px; }
+    .bev-stappen { flex-direction: row; gap: 18px; margin-top: 32px; }
+    .bev-stap { flex: 1 1 0; min-width: 0; flex-direction: column; gap: 12px; padding-bottom: 0; }
+    .bev-stap::before { left: 36px; right: -18px; top: 13px; bottom: auto; width: auto; height: 2px; }
+    .bev-stap-inhoud { padding-top: 0; }
+    .bev-stap-titel { min-height: 2.6em; }
+  }
+  @media (max-width: 560px) {
+    .bev-acties { flex-direction: column; align-items: stretch; }
+    .bev-link { justify-content: center; }
+    .bev-auto-foto { width: 84px; height: 64px; }
+  }
+  /* Beweging is een zachte fade en verdwijnt bij wie dat wil. */
+  @media (prefers-reduced-motion: reduce) {
+    .bev { animation: none; }
+    .spin { animation: none; }
+  }
+  .spin { width: 14px; height: 14px; border-radius: 50%; border: 2px solid currentColor; border-right-color: transparent; animation: draai .8s linear infinite; }
+  @keyframes draai { to { transform: rotate(360deg); } }
 
   /* "Liever geen WhatsApp?" -- een tekstlink, geen knop die met Stuur
      concurreert. */
@@ -956,7 +1002,8 @@ module.exports = _errors.vangAf(async function handler(req, res) {
 </style>
 </head>
 <body class="${stijl.layout === 'vol' ? 'layout-vol' : ''}${stijl.achtergrond ? ' met-achtergrond' : ''}"${stijl.achtergrond ? ` style="--achtergrond:url('${escHtml(stijl.achtergrond)}')"` : ''}>
-<div class="card">
+<div class="card" id="card">
+  <div class="vh" id="ok-live" role="status" aria-live="polite" aria-atomic="true"></div>
 
   <!-- WhatsApp-style header with the AI persona -->
   <div class="chat-hdr" style="${stijl.logoUrl ? 'flex-wrap:wrap' : ''}">
@@ -1065,17 +1112,49 @@ module.exports = _errors.vangAf(async function handler(req, res) {
     <div class="error" id="err" role="alert" aria-live="assertive"></div>
   </div>
 
-  <!-- Success -->
-  <div class="success" id="ok">
-    <div class="tick"><svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></div>
-    <h3>${escHtml(t.thanks)} <span id="ok-name">${escHtml(t.friend)}</span>!</h3>
-    <p><strong>${safeFirstName}</strong> <span id="ok-text">${escHtml(t.successText)}</span></p>
-    <div class="success-steps">
-      <div class="success-step"><span class="num">1</span> <span id="ok-step1">${escHtml(t.step1)}</span></div>
-      <div class="success-step" id="ok-step2"><span class="num">2</span> ${escHtml(t.step2)} ${safeFirstName}${escHtml(t.step2Tail)}</div>
-      <div class="success-step" id="ok-step3"><span class="num">3</span> ${escHtml(t.step3)}</div>
+  <!-- Bevestiging: "wat gebeurt er nu". Blijft verborgen tot de server succes meldde.
+       De teksten van de stappen worden door het script ingevuld (kanaal en flow
+       zijn pas na het antwoord bekend); titels, statuswoorden, de autokaart en
+       de knoppen staan hier al, uitsluitend uit echte gegevens. -->
+  <section class="bev" id="ok" aria-labelledby="ok-kop" hidden>
+    <div class="bev-kop">
+      <span class="bev-vink" aria-hidden="true"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></span>
+      <h2 class="bev-titel" id="ok-kop" tabindex="-1"></h2>
+      <p class="bev-sub" id="ok-sub"></p>
     </div>
-  </div>
+    ${voertuig ? `<div class="bev-auto" id="ok-auto">
+      ${voertuigFoto ? `<img class="bev-auto-foto" src="${escHtml(voertuigFoto)}" alt="" width="96" height="72" loading="lazy" decoding="async" onerror="this.remove()">` : ''}
+      <div class="bev-auto-tekst">
+        <span class="bev-auto-label">${escHtml(bevTekst.autoLabel)}</span>
+        <strong class="bev-auto-titel">${escHtml(_vehicles.naam(voertuig))}</strong>
+        ${voertuigOk
+          ? (_vehicles.prijsTekst(voertuig.prijs) ? `<span class="bev-auto-prijs">${escHtml(_vehicles.prijsTekst(voertuig.prijs))}</span>` : '')
+          : `<span class="bev-auto-prijs">${escHtml((t.statusNamen && t.statusNamen[voertuig.status]) || '')}</span>`}
+      </div>
+    </div>` : ''}
+    <ol class="bev-stappen" role="list" aria-label="${escHtml(bevTekst.lijst)}">
+      ${[1, 2, 3, 4].map((n) => {
+        const klaar = n === 1;
+        return `<li class="bev-stap ${klaar ? 'is-klaar' : 'is-open'}" data-stap="${n}">
+        <span class="bev-punt" aria-hidden="true">${klaar
+          ? '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>'
+          : n}</span>
+        <div class="bev-stap-inhoud">
+          <span class="bev-stap-titel">${escHtml(bevTekst['s' + n])}</span>
+          <span class="bev-stap-status">${klaar
+            ? '<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="20 6 9 17 4 12"/></svg>'
+            : '<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><polyline points="12 7 12 12 15.5 14"/></svg>'}${escHtml(klaar ? bevTekst.klaar : bevTekst.open)}</span>
+          <p class="bev-stap-t" id="ok-s${n}t"></p>
+        </div>
+      </li>`;
+      }).join('')}
+    </ol>
+    ${(voertuigUrl || dealerTel || siteUrl) ? `<div class="bev-acties" id="ok-acties">
+      ${voertuigUrl ? `<a class="bev-cta bev-cta-hoofd" data-cta="voertuig" href="${escHtml(voertuigUrl)}" target="_blank" rel="noopener noreferrer">${escHtml(bevTekst.ctaAuto)}</a>` : ''}
+      ${dealerTel ? `<a class="bev-cta ${voertuigUrl ? 'bev-cta-tweede' : 'bev-cta-hoofd'}" data-cta="bel" href="${escHtml(dealerTel.href)}">${metDealer(bevTekst.ctaBel)}<span class="bev-cta-nr">${escHtml(dealerTel.tekst)}</span></a>` : ''}
+      ${siteUrl ? `<a class="bev-link" data-cta="website" href="${escHtml(siteUrl)}" target="_blank" rel="noopener noreferrer">${escHtml(bevTekst.ctaSite)}</a>` : ''}
+    </div>` : ''}
+  </section>
 
   <!-- Trust strip. Custom badges from Klanten or fall back to localized defaults -->
   <div class="trust">
@@ -1108,7 +1187,21 @@ var PAND     = '${escJs(pand ? pand.code : (voertuig ? voertuig.code : (pandNiet
 /* true = de code is wel doorgegeven maar het aanbod is niet meer te zien. */
 var PAND_WEG = ${pandNietBeschikbaar ? 'true' : 'false'};
 var AI_FIRST = '${escJs(firstName)}';
-var FALLBACK_NAME = '${escJs(t.friend)}';
+var DEALER   = '${escJs(clientName)}';
+/* true = de pagina is geopend voor een voertuig waarvoor een afspraak kan; dat
+   kiest de voertuigflow in de bevestiging. Een verkocht of gereserveerd voertuig
+   telt niet: daar past "plan een proefrit" niet bij. */
+var HEEFT_VOERTUIG = ${voertuigOk ? 'true' : 'false'};
+/* Plek voor een toekomstig verzoektype (proefrit, financiering, terugbellen,
+   ...). Er is vandaag geen veld of UI voor; kiesFlow() kent de koppeling al. */
+var AANVRAAG_TYPE = '';
+/* De teksten van de bevestiging (api/_form-bevestiging.js), in de taal van de
+   pagina. Veilig geserialiseerd: dealer- en assistentnamen komen NIET hierin,
+   alleen de sjablonen met {dealer}/{ai}/{naam}. */
+var BEV_T = ${_bev.jsonVeilig(bevTekst)};
+/* Dezelfde functies die de test controleert, letterlijk uit de module. */
+var bepaal   = ${_bev.bepaal.toString()};
+var kiesFlow = ${_bev.kiesFlow.toString()};
 var I18N = {
   errMissing:     '${escJs(t.errMissing)}',
   errMissingTail: '${escJs(t.errMissingTail)}',
@@ -1122,10 +1215,6 @@ var I18N = {
   errMail:        '${escJs(t.errMail)}',
   errContact:     '${escJs(t.errContact)}',
   consentMidMail: '${escJs(t.consentMidMail)}',
-  successMail:    '${escJs(t.successMail)}',
-  step1Mail:      '${escJs(t.step1Mail)}',
-  successNeutral: '${escJs(t.successNeutral)}',
-  step1Neutral:   '${escJs(t.step1Neutral)}',
   loading:        '${escJs(t.loading)}',
   btn:            '${escJs(t.btn)}',
   btnSuffix:      '${escJs(t.btnSuffix)}'
@@ -1136,6 +1225,98 @@ var btn  = document.getElementById('btn');
 var err  = document.getElementById('err');
 var form = document.getElementById('form');
 var ok   = document.getElementById('ok');
+
+/* Wat de knop zegt (en zijn WhatsApp-icoon) zoals de server hem renderde; hier
+   bewaard zodat een mislukte poging hem exact terugzet. */
+var btnHtml = btn.innerHTML;
+/* Eén inzending tegelijk, en nooit een tweede na een geslaagde: de
+   herhaalde klik, Enter in een veld, een dubbele tik op mobiel. De server
+   ontdubbelt ook (open lead per persoon), dit is de eerste verdedigingslinie. */
+var bezig = false;
+var verstuurd = false;
+
+/* ── Meldingen naar de pagina eromheen ───────────────────────────────────────
+   Wordt de pagina in een iframe getoond, dan krijgt de ouder drie berichten:
+     helvaro:lead_form_submitted       de server bevestigde de inzending
+     helvaro:lead_confirmation_viewed  het bevestigingspaneel staat op het scherm
+     helvaro:confirmation_cta_clicked  er is op een knop in het paneel geklikt
+   De inhoud is bewust ZONDER persoonsgegevens: alleen het soort bericht plus
+   flow (voertuig|algemeen), kanaal (whatsapp|email|neutraal) en welke knop
+   (voertuig|bel|website). Geen naam, nummer, e-mail of id. Daarom is
+   targetOrigin '*' hier acceptabel: er valt niets te onderscheppen. De CSP
+   (frame-ancestors 'self') laat toch alleen dezelfde origin dit inlijsten.
+   Geen derde partij, geen script erbij: postMessage kost niets. */
+function meld(type, extra) {
+  try {
+    if (!window.parent || window.parent === window) return;
+    var m = { type: 'helvaro:' + type };
+    if (extra) { for (var k in extra) { if (Object.prototype.hasOwnProperty.call(extra, k)) m[k] = extra[k]; } }
+    window.parent.postMessage(m, '*');
+  } catch (e) { /* een melding mag de bevestiging nooit breken */ }
+}
+
+function vul(tpl, naam) {
+  return String(tpl || '').split('{dealer}').join(DEALER).split('{ai}').join(AI_FIRST).split('{naam}').join(naam || '');
+}
+function zet(id, tekst) { var el = document.getElementById(id); if (el) el.textContent = tekst; }
+
+/* Het paneel tonen. Gooit het ergens, dan vangt klaar() dat op: de inzending is
+   dan al gelukt en mag nooit opnieuw. */
+function toonBevestiging(d, name, heeftNummer, heeftMail) {
+  var T = BEV_T;
+  var uit = bepaal(d, { phone: heeftNummer, email: heeftMail });
+  var flow = kiesFlow(HEEFT_VOERTUIG, AANVRAAG_TYPE);
+  var eerste = String(name || '').split(' ')[0];
+
+  zet('ok-kop', eerste ? vul(T.kop, eerste) : vul(T.kopZonder));
+  zet('ok-sub', T.sub);
+  zet('ok-s1t', vul(T.s1t));
+  zet('ok-s2t', T['s2t_' + flow]);
+  zet('ok-s3t', vul(T['s3t_' + uit.stap3]));
+  zet('ok-s4t', T['s4t_' + flow]);
+
+  form.style.display = 'none';
+  document.getElementById('chat-area').style.display = 'none';
+  document.getElementById('card').classList.add('bevestigd');
+  document.body.classList.add('is-bevestigd');
+  ok.hidden = false;
+  zet('ok-live', T.live);
+
+  var kop = document.getElementById('ok-kop');
+  if (kop && kop.focus) kop.focus();
+  meld('lead_confirmation_viewed', { flow: flow, channel: uit.kanaal });
+  return { flow: flow, channel: uit.kanaal };
+}
+
+/* Notvoorziening: het paneel lukte niet (onverwachte DOM-fout). De lead staat
+   er toch al, dus: een korte, eerlijke bevestiging en geen formulier meer. */
+function minimaleBevestiging() {
+  try {
+    ok.hidden = true;
+    form.style.display = 'none';
+    document.getElementById('chat-area').style.display = 'none';
+    var p = document.createElement('p');
+    p.className = 'bev-minimaal';
+    p.setAttribute('role', 'status');
+    p.tabIndex = -1;
+    p.textContent = BEV_T.okMinimaal;
+    form.parentNode.insertBefore(p, form);
+    p.focus();
+  } catch (e) { form.style.display = 'none'; }
+}
+
+function klaar(d, name, heeftNummer, heeftMail) {
+  verstuurd = true;
+  bezig = false;
+  var info = null;
+  try { info = toonBevestiging(d, name, heeftNummer, heeftMail); } catch (e) { minimaleBevestiging(); }
+  meld('lead_form_submitted', info ? { flow: info.flow, channel: info.channel } : null);
+}
+
+document.addEventListener('click', function(e) {
+  var a = e.target && e.target.closest ? e.target.closest('a[data-cta]') : null;
+  if (a) meld('confirmation_cta_clicked', { cta: a.getAttribute('data-cta') });
+});
 
 function btnDefault() {
   return I18N.btn + ' ' + AI_FIRST + (I18N.btnSuffix ? ' ' + I18N.btnSuffix : '');
@@ -1177,6 +1358,7 @@ altMail.addEventListener('click', function() {
 })();
 
 btn.addEventListener('click', function() {
+  if (bezig || verstuurd) return;
   var name    = document.getElementById('naam').value.trim();
   var phoneRuw = document.getElementById('tel').value.trim();
   /* Het nummer met de gekozen landcode ervoor. Wie zelf +.. of 00.. typt,
@@ -1226,8 +1408,11 @@ btn.addEventListener('click', function() {
     return;
   }
 
-  btn.innerHTML  = I18N.loading;
+  /* Vanaf hier is er één inzending onderweg. */
+  bezig = true;
+  btn.innerHTML  = '<span class="spin" aria-hidden="true"></span> ' + I18N.loading;
   btn.disabled   = true;
+  btn.setAttribute('aria-busy', 'true');
 
   fetch(API, {
     method:  'POST',
@@ -1235,50 +1420,40 @@ btn.addEventListener('click', function() {
     body:    JSON.stringify({ name: name, phone: phone, email: email, bron: 'Advertentie', property: PAND, property_unavailable: PAND_WEG && !!PAND, consent: !!(consent && consent.checked), website_url: (document.getElementById('hp-url') || {}).value || '' })
   })
   .then(function(r) {
-    if (!r.ok) return r.json().then(function(d) {
+    return r.json().catch(function() { return null; }).then(function(d) {
+      /* Het antwoord van de server zegt WAT er gaat gebeuren (audit L-07):
+         { success, kanaal: whatsapp|email|geen, status: verzonden|niet_verzonden|
+         mislukt, bestaand }. De lead is opgeslagen VOORDAT de server success
+         meldt (api/form.js), en alleen daarom staat stap 1 op afgerond. Een
+         antwoord zonder success:true is geen bevestiging, ook niet bij een 200
+         (bijvoorbeeld een tussenliggende proxy): dan blijft het formulier staan. */
+      if (r.ok && d && d.success === true) { klaar(d, name, !!phone, !!email); return; }
       /* Eerst de CODE, dan pas de zin van de server. Andersom -- zoals het hier
-         stond -- won de Nederlandse serverzin altijd van de vertaalde terugval
-         die er al was, en las een Waalse lead Nederlands op het formulier van
-         een Waals kantoor. */
-      throw new Error((d && d.code && I18N.srvErr[d.code]) || I18N.errGeneric);
-    });
-    /* Het antwoord van de server zegt WAT er gaat gebeuren (audit L-07):
-       { kanaal: whatsapp|email|geen, status: verzonden|niet_verzonden, reden }.
-       De bedankpagina belooft alleen een WhatsApp-bericht als dat ook echt
-       klaarstaat. Een oudere server zonder die velden = het oude gedrag. */
-    return r.json().catch(function() { return {}; }).then(function(d) {
-      d = d || {};
-      var firstName = name.split(' ')[0];
-      var okName = document.getElementById('ok-name');
-      if (okName) okName.textContent = firstName || FALLBACK_NAME;
-      var metWhatsApp = d.kanaal ? (d.kanaal === 'whatsapp' && d.status === 'verzonden') : !!phone;
-      if (!metWhatsApp) {
-        if (d.kanaal === 'email' || (!d.kanaal && !phone && email)) {
-          document.getElementById('ok-text').textContent = I18N.successMail;
-          document.getElementById('ok-step1').textContent = I18N.step1Mail;
-        } else {
-          /* Geen WhatsApp en geen e-mailbelofte: neutraal, en de stappen over
-             "beantwoord de vraag" vervallen. */
-          document.getElementById('ok-text').textContent = I18N.successNeutral;
-          document.getElementById('ok-step1').textContent = I18N.step1Neutral;
-          document.getElementById('ok-step2').style.display = 'none';
-          document.getElementById('ok-step3').style.display = 'none';
-        }
-      }
-      form.style.display = 'none';
-      document.getElementById('chat-area').style.display = 'none';
-      ok.style.display   = 'block';
+         ooit stond -- won de Nederlandse serverzin altijd van de vertaalde terugval,
+         en las een Waalse lead Nederlands op het formulier van een Waals kantoor.
+         4xx = er klopt iets in wat de bezoeker invulde (of een limiet); 5xx of een
+         onleesbaar antwoord = onze kant, zijn gegevens zijn ongemoeid. */
+      var code = d && d.code;
+      var tekst = (code && I18N.srvErr[code])
+        || ((r.status >= 500 || r.ok) ? BEV_T.errServer : BEV_T.errControle);
+      throw { tekst: tekst };
     });
   })
   .catch(function(e) {
-    err.textContent   = e.message || I18N.errGeneric;
-    btn.innerHTML     = btnDefault();
+    if (verstuurd) return;
+    /* Geen antwoord gekregen (offline, time-out, geblokkeerd): dat is een
+       netwerkfout. Alles wat de bezoeker invulde blijft staan; opnieuw proberen
+       kan direct. */
+    err.textContent   = (e && e.tekst) || BEV_T.errNetwork;
+    btn.innerHTML     = btnHtml;
     btn.disabled      = false;
+    btn.removeAttribute('aria-busy');
+    bezig             = false;
   });
 });
 
 document.addEventListener('keydown', function(e) {
-  if (e.key === 'Enter' && form.style.display !== 'none') btn.click();
+  if (e.key === 'Enter' && !verstuurd && !bezig && form.style.display !== 'none') btn.click();
 });
 </script>
 </body>
