@@ -34,6 +34,7 @@
 const dns = require('dns').promises;
 const net = require('net');
 const { CrmError } = require('./http');
+const { internV6 } = require('../_lib/ip-intern');
 
 
 /** Een IPv4 in een bereik dat nooit van een klant kan zijn. */
@@ -53,20 +54,8 @@ function priveV4(ip) {
       || a >= 224;                                // 224/4 multicast, 240/4 gereserveerd
 }
 
-function priveV6(ip) {
-  const s = String(ip).toLowerCase();
-  if (s === '::1' || s === '::') return true;               // loopback / onbepaald
-  /* Een IPv4 in IPv6-jas (::ffff:10.0.0.1) omzeilt anders de hele v4-controle. */
-  const mapped = s.match(/^::ffff:(\d+\.\d+\.\d+\.\d+)$/);
-  if (mapped) return priveV4(mapped[1]);
-  const eerste = s.split(':')[0];
-  if (!eerste) return false;
-  const n = parseInt(eerste, 16);
-  if (!Number.isFinite(n)) return true;
-  if ((n & 0xfe00) === 0xfc00) return true;                 // fc00::/7  unique local
-  if ((n & 0xffc0) === 0xfe80) return true;                 // fe80::/10 link-local
-  return false;
-}
+/* IPv6 volledig uitgeschreven, ook de hex-vorm van ::ffff:127.0.0.1 (audit F9). */
+const priveV6 = (ip) => internV6(ip);
 
 function priveAdres(ip, familie) {
   return familie === 6 ? priveV6(ip) : priveV4(ip);

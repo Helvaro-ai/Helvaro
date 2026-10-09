@@ -20,11 +20,7 @@ const net = require('net');
  * we de naam op en weigeren we als ÉÉN adres intern is. Stond eerst alleen in
  * api/_inventaris.js voor de voorraadfeed; nu gedeeld met de pand- en
  * voertuigimport en de websitelezer. */
-function isInternIp(ip) {
-  return /^(10\.|127\.|0\.|169\.254\.|192\.168\.|172\.(1[6-9]|2\d|3[01])\.|100\.(6[4-9]|[7-9]\d|1[01]\d|12[0-7])\.)/.test(ip)
-    || ip === '::1' || ip === '::' || /^f[cd]/i.test(ip) || /^fe80:/i.test(ip)
-    || /^::ffff:(10\.|127\.|192\.168\.|169\.254\.|0\.|172\.(1[6-9]|2\d|3[01])\.)/i.test(ip);
-}
+const { isInternIp } = require('./ip-intern');
 async function hostIsExtern(hostname) {
   const h = String(hostname || '').replace(/^\[|\]$/g, '');
   if (net.isIP(h)) return !isInternIp(h);
@@ -110,7 +106,8 @@ function urlToegestaan(url, tag) {
     /^\[?::1\]?$/.test(host) ||
     /^\[?fe80:/i.test(host) ||
     /^\[?fc00:/i.test(host) ||
-    /^\[?fd/i.test(host)
+    /^\[?fd/i.test(host) ||
+    isInternIp(host)                              // ook ::ffff:7f00:1, ::ffff:a9fe:a9fe, 6to4, NAT64 (audit F9)
   ) {
     console.warn(`${tag} Geblokkeerd (intern adres):`, url);
     return null;
