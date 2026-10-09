@@ -477,7 +477,13 @@ async function list(projectCode, opties = {}) {
   if (!tenant) throw new VehicleError('Voertuigen opvragen zonder projectcode.', 'no_tenant');
   if (!(await available())) return [];
 
-  const formule = encodeURIComponent(`{${F.project}}="${escapeFormula(tenant)}"`);
+  /* Gearchiveerde wagens worden nooit verwijderd en stapelen zich op. Werden ze
+     pas NA het ophalen weggefilterd, dan aten ze de paginalimiet op: een dealer
+     met een lange verkoopgeschiedenis zag actieve wagens uit zijn lijst vallen.
+     Wie ze niet nodig heeft, laat Airtable ze nu al weglaten. */
+  const formule = encodeURIComponent(opties.inclusiefGearchiveerd
+    ? `{${F.project}}="${escapeFormula(tenant)}"`
+    : `AND({${F.project}}="${escapeFormula(tenant)}", NOT({${F.gearchiveerd}}))`);
   const uit = [];
   let offset = '';
   /* Tien pagina's van 100 (was vier). Wat daarboven ligt wordt niet stil

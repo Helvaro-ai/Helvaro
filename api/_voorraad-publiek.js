@@ -350,7 +350,11 @@ async function handler(req, res) {
      dus alle varianten delen één opgehaalde lijst. Alleen een GESLAAGDE lezing
      wordt onthouden: een storing blijft een 503, nooit een lege etalage. */
   let d, alle;
-  const kort = _kortGeheugen.get(code);
+  /* De lijst en de catalogusfeed hebben geen gearchiveerde wagens nodig; alleen
+     het opvragen van ÉÉN wagen wel (die krijgt dan 410 in plaats van 404). */
+  const metArchief = !!wagen && wagen.toLowerCase() !== META_BESTAND;
+  const geheugenSleutel = code + (metArchief ? '|archief' : '');
+  const kort = _kortGeheugen.get(geheugenSleutel);
   if (kort && Date.now() - kort.ts < KORT_GEHEUGEN_MS) {
     ({ d, alle } = kort);
   } else {
@@ -361,13 +365,13 @@ async function handler(req, res) {
 
     if (!(await _vehicles.available())) return stuur(res, 503, { code: 'unavailable' });
     try {
-      alle = await _vehicles.list(code, { inclusiefGearchiveerd: true });
+      alle = await _vehicles.list(code, { inclusiefGearchiveerd: metArchief });
     } catch (e) {
       console.warn('[voorraad-publiek] lijst mislukt voor', code, e && e.message);
       return stuur(res, 503, { code: 'unavailable' });
     }
     if (_kortGeheugen.size > 200) _kortGeheugen.clear();
-    _kortGeheugen.set(code, { ts: Date.now(), d, alle });
+    _kortGeheugen.set(geheugenSleutel, { ts: Date.now(), d, alle });
   }
   const ctx = { code, clientName: d.clientName };
   const q = req.query || {};

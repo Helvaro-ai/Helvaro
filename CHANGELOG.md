@@ -836,6 +836,12 @@ lokale teller, dus dit verandert niets zolang Upstash niet is aangesloten.
 
 ## 9 oktober 2026 — beveiliging
 
+- **Grote dealers verloren geen actieve wagens meer uit hun lijst.** Verkochte
+  wagens worden na veertien dagen gearchiveerd, maar nooit verwijderd. Ze
+  telden toch mee voor de limiet van 1000 opgehaalde wagens, waardoor bij een
+  lange geschiedenis actieve wagens wegvielen op de website en in de
+  catalogusfeed. Gearchiveerde wagens worden nu niet meer opgehaald waar ze niet
+  nodig zijn.
 - **Een agenda of mailbox koppelen kan alleen nog vanuit je eigen browser.**
   Iemand kon vroeger een koppelingslink voor zijn eigen account naar jou sturen;
   keurde je die bij Google goed, dan hing jouw agenda of mailbox aan zijn
