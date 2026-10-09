@@ -60,7 +60,7 @@ enige eerlijke datum voor "uitgerold" is de dag dat `main` deployt.
   Meldingen aan de verkoper noemen het juiste woord.
 - **Het voertuigformulier** toont voor een motordealer cilinderinhoud en
   rijbewijsklasse en noemt het veld Carrosserie "Type motor".
-- **Actie:** voeg in Airtable de volgende velden toe, tenzij ze er al staan:
+- **Gedaan op 9 oktober (geen actie meer nodig):** deze velden zijn aangemaakt in Airtable:
   `Vehicle Segment` (Single line text) op Client Config, en op vehicles
   `Engine CC` (Number, 0 decimalen) en `Licence Class` (Single line text; A1, A2
   of A). Snelste weg: draai de admin-actie `ops-schema` met `commit:true`; die
