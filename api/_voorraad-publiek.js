@@ -308,6 +308,16 @@ function metaFeed(res, alle, ctx, d) {
   const feed = require('./_voorraad-providers/meta-feed');
   if (!meta || feed.ontbreekt(meta).length) return stuur(res, 404, { code: 'not_found' });
   const r = feed.bouw(alle, { code: ctx.code, clientName: ctx.clientName, meta });
+  /* Heeft de dealer wagens te koop maar valt ELKE wagen uit (bv. een verplicht
+     veld dat de bron niet meegeeft: de kleur), dan is een feed met alleen een
+     kopregel geen "leeg", maar een fout: Meta zou de hele catalogus leegmaken
+     en alle advertenties stoppen (audit F6). Liever 503: Meta behoudt dan de
+     vorige feed. Echt nul wagens te koop = een geldige lege feed. */
+  if (r.inFeed === 0 && r.weggelaten > 0) {
+    console.error('[meta-feed] GEEN wagen in de feed voor', ctx.code, '-- alle', r.weggelaten, 'te koop staande wagens misten een verplicht veld:', JSON.stringify(r.redenen));
+    res.setHeader('Retry-After', '3600');
+    return stuur(res, 503, { code: 'feed_onvolledig', ontbrekend: r.redenen });
+  }
   res.setHeader('Content-Type', 'text/csv; charset=utf-8');
   res.setHeader('Cache-Control', CACHE);
   res.setHeader('X-Robots-Tag', 'noindex');
