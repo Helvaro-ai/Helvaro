@@ -43,16 +43,15 @@
  *   - Expiring. `exp` is inside the MAC, so a confirmation clicked an hour later
  *     is refused rather than fired against stale data.
  *
- * What it does NOT have is server-side single-use. A stateless token can be
- * replayed inside its 30-minute window by whoever holds it — which is the user
- * who just confirmed it, in their own browser, for their own tenant. The
- * in-process `spent` set catches the ordinary double-click; the honest ceiling
- * is "a user can deliberately re-fire their own action for half an hour", and
- * any executor for which that is not acceptable has to carry its own
- * idempotency key.
+ * Single-use: execute() claims the action id in the shared lock store
+ * (api/_lock.js, Upstash) for the token's lifetime, so a confirmation fires
+ * once across all serverless instances. Without Redis it falls back to the
+ * in-process `spent` set (double-click on one instance only); a failed
+ * executor releases the claim so a genuine retry is possible.
  */
 
 const crypto = require('crypto');
+const _lock = require('../_lock');     // gedeeld eenmalig-slot (Upstash)
 const data = require('./data');       // lead lookup + the 24-hour window check
 const waSend = require('../_wa-send'); // the single outbound WhatsApp door
 const gcal = require('../_gcal');      // per-client Google Calendar
@@ -172,11 +171,18 @@ async function execute({ actionId, ctx }) {
 
   // Marked before running: a double-click must not send two batches of
   // messages. Un-marked on a genuine failure, so a retry is possible.
+  /* Ook over instanties heen eenmalig (gedeeld slot via Upstash, zie
+     api/_lock.js). De Map hierboven ving alleen een dubbelklik op dezelfde
+     serverinstantie; een tweede instantie voerde dezelfde bevestiging
+     gewoon nog eens uit. Zonder Redis valt dit terug op de Map. */
+  const slot = 'faro-actie:' + crypto.createHash('sha256').update(String(actionId)).digest('hex').slice(0, 32);
+  if (!(await _lock.eenmalig(slot, TTL_MS))) throw new ActionError('Deze actie is al uitgevoerd.', 'already_executed');
   markSpent(actionId);
   try {
     return await exec(rec.d, ctx);
   } catch (err) {
     spent.delete(actionId);
+    await _lock.vergeet(slot);
     throw err;
   }
 }

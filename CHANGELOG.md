@@ -862,6 +862,10 @@ lokale teller, dus dit verandert niets zolang Upstash niet is aangesloten.
 
 ## 9 oktober 2026 — beveiliging
 
+- **Een bevestiging in Faro voert maar één keer uit.** Klikte iemand twee keer
+  (of kwam het verzoek bij twee servers terecht), dan kon dezelfde actie (een
+  bericht, een afspraak, een campagne) twee keer gebeuren. Nu niet meer; mislukt
+  de actie, dan mag je het gewoon opnieuw proberen.
 - **Account aanmaken: het formulier liep over de tekst eronder.** Zodra de
   wachtwoordmelding verscheen, werd het aanmeldformulier samengeperst en
   schoven de vinkjes en de uitleg over het wachtwoordveld. Het formulier
