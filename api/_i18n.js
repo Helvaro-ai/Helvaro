@@ -1238,6 +1238,27 @@ const TEKST = {
                            en: "That doesn't look like a valid email address.", de: 'Das sieht nach keiner gültigen E-Mail-Adresse aus.' },
   'clerk.err.required':  { nl: 'Dit veld is verplicht.', fr: 'Ce champ est obligatoire.',
                            en: 'This field is required.', de: 'Dieses Feld ist erforderlich.' },
+  /* Wachtwoordsterkte en -regels van Clerk. Zonder deze sleutels toonde het
+     Nederlandse aanmeldscherm Engelse zinnen ("Your password meets all the
+     necessary requirements"). Sleutelnamen volgen Clerk's en-US-bestand. */
+  'clerk.email.format':  { nl: 'Voorbeeld: naam@bedrijf.be', fr: 'Exemple : nom@entreprise.be', en: 'Example: name@company.com', de: 'Beispiel: name@firma.de' },
+  'clerk.pw.good':       { nl: 'Je wachtwoord voldoet aan alle eisen.', fr: 'Votre mot de passe remplit toutes les conditions.', en: 'Your password meets all the necessary requirements.', de: 'Dein Passwort erfüllt alle Anforderungen.' },
+  'clerk.pw.stronger':   { nl: 'Je wachtwoord werkt, maar kan sterker. Voeg een paar tekens toe.', fr: 'Votre mot de passe fonctionne, mais pourrait être plus fort. Ajoutez quelques caractères.', en: 'Your password works, but could be stronger. Try adding more characters.', de: 'Dein Passwort funktioniert, könnte aber stärker sein. Füge ein paar Zeichen hinzu.' },
+  'clerk.pw.weak':       { nl: 'Je wachtwoord is niet sterk genoeg.', fr: 'Votre mot de passe n’est pas assez fort.', en: 'Your password is not strong enough.', de: 'Dein Passwort ist nicht stark genug.' },
+  'clerk.pw.prefix':     { nl: 'Je wachtwoord moet bevatten:', fr: 'Votre mot de passe doit contenir :', en: 'Your password must contain', de: 'Dein Passwort muss enthalten:' },
+  'clerk.pw.minLen':     { nl: '{{length}} of meer tekens', fr: '{{length}} caractères ou plus', en: '{{length}} or more characters', de: '{{length}} oder mehr Zeichen' },
+  'clerk.pw.maxLen':     { nl: 'minder dan {{length}} tekens', fr: 'moins de {{length}} caractères', en: 'less than {{length}} characters', de: 'weniger als {{length}} Zeichen' },
+  'clerk.pw.lower':      { nl: 'een kleine letter', fr: 'une minuscule', en: 'a lowercase letter', de: 'einen Kleinbuchstaben' },
+  'clerk.pw.upper':      { nl: 'een hoofdletter', fr: 'une majuscule', en: 'an uppercase letter', de: 'einen Großbuchstaben' },
+  'clerk.pw.number':     { nl: 'een cijfer', fr: 'un chiffre', en: 'a number', de: 'eine Zahl' },
+  'clerk.pw.special':    { nl: 'een speciaal teken', fr: 'un caractère spécial', en: 'a special character', de: 'ein Sonderzeichen' },
+  'clerk.pw.pwned':      { nl: 'Dit wachtwoord dook op in een datalek en kan niet gebruikt worden. Kies een ander.', fr: 'Ce mot de passe figure dans une fuite de données et ne peut pas être utilisé. Choisissez-en un autre.', en: 'This password has been found as part of a breach and can not be used, please try another password instead.', de: 'Dieses Passwort tauchte in einem Datenleck auf und kann nicht verwendet werden. Wähle ein anderes.' },
+  'clerk.pw.matchesId':  { nl: 'Je wachtwoord mag niet gelijk zijn aan je e-mailadres of telefoonnummer.', fr: 'Votre mot de passe ne peut pas être identique à votre e-mail ou numéro de téléphone.', en: 'Password cannot match your email address, phone number or username.', de: 'Dein Passwort darf nicht deiner E-Mail-Adresse oder Telefonnummer entsprechen.' },
+  'clerk.pw.w.common':   { nl: 'Dit is een veelgebruikt wachtwoord.', fr: 'C’est un mot de passe très courant.', en: 'This is a commonly used password.', de: 'Das ist ein häufig verwendetes Passwort.' },
+  'clerk.pw.w.similar':  { nl: 'Dit lijkt op een veelgebruikt wachtwoord.', fr: 'Cela ressemble à un mot de passe courant.', en: 'This is similar to a commonly used password.', de: 'Das ähnelt einem häufig verwendeten Passwort.' },
+  'clerk.pw.w.sequences':{ nl: 'Reeksen zoals "abc" zijn makkelijk te raden.', fr: 'Les suites comme « abc » sont faciles à deviner.', en: 'Common character sequences like "abc" are easy to guess.', de: 'Zeichenfolgen wie „abc“ sind leicht zu erraten.' },
+  'clerk.pw.w.repeat':   { nl: 'Herhaalde tekens zoals "aaa" zijn makkelijk te raden.', fr: 'Les caractères répétés comme « aaa » sont faciles à deviner.', en: 'Repeated characters like "aaa" are easy to guess.', de: 'Wiederholte Zeichen wie „aaa“ sind leicht zu erraten.' },
+  'clerk.pw.w.dates':    { nl: 'Datums zijn makkelijk te raden.', fr: 'Les dates sont faciles à deviner.', en: 'Dates are easy to guess.', de: 'Daten sind leicht zu erraten.' },
 
   // ── Dashboard en de losse schermen ──────────────────────────────────────
   'dash.verify.title': { nl: 'Bevestig je e-mailadres', fr: 'Confirmez votre adresse e-mail', en: 'Confirm your email address', de: 'Bestätigen Sie Ihre E-Mail-Adresse' },
@@ -3639,6 +3660,7 @@ function clerkLocalisatie(code) {
     formFieldInputPlaceholder__firstName: v('clerk.firstName'),
     formFieldInputPlaceholder__lastName: v('clerk.lastName'),
     formFieldHintText__optional: v('clerk.optional'),
+    formFieldInput__emailAddress_format: v('clerk.email.format'),
     formButtonPrimary: v('clerk.continue'),
     footerActionLink__useAnotherMethod: v('clerk.otherMethod'),
     backButton: v('clerk.back'),
@@ -3670,6 +3692,19 @@ function clerkLocalisatie(code) {
       form_identifier_exists: v('clerk.err.exists'),
       form_param_format_invalid__email_address: v('clerk.err.badEmail'),
       form_param_nil: v('clerk.err.required'),
+      form_password_not_strong_enough: v('clerk.pw.weak'),
+      form_password_pwned: v('clerk.pw.pwned'),
+      form_password_matches_identifier: v('clerk.pw.matchesId'),
+      passwordComplexity: {
+        sentencePrefix: v('clerk.pw.prefix'), minimumLength: v('clerk.pw.minLen'), maximumLength: v('clerk.pw.maxLen'),
+        requireLowercase: v('clerk.pw.lower'), requireUppercase: v('clerk.pw.upper'),
+        requireNumbers: v('clerk.pw.number'), requireSpecialCharacter: v('clerk.pw.special'),
+      },
+      zxcvbn: {
+        goodPassword: v('clerk.pw.good'), couldBeStronger: v('clerk.pw.stronger'), notEnough: v('clerk.pw.weak'),
+        warnings: { common: v('clerk.pw.w.common'), similarToCommon: v('clerk.pw.w.similar'), sequences: v('clerk.pw.w.sequences'),
+          simpleRepeat: v('clerk.pw.w.repeat'), dates: v('clerk.pw.w.dates') },
+      },
     },
   };
 }

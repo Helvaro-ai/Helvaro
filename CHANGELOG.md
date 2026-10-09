@@ -862,6 +862,12 @@ lokale teller, dus dit verandert niets zolang Upstash niet is aangesloten.
 
 ## 9 oktober 2026 — beveiliging
 
+- **Account aanmaken: het formulier liep over de tekst eronder.** Zodra de
+  wachtwoordmelding verscheen, werd het aanmeldformulier samengeperst en
+  schoven de vinkjes en de uitleg over het wachtwoordveld. Het formulier
+  groeit nu gewoon mee. De wachtwoordmeldingen en de e-mailhint staan nu ook in
+  het Nederlands, Frans of Duits in plaats van het Engels, en op een smal scherm
+  staat de taalkeuze niet meer over de voettekst.
 - **Grote dealers verloren geen actieve wagens meer uit hun lijst.** Verkochte
   wagens worden na veertien dagen gearchiveerd, maar nooit verwijderd. Ze
   telden toch mee voor de limiet van 1000 opgehaalde wagens, waardoor bij een

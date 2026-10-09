@@ -10471,6 +10471,12 @@ summary.ap-tpl-header:focus-visible { outline: 2px solid var(--accent); outline-
 }
 #login-page .login-form-side::after { display: none; }
 #login-page .login-form-inner { max-width: 416px; width: 100%; margin: 0 auto; min-height: 100%; display: flex; flex-direction: column; }
+/* Geen enkel blok in deze kolom mag krimpen. De kolom is een flexkolom met een
+   vaste hoogte; groeide het Clerk-formulier (wachtwoordmelding, foutregel),
+   dan werd #clerk-signin tot zijn min-height van 320px samengeperst en liep
+   de rest van het formulier OVER de vinkjes en de uitleg eronder heen. De
+   zijkolom scrolt al (overflow-y: auto), dus laten groeien is genoeg. */
+#login-page .login-form-inner > * { flex-shrink: 0; }
 #login-page .login-logo-top { margin: 0 0 auto; padding-bottom: 40px; text-align: left; }
 #login-page .login-logo-top img { width: 168px; height: auto; display: block; }
 #login-page .login-welcome {
@@ -10544,6 +10550,13 @@ summary.ap-tpl-header:focus-visible { outline: 2px solid var(--accent); outline-
   font-size: 0.8667rem; height: 32px; padding: 0 28px 0 10px;
 }
 #login-page .login-lang select:hover { border-color: var(--login-input-hover); color: var(--login-text); }
+/* Smal (en bij lange vertalingen): de voetregel loopt over twee regels en de
+   keuzelijst, die 32px omhoog in de voetregel geschoven staat, viel over de
+   tekst. Daar krijgt hij een eigen regel onder de voettekst. */
+@media (max-width: 520px) {
+  #login-page .login-footer { padding-right: 0; }
+  #login-page .login-lang { align-self: flex-start; margin: 12px 0 0; }
+}
 
 /* ── Rechts: het podium ── */
 #login-page .login-brand-side { padding: 64px 72px; background: var(--login-stage); align-items: center; justify-content: center; overflow: hidden; }

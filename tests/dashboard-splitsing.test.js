@@ -274,8 +274,8 @@ function render(lang) {
 /* 2026-10-09: licht als standaard -- inlogscherm volgt het thema (tokens per thema,
    hex -> var()), foutregels/knop/ring/taalkeuze bijgewerkt. Verwacht verschil:
    alleen #login-page-regels. Vorige waarden: 461404 tekens / 08d46d0d6a0d78ac. */
-const CSS_BYTES = 460362;
-const CSS_SHA   = '9def835de7c9ce56';
+const CSS_BYTES = 461171;   // 2026-10-09: inlogkolom krimpt niet meer + voetregel smal (bewust)
+const CSS_SHA   = '726617293e61e848';
 
 (async () => {
   console.log('\n  het CSS-blok is precies wat er uit dashboard.js kwam');
