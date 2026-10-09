@@ -6,7 +6,7 @@
 // speaks all of them), but the form-page UI text below (`i18n` object, ~20
 // strings + niche hooks) is still hand-translated for nl/fr/en ONLY. A client
 // configured with e.g. German still gets this Dutch-fallback form (see the
-// `lang` variable below, unchanged: only 'fr'/'en'/'nl' are recognized here,
+// `lang` variable below: only 'fr'/'en'/'de'/'nl' are recognized here,
 // everything else stays 'nl') while their WhatsApp AI conversation correctly
 // speaks German. Translating this file's full UI text to all 40 languages is
 // a separate, larger effort intentionally out of scope for the conversation-
@@ -88,7 +88,7 @@ module.exports = _errors.vangAf(async function handler(req, res) {
           if (/^#?[0-9a-fA-F]{6}$/.test(bc)) brandColor = bc.startsWith('#') ? bc : ('#' + bc);
           formIntro  = (rec.fields['fldxZ5spOeIb5omPr'] || rec.fields['Form Intro Message'] || '').toString().trim();
           const lg   = (rec.fields['fld1iiV9XwSbgAACZ'] || rec.fields['Language'] || '').toString().trim().toLowerCase();
-          if (lg === 'fr' || lg === 'en' || lg === 'nl') lang = lg;
+          if (lg === 'fr' || lg === 'en' || lg === 'nl' || lg === 'de') lang = lg;
           trustBadges  = (rec.fields['fld4nzMbnQseuGhnN'] || rec.fields['Trust Badges'] || '').toString().trim();
           workingHours = (rec.fields['fldq5oIqw5MG8fKhc'] || rec.fields['Working Hours'] || '').toString().trim();
           stijl        = _stijl.saneer(rec.fields['Form Style'] || '');
@@ -136,6 +136,11 @@ module.exports = _errors.vangAf(async function handler(req, res) {
      tegen te houden. */
   let pand = null;
   let voertuig = null;
+  /* De link noemt een voertuig/pand dat WEL bestaat maar niet (meer) getoond
+     mag worden (gearchiveerd of niet-publiek). De code gaat dan toch mee met de
+     lead -- de dealer ziet welke auto er gevraagd werd -- en de bezoeker krijgt
+     een neutrale melding in plaats van een stil, generiek formulier (L-10). */
+  let pandNietBeschikbaar = false;
   if (pandCode && vertical === _vertical.DEALERSHIP) {
     /* Een dealer heeft geen panden. Zonder deze tak zoekt het formulier de code
        op in de verkeerde tabel, vindt niets, en toont geen kaart -- terwijl de
@@ -143,7 +148,7 @@ module.exports = _errors.vangAf(async function handler(req, res) {
        buiten uitziet als "die link doet het niet". */
     try {
       voertuig = await _vehicles.getByCode(project, pandCode);
-      if (voertuig && (!voertuig.publiek || voertuig.gearchiveerd)) voertuig = null;
+      if (voertuig && (!voertuig.publiek || voertuig.gearchiveerd)) { voertuig = null; pandNietBeschikbaar = true; }
     } catch (e) {
       console.warn('[form-page] voertuig ophalen mislukt:', e && e.message);
     }
@@ -152,7 +157,7 @@ module.exports = _errors.vangAf(async function handler(req, res) {
       pand = await _properties.getByCode(project, pandCode);
       /* Niet-publiek betekent: wel in het CRM, niet naar buiten. Een makelaar
          die een pand voorbereidt hoort het niet al gedeeld te zien. */
-      if (pand && (!pand.publiek || pand.gearchiveerd)) pand = null;
+      if (pand && (!pand.publiek || pand.gearchiveerd)) { pand = null; pandNietBeschikbaar = true; }
     } catch (e) {
       console.warn('[form-page] pand ophalen mislukt:', e && e.message);
     }
@@ -261,7 +266,8 @@ module.exports = _errors.vangAf(async function handler(req, res) {
         consent_required: 'Vink even aan dat we je mogen contacteren.',
         contact_required: 'Vul je WhatsApp-nummer of je e-mailadres in.',
         bad_email:        'Dat e-mailadres klopt niet helemaal. Kijk het even na.',
-        bad_phone:        'Dat telefoonnummer herkennen we niet. Gebruik alleen cijfers.'
+        bad_phone:        'Dat telefoonnummer herkennen we niet. Gebruik alleen cijfers.',
+        unknown_project: 'Deze formulierlink klopt niet (meer). Vraag de nieuwe link op.'
       },
       loading:         'Een momentje...',
       thanks:          'Bedankt,',
@@ -291,6 +297,12 @@ module.exports = _errors.vangAf(async function handler(req, res) {
       consentMidMail:  'mij via WhatsApp of e-mail contacteert. Zie het',
       successMail:     'neemt zo snel mogelijk contact met je op via e-mail.',
       step1Mail:       'Hou je mailbox in de gaten (ook je spam)',
+      successNeutral:  'neemt zo snel mogelijk contact met je op.',
+      step1Neutral:    'We hebben je aanvraag ontvangen',
+      wegVoertuig:     'Dit voertuig is {status}. Laat gerust je gegevens achter — {ai} laat je weten wat er nog wél in de voorraad staat.',
+      wegWoning:       'Deze woning is {status}. Laat gerust je gegevens achter — {ai} laat je weten wat er nog wél beschikbaar is.',
+      nietMeerBeschikbaar: 'Dit aanbod is niet meer beschikbaar. Laat gerust je gegevens achter — {ai} laat je weten wat we nu hebben.',
+      statusNamen:     { 'gereserveerd': 'gereserveerd', 'verkocht': 'verkocht', 'uit aanbod': 'uit aanbod', 'onder bod': 'onder bod', 'verhuurd': 'verhuurd', 'onbekend': 'onbekend' },
       nicheHooks: {
         dentist:     'Ik help je graag bij je vragen over je gebit of een behandeling.',
         real_estate: 'Ik help je graag verder, of je nu een woning zoekt of er één wil verkopen.',
@@ -327,7 +339,8 @@ module.exports = _errors.vangAf(async function handler(req, res) {
         consent_required: 'Cochez la case pour nous autoriser à vous contacter.',
         contact_required: 'Indiquez votre numéro WhatsApp ou votre adresse e-mail.',
         bad_email:        'Cette adresse e-mail ne semble pas correcte. Vérifiez-la.',
-        bad_phone:        'Nous ne reconnaissons pas ce numéro. N’utilisez que des chiffres.'
+        bad_phone:        'Nous ne reconnaissons pas ce numéro. N’utilisez que des chiffres.',
+        unknown_project: 'Ce lien de formulaire n’est pas (ou plus) valable. Demandez le nouveau lien.'
       },
       loading:         'Un instant...',
       thanks:          'Merci,',
@@ -357,6 +370,12 @@ module.exports = _errors.vangAf(async function handler(req, res) {
       consentMidMail:  'me contacte via WhatsApp ou par e-mail. Voir la',
       successMail:     'vous contactera au plus vite par e-mail.',
       step1Mail:       'Surveillez votre boîte mail (et vos spams)',
+      successNeutral:  'vous contactera dès que possible.',
+      step1Neutral:    'Nous avons bien reçu votre demande',
+      wegVoertuig:     'Ce véhicule est {status}. Laissez vos coordonnées — {ai} vous dira ce qu’il y a encore en stock.',
+      wegWoning:       'Ce bien est {status}. Laissez vos coordonnées — {ai} vous dira ce qui est encore disponible.',
+      nietMeerBeschikbaar: 'Cette offre n’est plus disponible. Laissez vos coordonnées — {ai} vous dira ce que nous avons actuellement.',
+      statusNamen:     { 'gereserveerd': 'réservé', 'verkocht': 'vendu', 'uit aanbod': 'retiré de l’offre', 'onder bod': 'sous offre', 'verhuurd': 'loué', 'onbekend': 'indisponible' },
       nicheHooks: {
         dentist:     "Je vous aide volontiers avec vos questions sur vos dents ou un traitement.",
         real_estate: "Je vous aide volontiers, que vous cherchiez une maison ou que vous souhaitiez en vendre une.",
@@ -393,7 +412,8 @@ module.exports = _errors.vangAf(async function handler(req, res) {
         consent_required: 'Please tick the box so we may contact you.',
         contact_required: 'Enter your WhatsApp number or your email address.',
         bad_email:        'That email address does not look right. Please check it.',
-        bad_phone:        'We do not recognise that phone number. Use digits only.'
+        bad_phone:        'We do not recognise that phone number. Use digits only.',
+        unknown_project: 'This form link is not (or no longer) valid. Ask for the new link.'
       },
       loading:         'One moment...',
       thanks:          'Thanks,',
@@ -423,6 +443,12 @@ module.exports = _errors.vangAf(async function handler(req, res) {
       consentMidMail:  'may contact me via WhatsApp or email. See the',
       successMail:     'will get back to you by email as soon as possible.',
       step1Mail:       'Keep an eye on your inbox (and your spam folder)',
+      successNeutral:  'will get in touch with you as soon as possible.',
+      step1Neutral:    'We have received your request',
+      wegVoertuig:     'This vehicle is {status}. Feel free to leave your details — {ai} will tell you what is still in stock.',
+      wegWoning:       'This property is {status}. Feel free to leave your details — {ai} will tell you what is still available.',
+      nietMeerBeschikbaar: 'This listing is no longer available. Feel free to leave your details — {ai} will tell you what we have right now.',
+      statusNamen:     { 'gereserveerd': 'reserved', 'verkocht': 'sold', 'uit aanbod': 'no longer listed', 'onder bod': 'under offer', 'verhuurd': 'let', 'onbekend': 'unavailable' },
       nicheHooks: {
         dentist:     'I’m happy to help you with any dental questions or treatments.',
         real_estate: 'I’m happy to help, whether you’re looking to buy or sell a property.',
@@ -430,9 +456,89 @@ module.exports = _errors.vangAf(async function handler(req, res) {
         finance:     'I’m happy to help with your financial question.',
         default:     'I’m happy to help. Drop your details below and you’ll hear from me right away.'
       }
+    },
+    de: {
+      title:           safeFirstName + ' von ' + safeClientName + ' · Kontakt',
+      meta:            safeFirstName + ' antwortet innerhalb von 1 Minute über WhatsApp.',
+      status:          '● Online. Antwortet in 1 Min.',
+      intro:           'Hallo, ich bin',
+      introMid:        'von',
+      typing:          'schreibt',
+      labelName:       'Wie darf ich Sie nennen?',
+      labelPhone:      'Ihre WhatsApp-Nummer',
+      labelCountry:    'Land Ihrer Nummer',
+      placeholderName: 'Ihr Name',
+      placeholderPhone:'478 12 34 56',
+      btn:             'Meine Daten senden an',
+      btnSuffix:       '',
+      errMissing:      'Bitte geben Sie Ihren Namen und Ihre Telefonnummer an, damit',
+      errMissingTail:  'Sie erreichen kann.',
+      errGeneric:      'Etwas ist schiefgelaufen. Bitte versuchen Sie es erneut.',
+      srvErr: {
+        rate_limited:     'Sie haben gerade schon etwas gesendet. Versuchen Sie es in einer Minute erneut.',
+        busy:             'Gerade viel los. Versuchen Sie es in 30 Sekunden erneut.',
+        create_failed:    'Wir konnten Ihre Daten nicht speichern. Versuchen Sie es gleich noch einmal.',
+        server_error:     'Bei uns ist etwas schiefgelaufen. Versuchen Sie es gleich noch einmal.',
+        bad_project:      'Dieser Formularlink ist nicht mehr gültig. Fragen Sie nach dem neuen Link.',
+        unknown_project:  'Dieser Formularlink ist nicht (mehr) gültig. Fragen Sie nach dem neuen Link.',
+        name_required:    'Bitte geben Sie Ihren Namen an.',
+        phone_required:   'Bitte geben Sie Ihre Telefonnummer an.',
+        consent_required: 'Bitte setzen Sie den Haken, damit wir Sie kontaktieren dürfen.',
+        contact_required: 'Geben Sie Ihre WhatsApp-Nummer oder Ihre E-Mail-Adresse an.',
+        bad_email:        'Diese E-Mail-Adresse scheint nicht zu stimmen. Bitte prüfen Sie sie.',
+        bad_phone:        'Diese Telefonnummer erkennen wir nicht. Bitte nur Ziffern verwenden.'
+      },
+      loading:         'Einen Moment...',
+      thanks:          'Danke,',
+      friend:          'Freund',
+      successText:     'schickt Ihnen jetzt eine persönliche Nachricht über WhatsApp.',
+      step1:           'Prüfen Sie WhatsApp innerhalb von 1 Minute',
+      step2:           'Beantworten Sie die Frage von',
+      step2Tail:       '',
+      step3:           'Wir planen einen Termin, wenn Sie möchten',
+      trust1:          'Nie Spam',
+      trust2:          'Antwort in 1 Min.',
+      trust3:          'Unverbindlich',
+      poweredBy:       'Powered by',
+      socialPre:       'Personen haben',
+      socialPost:      'diese Woche um Rat gefragt',
+      consentPre:      'Ich bin damit einverstanden, dass',
+      consentMid:      'mich über WhatsApp kontaktiert. Siehe die',
+      consentLink:     'Datenschutzerklärung',
+      consentSuffix:   '.',
+      errConsent:      'Setzen Sie den Datenschutz-Haken, um fortzufahren.',
+      errPhone:        'Das scheint keine gültige Telefonnummer zu sein. Bitte prüfen Sie sie — die Antwort kommt über WhatsApp.',
+      altMail:         'Lieber kein WhatsApp? Hinterlassen Sie Ihre E-Mail-Adresse',
+      labelEmail:      'Ihre E-Mail-Adresse',
+      placeholderEmail:'name@beispiel.de',
+      errMail:         'Diese E-Mail-Adresse scheint nicht zu stimmen. Bitte prüfen Sie sie.',
+      errContact:      'Geben Sie Ihre WhatsApp-Nummer oder Ihre E-Mail-Adresse an.',
+      consentMidMail:  'mich über WhatsApp oder E-Mail kontaktiert. Siehe die',
+      successMail:     'meldet sich so schnell wie möglich per E-Mail bei Ihnen.',
+      step1Mail:       'Behalten Sie Ihr Postfach im Auge (auch den Spam-Ordner)',
+      successNeutral:  'meldet sich so schnell wie möglich bei Ihnen.',
+      step1Neutral:    'Wir haben Ihre Anfrage erhalten',
+      wegVoertuig:     'Dieses Fahrzeug ist {status}. Hinterlassen Sie gerne Ihre Daten — {ai} sagt Ihnen, was noch im Bestand ist.',
+      wegWoning:       'Diese Immobilie ist {status}. Hinterlassen Sie gerne Ihre Daten — {ai} sagt Ihnen, was noch verfügbar ist.',
+      nietMeerBeschikbaar: 'Dieses Angebot ist nicht mehr verfügbar. Hinterlassen Sie gerne Ihre Daten — {ai} sagt Ihnen, was wir aktuell haben.',
+      statusNamen:     { 'gereserveerd': 'reserviert', 'verkocht': 'verkauft', 'uit aanbod': 'nicht mehr im Angebot', 'onder bod': 'in Verhandlung', 'verhuurd': 'vermietet', 'onbekend': 'nicht verfügbar' },
+      nicheHooks: {
+        dentist:     'Ich helfe Ihnen gerne bei Fragen zu Ihren Zähnen oder einer Behandlung.',
+        real_estate: 'Ich helfe Ihnen gerne weiter, ob Sie eine Immobilie suchen oder verkaufen möchten.',
+        lawyer:      'Ich helfe Ihnen gerne bei Rechtsfragen oder einem Fall.',
+        finance:     'Ich helfe Ihnen gerne bei Ihrer Finanzfrage.',
+        default:     'Ich helfe Ihnen gerne weiter. Hinterlassen Sie unten Ihre Daten und Sie hören sofort von mir.'
+      }
     }
   };
   const t = i18n[lang] || i18n.nl;
+
+  /* Tekst met {status} en {ai} invullen, HTML-veilig. De status komt uit de
+     data (Nederlandse sleutel) en wordt per taal vertaald (audit L-17: dit
+     stond hard in het Nederlands op elke taalversie). */
+  const vulIn = (tpl, status) => escHtml(tpl)
+    .replace('{status}', escHtml((t.statusNamen && t.statusNamen[status]) || status || ''))
+    .replace('{ai}', safeFirstName);
 
   /* Landcodes voor het telefoonveld. Het land van de dealer staat voorgeselecteerd;
      een buitenlandse koper kiest zijn eigen land en tikt zijn nummer zoals hij
@@ -844,6 +950,9 @@ module.exports = _errors.vangAf(async function handler(req, res) {
     .card { border-radius: calc(var(--hoek-kaart) * 0.8); }
     .chat-hdr, .chat-area, .form-area { padding-left: 18px; padding-right: 18px; }
   }
+/* Honeypot (L-18): buiten beeld, niet display:none -- sommige bots slaan
+   verborgen velden over. Een mens ziet en vult dit nooit. */
+.hp { position: absolute; left: -10000px; top: auto; width: 1px; height: 1px; overflow: hidden; }
 </style>
 </head>
 <body class="${stijl.layout === 'vol' ? 'layout-vol' : ''}${stijl.achtergrond ? ' met-achtergrond' : ''}"${stijl.achtergrond ? ` style="--achtergrond:url('${escHtml(stijl.achtergrond)}')"` : ''}>
@@ -884,9 +993,10 @@ module.exports = _errors.vangAf(async function handler(req, res) {
         ${voertuig.brandstof ? `<span class="pand-card-feit">${escHtml(voertuig.brandstof)}</span>` : ''}
       </div>
       ${!_vehicles.kanProefrit(voertuig.status)
-        ? `<div class="pand-card-weg">Dit voertuig is ${escHtml(voertuig.status)}. Laat gerust je gegevens achter &mdash; ${safeFirstName} laat je weten wat er nog w&eacute;l in de voorraad staat.</div>`
+        ? `<div class="pand-card-weg">${vulIn(t.wegVoertuig, voertuig.status)}</div>`
         : ''}
     </div>` : ''}
+    ${pandNietBeschikbaar ? `<div class="pand-card"><div class="pand-card-weg">${vulIn(t.nietMeerBeschikbaar, '')}</div></div>` : ''}
     ${pand ? `<div class="pand-card">
       ${pand.fotos[0] ? `<img class="pand-card-foto" src="${escHtml(pand.fotos[0])}" alt="${escHtml(pand.adres)}" onerror="this.style.display='none'">` : ''}
       <div class="pand-card-adres">${escHtml(pand.adres)}</div>
@@ -898,7 +1008,7 @@ module.exports = _errors.vangAf(async function handler(req, res) {
         ${pand.epc ? `<span class="pand-card-feit">EPC ${escHtml(pand.epc)}</span>` : ''}
       </div>
       ${!_properties.kanBezichtigen(pand.status)
-        ? `<div class="pand-card-weg">Deze woning is ${escHtml(pand.status)}. Laat gerust je gegevens achter — ${safeFirstName} laat je weten wat er nog wél beschikbaar is.</div>`
+        ? `<div class="pand-card-weg">${vulIn(t.wegWoning, pand.status)}</div>`
         : ''}
     </div>` : ''}
     <div class="bubble">
@@ -918,6 +1028,7 @@ module.exports = _errors.vangAf(async function handler(req, res) {
 
   <!-- Form (default visible) -->
   <div class="form-area" id="form">
+    <div class="hp" aria-hidden="true"><label for="hp-url">Website</label><input id="hp-url" type="text" name="website_url" tabindex="-1" autocomplete="off" value=""></div>
     <label for="naam">${escHtml(t.labelName)}</label>
     <input id="naam" type="text" placeholder="${escHtml(t.placeholderName)}" autocomplete="name" required>
 
@@ -961,8 +1072,8 @@ module.exports = _errors.vangAf(async function handler(req, res) {
     <p><strong>${safeFirstName}</strong> <span id="ok-text">${escHtml(t.successText)}</span></p>
     <div class="success-steps">
       <div class="success-step"><span class="num">1</span> <span id="ok-step1">${escHtml(t.step1)}</span></div>
-      <div class="success-step"><span class="num">2</span> ${escHtml(t.step2)} ${safeFirstName}${escHtml(t.step2Tail)}</div>
-      <div class="success-step"><span class="num">3</span> ${escHtml(t.step3)}</div>
+      <div class="success-step" id="ok-step2"><span class="num">2</span> ${escHtml(t.step2)} ${safeFirstName}${escHtml(t.step2Tail)}</div>
+      <div class="success-step" id="ok-step3"><span class="num">3</span> ${escHtml(t.step3)}</div>
     </div>
   </div>
 
@@ -993,7 +1104,9 @@ var PROJECT  = '${escJs(project)}';
    over welke woning of auto dit gesprek gaat. Leeg = het algemene formulier.
    Tot 2026-09-26 ging bij een dealer alleen de pandcode mee -- en die is daar
    altijd leeg, dus elke aanvraag vanaf een autopagina kwam zonder auto aan. */
-var PAND     = '${escJs(pand ? pand.code : (voertuig ? voertuig.code : ''))}';
+var PAND     = '${escJs(pand ? pand.code : (voertuig ? voertuig.code : (pandNietBeschikbaar ? pandCode : '')))}';
+/* true = de code is wel doorgegeven maar het aanbod is niet meer te zien. */
+var PAND_WEG = ${pandNietBeschikbaar ? 'true' : 'false'};
 var AI_FIRST = '${escJs(firstName)}';
 var FALLBACK_NAME = '${escJs(t.friend)}';
 var I18N = {
@@ -1011,6 +1124,8 @@ var I18N = {
   consentMidMail: '${escJs(t.consentMidMail)}',
   successMail:    '${escJs(t.successMail)}',
   step1Mail:      '${escJs(t.step1Mail)}',
+  successNeutral: '${escJs(t.successNeutral)}',
+  step1Neutral:   '${escJs(t.step1Neutral)}',
   loading:        '${escJs(t.loading)}',
   btn:            '${escJs(t.btn)}',
   btnSuffix:      '${escJs(t.btnSuffix)}'
@@ -1117,7 +1232,7 @@ btn.addEventListener('click', function() {
   fetch(API, {
     method:  'POST',
     headers: { 'Content-Type': 'application/json' },
-    body:    JSON.stringify({ name: name, phone: phone, email: email, bron: 'Advertentie', property: PAND, consent: !!(consent && consent.checked) })
+    body:    JSON.stringify({ name: name, phone: phone, email: email, bron: 'Advertentie', property: PAND, property_unavailable: PAND_WEG && !!PAND, consent: !!(consent && consent.checked), website_url: (document.getElementById('hp-url') || {}).value || '' })
   })
   .then(function(r) {
     if (!r.ok) return r.json().then(function(d) {
@@ -1127,18 +1242,33 @@ btn.addEventListener('click', function() {
          een Waals kantoor. */
       throw new Error((d && d.code && I18N.srvErr[d.code]) || I18N.errGeneric);
     });
-    var firstName = name.split(' ')[0];
-    var okName = document.getElementById('ok-name');
-    if (okName) okName.textContent = firstName || FALLBACK_NAME;
-    /* Alleen e-mail: dan komt er geen WhatsApp, en de bedankpagina mag dat
-       niet beloven. */
-    if (!phone && email) {
-      document.getElementById('ok-text').textContent = I18N.successMail;
-      document.getElementById('ok-step1').textContent = I18N.step1Mail;
-    }
-    form.style.display = 'none';
-    document.getElementById('chat-area').style.display = 'none';
-    ok.style.display   = 'block';
+    /* Het antwoord van de server zegt WAT er gaat gebeuren (audit L-07):
+       { kanaal: whatsapp|email|geen, status: verzonden|niet_verzonden, reden }.
+       De bedankpagina belooft alleen een WhatsApp-bericht als dat ook echt
+       klaarstaat. Een oudere server zonder die velden = het oude gedrag. */
+    return r.json().catch(function() { return {}; }).then(function(d) {
+      d = d || {};
+      var firstName = name.split(' ')[0];
+      var okName = document.getElementById('ok-name');
+      if (okName) okName.textContent = firstName || FALLBACK_NAME;
+      var metWhatsApp = d.kanaal ? (d.kanaal === 'whatsapp' && d.status === 'verzonden') : !!phone;
+      if (!metWhatsApp) {
+        if (d.kanaal === 'email' || (!d.kanaal && !phone && email)) {
+          document.getElementById('ok-text').textContent = I18N.successMail;
+          document.getElementById('ok-step1').textContent = I18N.step1Mail;
+        } else {
+          /* Geen WhatsApp en geen e-mailbelofte: neutraal, en de stappen over
+             "beantwoord de vraag" vervallen. */
+          document.getElementById('ok-text').textContent = I18N.successNeutral;
+          document.getElementById('ok-step1').textContent = I18N.step1Neutral;
+          document.getElementById('ok-step2').style.display = 'none';
+          document.getElementById('ok-step3').style.display = 'none';
+        }
+      }
+      form.style.display = 'none';
+      document.getElementById('chat-area').style.display = 'none';
+      ok.style.display   = 'block';
+    });
   })
   .catch(function(e) {
     err.textContent   = e.message || I18N.errGeneric;

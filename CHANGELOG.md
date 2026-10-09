@@ -14,6 +14,38 @@ enige eerlijke datum voor "uitgerold" is de dag dat `main` deployt.
 
 ## Nog niet uitgerold
 
+### Leads, kanalen en boekingen: geen valse beloftes meer
+
+- **Een afspraak wordt pas bevestigd als ze er ook echt staat.** In het
+  WhatsApp-gesprek gaat het antwoord "ingepland, tot dan" nu pas weg nadat de
+  afspraak (moment, agenda en wagen) gelukt is. Is het moment net bezet, dan
+  leest de lead meteen dat het niet past en een ander moment gevraagd wordt, in
+  plaats van eerst een bevestiging en daarna een correctie.
+- **Een agenda die niet gelezen kon worden telt niet meer als vrij.** Geeft
+  Google een fout voor je agenda, of is de koppeling verlopen, dan staat bij de
+  afspraak "[LET OP] agenda niet gelezen" (ook bij boekingen via de website) en
+  krijg je een melding om opnieuw te koppelen onder Instellingen. **Actie:** zie
+  je die melding, koppel Google Agenda opnieuw.
+- **Het formulier belooft geen WhatsApp als er geen komt.** De bedankpagina,
+  het antwoord van het formulier en de nieuwe-leadmelding zeggen nu waar de
+  bezoeker aan toe is (WhatsApp, e-mail of alleen ontvangen). Een mislukte
+  WhatsApp wist ook niet langer de toestemming of de gevraagde wagen van de lead.
+- **Een formulierlink met een verkeerde projectcode maakt geen lead meer aan**
+  maar toont een duidelijke melding. De hostpagina bestaat nu ook in het Duits.
+- **Meerdere berichten in één WhatsApp-levering** worden nu allemaal verwerkt,
+  niet alleen het eerste.
+- **Twee keer tegelijk versturen maakt één lead.** Ook krijgt de eigenaar de
+  melding met de gevraagde wagen erin, en de mail en push komen altijd aan.
+  Een verborgen veld op het formulier houdt bots buiten zonder dat een echte
+  bezoeker er iets van merkt.
+- **Website-assistent:** een contactformulier in de chat vraagt nu toestemming,
+  neemt de wagen mee waar de bezoeker naar keek, en werkt een bestaande open
+  lead met hetzelfde nummer of e-mailadres bij in plaats van een tweede aan te
+  maken.
+- **Tijdzone per klant:** openingsuren en boekingstijden volgen de tijdzone die
+  bij de klant staat. Zonder instelling blijft het Brussel, dus voor bestaande
+  klanten verandert er niets.
+
 ### Voorraad: officiele koppelingen, bestand uploaden, betere meldingen
 
 - **mobile.de leest nu echt** (officiele Seller API). Vraag de Seller API-

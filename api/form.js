@@ -37,6 +37,10 @@ const { sendWATemplate } = require('./leads');
 // the same shared counter.
 const _rl = require('./_ratelimit');
 const _errors = require('./_errors');
+// Gedeelde Notities-merge voor de waFailed-vlag (zelfde functie als whatsapp.js).
+const { mergeWaFailedFlag } = require('./_notities-vlag');
+// Cross-instance sloten (fail-open zonder Redis) -- zie L-15 hieronder.
+const _lock = require('./_lock');
 
 // Single 30-second retry for Airtable 429 on the lead-creation critical path.
 //
@@ -70,6 +74,9 @@ module.exports = _errors.vangAf(function (req, res) {
   const soort = q.__assistant ? 'chat' : q.__voorraad ? 'voorraad' : 'form';
   return _trace.met(_trace.maakId(soort), () => formHandler(req, res));
 });
+
+/* Gedeeld met de websiteassistent (api/_assistent.js): één open lead per persoon. */
+module.exports._leadHulp = { zoekOpenLead, werkOpenLeadBij };
 
 async function formHandler(req, res) {
   /* Websiteassistent (api/_assistent.js) via de rewrite /api/assistant. Eigen
@@ -126,6 +133,16 @@ async function formHandler(req, res) {
     if (typeof body === 'string') { try { body = JSON.parse(body); } catch { body = {}; } }
     if (!body || typeof body !== 'object') body = {};
 
+    /* Honeypot (audit L-18). Het gehoste formulier heeft een verborgen veld
+       `website_url` dat een mens nooit ziet en dus nooit invult; een bot die
+       elk veld vult wel. Dan: stil "gelukt" teruggeven en NIETS doen -- geen
+       lead, geen WhatsApp, geen mail. Een duidelijke fout zou de bot alleen
+       leren om het veld voortaan leeg te laten. */
+    if (typeof body.website_url === 'string' && body.website_url.trim() !== '') {
+      console.warn('[form] honeypot geraakt — inzending stil genegeerd.');
+      return res.status(200).json({ success: true, id: '', kanaal: 'geen', status: 'niet_verzonden' });
+    }
+
     // ── Extract & validate project_code ────────────────────────────────────────
     let project_code = '';
     const urlPath = (req.url || '').split('?')[0];
@@ -173,6 +190,12 @@ async function formHandler(req, res) {
     const pandRaw = String(body.property || '').trim().toUpperCase();
     const pand    = /^[A-Z0-9][A-Z0-9-]{0,19}$/.test(pandRaw) ? pandRaw : '';
 
+    /* Het aanbod waar de link naar verwees is niet (meer) zichtbaar
+       (gearchiveerd/privé, audit L-10): de code blijft op de lead staan, met een
+       markering zodat de dealer weet dat die auto/dat pand niet meer te koop is.
+       Een hint van onze eigen pagina; niets leest hem als waarheid. */
+    const pandWeg = !!pand && body.property_unavailable === true;
+
     if (!name)  return res.status(400).json({ code: 'name_required',  error: 'Naam is verplicht' });
     if (!phone && emailRaw && !email) return res.status(400).json({ code: 'bad_email', error: 'Ongeldig e-mailadres' });
     if (!phone && !email) return res.status(400).json({ code: 'contact_required', error: 'Telefoonnummer of e-mailadres is verplicht' });
@@ -204,6 +227,12 @@ async function formHandler(req, res) {
     // behaviour) if the client lookup below fails for any reason, so a
     // lookup hiccup can never accidentally suppress a real client's greeting.
     let   planState = { status: 'active', isServiceStopped: false };
+    /* Bestaat deze projectcode echt? 'onbekend' = de opzoeking zelf faalde
+       (dan falen we open, zoals altijd: liever een lead onder een standaardnaam
+       dan een verloren aanvraag). 'afwezig' = Airtable antwoordde en er is GEEN
+       klant met deze code (audit L-04: tikfout in data-project, of een oude
+       /start/CODE-link). */
+    let   klantStatus = 'onbekend';
 
     try {
       const cFormula = encodeURIComponent(`{fldN4dL0bGgfBOXwM}="${escapeFormula(project_code)}"`);
@@ -214,6 +243,7 @@ async function formHandler(req, res) {
       if (cRes.ok) {
         const cData = await cRes.json();
         const match = (cData.records || [])[0];
+        klantStatus = match ? 'gevonden' : 'afwezig';
         if (match) {
           // Field IDs (immune to renames): fldAnB848Sr5jl6dq=Client Name,
           // fldOGdVq6T54xEo6W=Auto-Reply Template, fldRvoe1JMPOtPWC7=AI Name
@@ -245,6 +275,11 @@ async function formHandler(req, res) {
       // 429 / error → use defaults, don't block the form submission
     } catch { /* network error. Use defaults */ }
 
+    if (klantStatus === 'afwezig') {
+      console.warn(`[form] projectcode ${project_code} bestaat niet — niets aangemaakt.`);
+      return res.status(404).json({ code: 'unknown_project', error: 'Onbekende projectcode' });
+    }
+
     // ── Normalise phone. Stored in Airtable in international digits-only format
     // so it matches what WhatsApp sends as message.from (e.g. "32478123456")
     const waPhone = phone ? _regio.naarE164(phone, regio) : '';
@@ -262,6 +297,7 @@ async function formHandler(req, res) {
        Geen tweede welkomstbericht; de dealer krijgt wel een melding.
        Faalt de opzoeking, dan maken we gewoon een nieuwe lead -- liever een
        dubbel dan een verloren aanvraag. */
+    const maakOfHergebruik = async () => {
     let hergebruikt = null;
     try {
       hergebruikt = await zoekOpenLead({ token: AIRTABLE_TOKEN, baseId: BASE_ID, tabel: LEADS_TABLE, project: project_code, telefoon: waPhone, email });
@@ -308,6 +344,7 @@ async function formHandler(req, res) {
           fldoLRI5W12ThTls7: JSON.stringify(Object.assign(
             { _v: 1, notes: [], tasks: [], calls: [], consent: { given: true, ts: consentTs } },
             pand ? { property: pand } : {},
+            pandWeg ? { propertyUnavailable: true } : {},
             /* Het e-mailadres in dezelfde blob en niet in de kolom Email: die
                kolom wordt door api/_schema.js aangemaakt en bestaat dus niet
                in elke base, en een onbekend veld laat de HELE create stuklopen
@@ -327,11 +364,27 @@ async function formHandler(req, res) {
       let _eb = {}; try { _eb = JSON.parse(createRaw); } catch {}
       console.error('[form] AT' + createRes.status + ' ' + (_eb?.error?.type || _eb?.errors?.[0]?.error || '?'));
       if (createRes.status === 429) {
-        return res.status(503).json({ code: 'busy', error: 'Systeem is even bezet. Probeer het in 30 seconden opnieuw.' });
+        return { fout: [503, { code: 'busy', error: 'Systeem is even bezet. Probeer het in 30 seconden opnieuw.' }] };
       }
-      return res.status(500).json({ code: 'create_failed', error: 'Lead aanmaken mislukt' });
+      return { fout: [500, { code: 'create_failed', error: 'Lead aanmaken mislukt' }] };
     }
     } // einde "if (!hergebruikt)"
+    return { hergebruikt, createData };
+    };
+
+    /* Twee gelijktijdige inzendingen voor hetzelfde nummer/e-mailadres (twee
+       tabbladen, of een herpoging na een timeout) zagen allebei "geen open
+       lead" en maakten er twee aan -- met twee begroetingen (audit L-15).
+       Zoeken + aanmaken loopt nu onder een slot per (dealer, persoon); de
+       tweede wacht kort en vindt dan de lead van de eerste. Zonder Redis, of
+       als het slot na een paar pogingen nog vastligt, gaat het zoals voorheen
+       (api/_lock.js faalt bewust open). */
+    const slotSleutel = 'form:' + project_code + ':' + (waPhone || email);
+    const slot = await _lock.metSlot(slotSleutel, 35000, maakOfHergebruik);
+    const uitkomst = slot && slot.bezet ? await maakOfHergebruik() : slot.resultaat;
+    if (uitkomst.fout) return res.status(uitkomst.fout[0]).json(uitkomst.fout[1]);
+    const hergebruikt = uitkomst.hergebruikt;
+    const createData = uitkomst.createData;
 
     // ── Respond to browser immediately, send WhatsApp after 60s delay ──────────
     const firstName   = sanitize(name).split(' ')[0];
@@ -374,6 +427,26 @@ async function formHandler(req, res) {
     //      on modern Node — taking down every OTHER in-flight request in this
     //      Fluid Compute instance, not just this one lead's send.
     const leadId = createData.id;
+
+    /* Wat de bezoeker mag verwachten (audit L-07). Alles wat bepaalt of er een
+       WhatsApp-begroeting gaat volgen is vóór dit antwoord bekend, dus we
+       beloven niets meer wat de deferred send hieronder toch niet doet.
+         kanaal  whatsapp | email | geen   -- hoe we deze persoon bereiken
+         status  verzonden       = er staat een WhatsApp-begroeting klaar voor
+                                   verzending (aflevering zelf is pas later te
+                                   weten; Meta kan hem nog weigeren)
+                 niet_verzonden  = bewust geen automatisch bericht (zie reden)
+                 mislukt         = gereserveerd voor een bekende storing
+         reden   alleen bij niet_verzonden: bestaande_lead | alleen_email |
+                 dienst_gestopt | niet_geconfigureerd
+       Alleen additieve velden; success/id/bestaand blijven zoals ze waren. */
+    const terugvalKanaal = email ? 'email' : 'geen';
+    let kanaalUit = { kanaal: 'whatsapp', status: 'verzonden' };
+    if (hergebruikt) kanaalUit = { kanaal: waPhone ? 'whatsapp' : terugvalKanaal, status: 'niet_verzonden', reden: 'bestaande_lead' };
+    else if (!waPhone) kanaalUit = { kanaal: 'email', status: 'niet_verzonden', reden: 'alleen_email' };
+    else if (planState.isServiceStopped) kanaalUit = { kanaal: terugvalKanaal, status: 'niet_verzonden', reden: 'dienst_gestopt' };
+    else if (!process.env.INTRO_TEMPLATE_NAME) kanaalUit = { kanaal: terugvalKanaal, status: 'niet_verzonden', reden: 'niet_geconfigureerd' };
+
     const deferredSend = new Promise((resolve) => {
       setTimeout(async () => {
         try {
@@ -407,7 +480,10 @@ async function formHandler(req, res) {
               // original bug (freeform first-contact send) go unnoticed for
               // every form lead. Never let this degrade silently again.
               console.error(`[form] INTRO_TEMPLATE_NAME niet geconfigureerd — WhatsApp-begroeting naar lead ${leadId} (${maskPhone(waPhone)}) overgeslagen. Freeform buiten het 24u-venster zou Meta-afwijzing/ban riskeren. Lead IS aangemaakt; stel INTRO_TEMPLATE_NAME + INTRO_TEMPLATE_LANG in.`);
-              await flagWaFailed(leadId, AIRTABLE_TOKEN, BASE_ID, LEADS_TABLE);
+              /* Bewust GEEN flagWaFailed: dit is een ontbrekende omgevings-
+                 instelling, geen eigenschap van deze lead. Vlaggen zou ELKE lead
+                 als "Niet bereikbaar" markeren tot iemand de variabele zet
+                 (audit L-01). De luide logregel hierboven is het signaal. */
             } else {
               // Template language gated through the Meta-approval registry
               // (nl/fr/en today) — never bypass this, see _lang.js header.
@@ -506,8 +582,15 @@ async function formHandler(req, res) {
       waitUntil(_klant.koppelLead(project_code, leadId, { telefoon: waPhone, naam: name, email, kanaal: 'website', bron: bron || 'formulier' }).catch(() => {}));
     } catch (e) { /* koppelen is bijzaak; de lead bestaat al */ }
 
-    // Email notification (fire-and-forget). prefer per-client Rapport Email
-    sendEmailNotification({ name, phone, email, project_code, bron, clientName, toEmail: ownerEmail }).catch(() => {});
+    /* Het gevraagde voertuig (naam + code + prijs) voor de melding aan de
+       eigenaar (audit L-09). Fail-soft en met een korte limiet: de melding
+       gaat ook zonder uit. */
+    const voertuigP = voertuigVoorMelding(project_code, pand);   // loopt mee in waitUntil; vertraagt het antwoord niet
+
+    // Email notification: prefer per-client Rapport Email. Geregistreerd bij
+    // waitUntil (audit L-16) zodat het platform de instantie niet afkapt
+    // voordat de mail weg is.
+    const mailWerk = voertuigP.then((voertuigTekst) => sendEmailNotification({ name, phone, email, project_code, bron, clientName, toEmail: ownerEmail, voertuig: voertuigTekst, pand })).catch(() => {});
 
     /* Pushmelding naar de apparaten van dit kantoor. Bewust NAAST de e-mail en
        de WhatsApp-ping, niet in plaats daarvan: die twee zijn de betrouwbare
@@ -518,13 +601,21 @@ async function formHandler(req, res) {
        Fail-soft en zonder await: er wordt niet op gewacht en er wordt niets mee
        gedaan. Ligt OneSignal eruit of staat de sleutel er niet, dan is de lead
        gewoon opgeslagen en heeft de eigenaar zijn mail. Zie api/_push.js. */
-    require('./_push').stuurVertaald({
-      projectCode:  project_code,
-      titelSleutel: 'push.lead.title',
-      url:          'https://app.helvaro.pro/dashboard',
-    }).catch(() => {});
+    const pushWerk = voertuigP.then((voertuigTekst) => (voertuigTekst
+      ? require('./_push').stuurNaarKantoor({
+          projectCode: project_code,
+          titel: require('./_i18n').t(require('./_i18n').kort(process.env.DASHBOARD_LANG || require('./_i18n').STANDAARD), 'push.lead.title'),
+          tekst: voertuigTekst,
+          url:   'https://app.helvaro.pro/dashboard',
+        })
+      : require('./_push').stuurVertaald({
+          projectCode:  project_code,
+          titelSleutel: 'push.lead.title',
+          url:          'https://app.helvaro.pro/dashboard',
+        }))).catch(() => {});
+    try { waitUntil(Promise.allSettled([mailWerk, pushWerk])); } catch (_) { /* geen requestcontext: lokaal */ }
 
-    return res.status(200).json({ success: true, id: createData.id, ...(hergebruikt ? { bestaand: true } : {}) });
+    return res.status(200).json({ success: true, id: createData.id, ...(hergebruikt ? { bestaand: true } : {}), ...kanaalUit });
 
   } catch (err) {
     console.error('Form error:', err.message);
@@ -584,6 +675,14 @@ async function werkOpenLeadBij({ token, baseId, tabel, lead, pand, email, bron, 
   notes.unshift({ id: 'n_' + Date.now(), text: `Vulde het formulier opnieuw in${wat}${via}.`, ts: new Date().toISOString() });
   const nieuw = Object.assign({}, blob, { _v: 1, notes, tasks: blob.tasks || [], calls: blob.calls || [] });
   if (pand && !blob.property) nieuw.property = pand;
+  /* Vraagt dezelfde persoon later naar een ANDERE wagen, dan blijft de eerste
+     de `property` (waar de AI over praat en waar een boeking aan hangt) en komt
+     de nieuwe erbij in `properties` -- de dealer ziet beide (audit L-11). */
+  if (pand && blob.property && pand !== blob.property) {
+    const lijst = Array.isArray(blob.properties) ? blob.properties.slice() : [blob.property];
+    if (lijst.indexOf(pand) === -1) lijst.push(pand);
+    nieuw.properties = lijst.slice(0, 20);
+  }
   if (email && !blob.email) nieuw.email = email;
   nieuw.consent = Object.assign({}, blob.consent || {}, { given: true, ts: consentTs });
   const r = await atFetch(`https://api.airtable.com/v0/${baseId}/${tabel}/${lead.id}`, {
@@ -608,7 +707,7 @@ function escEmail(s) {
   return String(s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 }
 
-async function sendEmailNotification({ name, phone, email, project_code, bron, clientName, toEmail }) {
+async function sendEmailNotification({ name, phone, email, project_code, bron, clientName, toEmail, voertuig, pand }) {
   // Prefer per-client Rapport Email; fall back to global NOTIFY_EMAIL for legacy setups
   const NOTIFY_EMAIL = (toEmail && toEmail.trim()) || process.env.NOTIFY_EMAIL;
   if (!NOTIFY_EMAIL) { console.warn('[form mail] geen ontvanger (Rapport Email / NOTIFY_EMAIL)'); return; }
@@ -620,6 +719,7 @@ async function sendEmailNotification({ name, phone, email, project_code, bron, c
             <tr><td style="padding:8px;color:#666">Naam</td><td style="padding:8px;font-weight:600">${escEmail(name)}</td></tr>
             <tr><td style="padding:8px;color:#666">Telefoon</td><td style="padding:8px;font-weight:600">${escEmail(phone || '—')}</td></tr>
             ${email ? `<tr><td style="padding:8px;color:#666">E-mail</td><td style="padding:8px;font-weight:600">${escEmail(email)}</td></tr>` : ''}
+            ${voertuig || pand ? `<tr><td style="padding:8px;color:#666">Gevraagd voertuig</td><td style="padding:8px;font-weight:600">${escEmail(voertuig || pand)}</td></tr>` : ''}
             <tr><td style="padding:8px;color:#666">Project</td><td style="padding:8px">${escEmail(project_code)}</td></tr>
             <tr><td style="padding:8px;color:#666">Bron</td><td style="padding:8px">${escEmail(bron)}</td></tr>
           </table>
@@ -641,14 +741,42 @@ async function sendEmailNotification({ name, phone, email, project_code, bron, c
 // and owner-notify sends above now go through the shared sendWATemplate()
 // helper (imported from ./leads) instead. See api/leads.js:sendWATemplate.
 
+/* Zet waFailed in de Notities van de lead ZONDER de rest weg te gooien. Eerst
+   gold hier "Notities is nog leeg, dus overschrijven is veilig" -- maar sinds de
+   create staan toestemmingsbewijs, voertuigcode en e-mailadres in die blob
+   (audit L-01). Lezen, samenvoegen (api/_notities-vlag.js, dezelfde functie als
+   whatsapp.js), terugschrijven. Kan de lead niet gelezen worden, dan schrijven
+   we NIETS: een gemiste vlag is minder erg dan een gewist toestemmingsbewijs. */
 async function flagWaFailed(leadId, token, baseId, tableId) {
-  const notities = JSON.stringify({ _v: 1, notes: [], tasks: [], calls: [], waFailed: true });
-  await fetch(
-    `https://api.airtable.com/v0/${baseId}/${tableId}/${leadId}`,
-    {
+  const url = `https://api.airtable.com/v0/${baseId}/${tableId}/${leadId}`;
+  try {
+    const gelezen = await fetch(`${url}?returnFieldsByFieldId=true`, { headers: { Authorization: `Bearer ${token}` } });
+    if (!gelezen.ok) { console.error('[form] flagWaFailed: lead lezen mislukt (' + gelezen.status + ') — vlag niet gezet om Notities niet te overschrijven.'); return; }
+    const rec = await gelezen.json();
+    const ruw = (rec && rec.fields && (rec.fields[NOTITIES_VELD] || rec.fields['Notities'])) || '';
+    await fetch(url, {
       method:  'PATCH',
       headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
-      body:    JSON.stringify({ fields: { fldoLRI5W12ThTls7: notities } })
-    }
-  ).catch(err => console.error('[form] flagWaFailed error:', err.message));
+      body:    JSON.stringify({ fields: { [NOTITIES_VELD]: mergeWaFailedFlag(ruw) } })
+    });
+  } catch (err) {
+    console.error('[form] flagWaFailed error:', err.message);
+  }
+}
+
+/* "Naam (CODE) — € prijs" voor de eigenaarsmelding, of ''. Alleen voor
+   voertuigen; een pand of een onbekende code geeft '' en de melding toont dan
+   gewoon de code. Nooit een fout naar buiten, nooit langer dan 2,5 s. */
+async function voertuigVoorMelding(project, pand) {
+  if (!pand) return '';
+  try {
+    const _v = require('./_vehicles');
+    const lees = _v.leesVers(project, pand);
+    const uit = await Promise.race([lees, new Promise((r) => setTimeout(() => r(null), 2500))]);
+    const auto = uit && uit.voertuig;
+    if (!auto) return '';
+    const naam = _v.naam ? _v.naam(auto) : '';
+    const prijs = _v.prijsTekst ? _v.prijsTekst(auto.prijs) : '';
+    return [naam, '(' + pand + ')', prijs && '— ' + prijs].filter(Boolean).join(' ');
+  } catch (_) { return ''; }
 }

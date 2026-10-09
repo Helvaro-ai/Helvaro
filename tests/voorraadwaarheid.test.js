@@ -161,7 +161,7 @@ const minGeleden = (m) => new Date(Date.now() - m * 60000).toISOString();
   console.log('\nbedrading (bron)');
   const wa = fs.readFileSync(BASE + 'api/whatsapp.js', 'utf8');
   const iGuard = wa.indexOf('_inventaris.beoordeelVoorVerzenden(replyText');
-  const iSend = wa.indexOf('const sendOk = await sendWA(phone, replyText');
+  const iSend = wa.indexOf('const sendOk = antwoordInWachtrij');
   ck('whatsapp: eindcontrole staat VOOR het versturen', iGuard > 0 && iSend > iGuard);
   ck('whatsapp: onzekere voorraad blokkeert boeken', /voorraadVertrouwen\.niveau === 'onzeker'/.test(wa));
   const db = fs.readFileSync(BASE + 'api/_dealer-boeking.js', 'utf8');

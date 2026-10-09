@@ -110,7 +110,7 @@ console.log('\n— beide aanroeppunten gebruiken de correctie, niet een kale Dat
      startGeldig -- zie de opmerking op die plek in api/whatsapp.js. */
   const consumeBlok = (waSrc.match(/const startMs = Date\.parse\(appt\.start\);/) ? waSrc.slice(waSrc.indexOf('Tijdzonecorrectie VOOR de validatie'), waSrc.indexOf('const startMs = Date.parse(appt.start);') + 60) : '');
   ck('whatsapp.js corrigeert appt.start vóór startGeldig/Date.parse',
-     /appt\.start = _afspraken\.corrigeerNaarBrusselseTijd\(appt\.start\)/.test(consumeBlok), consumeBlok.slice(0, 200));
+     /appt\.start = _afspraken\.corrigeerNaarBrusselseTijd\(appt\.start(, regio\.tz)?\)/.test(consumeBlok), consumeBlok.slice(0, 200));
 
   const toolsSrc = fs.readFileSync(path.join(__dirname, '..', 'api', '_faro', 'tools.js'), 'utf8');
   const nCorrecties = (toolsSrc.match(/corrigeerNaarBrusselseTijd\(args\.when\)/g) || []).length;

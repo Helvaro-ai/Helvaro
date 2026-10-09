@@ -177,9 +177,22 @@ module.exports = _errors.vangAf(async function handler(req, res) {
   res.status(200).send('OK');
 
   try {
-    const entry   = body?.entry?.[0];
-    const change  = entry?.changes?.[0]?.value;
-    const message = change?.messages?.[0];
+    /* Meta bundelt bij een achterstand of snel na elkaar verstuurde berichten
+       meerdere berichten in één webhook: value.messages[] heeft er n, en er
+       kunnen meerdere entry[] en changes[] in zitten. Tot nu toe werd alleen
+       entry[0].changes[0].messages[0] verwerkt en waren de rest weg, zonder
+       logregel, antwoord of spoor in de geschiedenis (audit L-05). Nu gaan ze
+       ALLEMAAL door dezelfde dedupe + opDeRij-keten; de volgorde per afzender
+       blijft zoals Meta hem stuurde. */
+    const entries = Array.isArray(body?.entry) ? body.entry : [];
+    const alleChanges = entries.flatMap((e) => (Array.isArray(e?.changes) ? e.changes : []));
+    const berichten = [];
+    for (const ch of alleChanges) {
+      const waarde = ch?.value;
+      if (Array.isArray(waarde?.messages)) {
+        for (const m of waarde.messages) { if (m) berichten.push({ message: m, change: waarde }); }
+      }
+    }
 
     // ── Status callbacks + other WABA event types ────────────────────────
     // Handled for EVERY change in this entry (not just the first), fully
@@ -190,11 +203,14 @@ module.exports = _errors.vangAf(async function handler(req, res) {
     // exactly what's covered. Promise.allSettled + its own internal
     // try/catch means this can never throw into this handler.
     const eventWork = Promise.allSettled(
-      (Array.isArray(entry?.changes) ? entry.changes : []).map(processWebhookChange)
+      alleChanges.map(processWebhookChange)
     );
     waitUntil(eventWork);
 
-    if (!message) { await eventWork; return; }
+    /* Eén bericht door de volledige voorbewerking (type, dedupe, routering) en
+       op de rij van zijn afzender zetten. Geeft de verwerkingsbelofte terug, of
+       null als het bericht bewust wordt overgeslagen. */
+    const verwerkBericht = async ({ message, change }) => {
 
     /* Een spraakbericht, een foto, een sticker: hier stond `return` en verder
      * niets. Geen antwoord, geen regel in de geschiedenis, en op het dashboard
@@ -229,8 +245,7 @@ module.exports = _errors.vangAf(async function handler(req, res) {
         // Iets wat we niet kennen (een reactie-emoji, een systeembericht).
         // Daar hoort geen antwoord op; stil overslaan is hier juist correct.
         console.log(`[WhatsApp] berichttype "${message.type}" overgeslagen`);
-        await eventWork;
-        return;
+        return null;
       }
       nietTekst = `[De lead stuurde ${soort}. Je kunt de inhoud hiervan NIET zien of beluisteren. `
         + `Zeg dat vriendelijk, vraag of hij het wil typen, en ga verder met het gesprek.]`;
@@ -265,16 +280,14 @@ module.exports = _errors.vangAf(async function handler(req, res) {
     // Without dedup the AI would reply twice to the same lead message.
     if (message.id && _dedupSeen(message.id)) {
       console.log(`[WhatsApp] Duplicate webhook voor message ${message.id}. overgeslagen`);
-      await eventWork;
-      return;
+      return null;
     }
     /* Dezelfde vraag over ALLE instanties heen (audit L-1): de Map hierboven
        ziet alleen deze instantie. Zonder Upstash of bij een storing geeft dit
        true en gaat alles zoals voorheen. */
     if (message.id && !(await _lock.eenmalig('wa-msg:' + message.id, 15 * 60 * 1000))) {
       console.log(`[WhatsApp] message ${message.id} al opgepakt door een andere instantie. overgeslagen`);
-      await eventWork;
-      return;
+      return null;
     }
 
     const phone = message.from;           // e.g. "32478123456"
@@ -336,7 +349,23 @@ module.exports = _errors.vangAf(async function handler(req, res) {
         throw err;
       });
     waitUntil(work);
-    await Promise.all([work, eventWork]);
+    return work;
+    };
+
+    const werk = [];
+    for (const item of berichten) {
+      try {
+        const w = await verwerkBericht(item);
+        if (w) werk.push(w);
+      } catch (err) {
+        /* Eén kapot bericht mag de rest van de bundel niet meenemen. */
+        console.error('[WhatsApp] Fout bij voorbewerking van een bericht:', err.message);
+      }
+    }
+    const uitslag = await Promise.allSettled([...werk, eventWork]);
+    for (const u of uitslag) {
+      if (u.status === 'rejected') console.error('[WhatsApp] Fout in handler:', u.reason && u.reason.message);
+    }
 
   } catch (err) {
     console.error('[WhatsApp] Fout in handler:', err.message);
@@ -1395,7 +1424,7 @@ async function processMessage(phone, text, scopedProjectCode, inkomendId) {
          (hij hangt af van de taal waarin de AI antwoordde) en staat hier nog in
          zijn dode zone. Voor een datum in een systeemprompt is de ingestelde
          taal van de klant sowieso de juiste. */
-      ? formatApptDateTime(eigenAfspraak.fields[_afspraken.F.START], lang)
+      ? formatApptDateTime(eigenAfspraak.fields[_afspraken.F.START], lang, regio.tz)
       : '',
   });
 
@@ -1518,7 +1547,40 @@ async function processMessage(phone, text, scopedProjectCode, inkomendId) {
     }
   }
 
-  const sendOk = await sendWA(phone, replyText, clientPhoneNumberId, { projectCode });
+  /* L-02: staat er een in-chat boeking te wachten, dan gaat het AI-antwoord
+     ("Ingepland, tot dan") NIET meer vooraf de deur uit. De AI schrijft die zin
+     in dezelfde beurt als het BOOK-blok, dus er was niets te controleren
+     voordat de lead hem las. Nu beslist de boeking (slot + agenda + voertuig)
+     eerst: lukt hij, dan gaat het antwoord alsnog uit, direct gevolgd door de
+     bevestiging; botst hij, dan krijgt de lead ALLEEN het conflictbericht. */
+  let antwoordInWachtrij = !!(aiResponse.appointment && aiResponse.appointment.start
+    && bookingMethod === 'in_chat' && !isEscalation);
+  const sendOk = antwoordInWachtrij ? true : await sendWA(phone, replyText, clientPhoneNumberId, { projectCode });
+  async function stuurAntwoordInWachtrij() {
+    if (!antwoordInWachtrij) return true;
+    antwoordInWachtrij = false;
+    return sendWA(phone, replyText, clientPhoneNumberId, { projectCode }).catch(() => false);
+  }
+  /* Wordt het vastgehouden antwoord geschrapt (de boeking botste), dan staat het
+     wel al in Conversation History: die is in stap 10 bewaard, vóór de boeking.
+     Laten staan betekent dat de AI bij de volgende beurt leest dat hij
+     "Ingepland" schreef, en de lead een afspraak bevestigt die niet bestaat.
+     Daarom vervangen we die beurt door de correctie die de lead wél kreeg. */
+  async function schrapAntwoordInWachtrij(correctie) {
+    if (!antwoordInWachtrij) return;
+    antwoordInWachtrij = false;
+    try {
+      for (let i = history.length - 1; i >= 0; i--) {
+        if (history[i] && history[i].role === 'assistant' && history[i].content === replyText) {
+          history[i] = { ...history[i], content: String(correctie || '') };
+          break;
+        }
+      }
+      await updateLead(lead.id, { 'Conversation History': JSON.stringify(history) }, phone, scopedProjectCode);
+    } catch (e) {
+      console.error('[whatsapp] geschiedenis na mislukte boeking niet bijgewerkt:', e && e.message);
+    }
+  }
   const updateFields = { 'Last Message': text };
   if (sendOk) {
     // `ts` stamps outbound turns too (not just inbound, see step 4's push
@@ -1874,7 +1936,7 @@ async function processMessage(phone, text, scopedProjectCode, inkomendId) {
         }
       } else {
         afspraakAfgezegd = true;
-        const wanneer = formatApptDateTime(eigenAfspraak.fields[_afspraken.F.START], effectiveLang);
+        const wanneer = formatApptDateTime(eigenAfspraak.fields[_afspraken.F.START], effectiveLang, regio.tz);
 
         /* De AI schreef zelf al iets ("jammer, wanneer komt het je wel uit?").
            Dit bericht komt daar NIET nog eens overheen -- twee berichten over
@@ -1917,6 +1979,7 @@ async function processMessage(phone, text, scopedProjectCode, inkomendId) {
      heeft. Apart, omdat er twee wegen naartoe lopen (een geweigerde schrijf en
      een uitzondering) en ze allebei hetzelfde moeten doen. */
   async function meldMislukteBoeking(reden) {
+    await schrapAntwoordInWachtrij(_lang.buildSlotConflictMessage(effectiveLang));   // L-02: de lead krijgt alleen de correctie
     console.error(`[whatsapp] afspraak NIET aangemaakt voor ${maskPhone(phone)} (${projectCode}): ${reden}`);
     try {
       await sendWA(phone, _lang.buildSlotConflictMessage(effectiveLang), clientPhoneNumberId, { projectCode });
@@ -2008,7 +2071,7 @@ async function processMessage(phone, text, scopedProjectCode, inkomendId) {
        boekingsprompt (api/_ai/prompts.js) vraagt het model om zelf
        +02:00/+01:00 te kiezen, en dat is precies het rekenwerk waar een
        model naast kan zitten rond de omschakeling. */
-    if (appt.start) appt.start = _afspraken.corrigeerNaarBrusselseTijd(appt.start);
+    if (appt.start) appt.start = _afspraken.corrigeerNaarBrusselseTijd(appt.start, regio.tz);
     const startMs = Date.parse(appt.start);
     const startGeldig = Number.isFinite(startMs) && startMs > Date.now() - 60000;
     if (!bookingSent && appt.start && !startGeldig) {
@@ -2047,6 +2110,7 @@ async function processMessage(phone, text, scopedProjectCode, inkomendId) {
              verderop: de lead rechtzetten, de dealer waarschuwen, en geen
              enkele vlag zetten zodat een volgende beurt het alsnog kan boeken. */
           console.warn(`[whatsapp] BOOK geweigerd: voertuig niet boekbaar (${dealerControle.reden}) voor ${maskPhone(phone)} (${projectCode})`);
+          await schrapAntwoordInWachtrij(_lang.buildVehicleUnavailableMessage(effectiveLang));   // L-02
           try {
             const correctieSent = await sendWA(phone, _lang.buildVehicleUnavailableMessage(effectiveLang), clientPhoneNumberId, { projectCode });
             if (!correctieSent) console.error(`[whatsapp] voertuig-onbeschikbaar correctie naar ${maskPhone(phone)} niet aangekomen`);
@@ -2059,7 +2123,7 @@ async function processMessage(phone, text, scopedProjectCode, inkomendId) {
               `Naam: ${leadName || '(onbekend)'}\n` +
               `Tel: ${phone}\n` +
               `Project: ${projectCode}\n\n` +
-              `De AI bevestigde ${formatApptDateTime(appt.start, effectiveLang)} aan de lead voor ${herkendVoertuig ? herkendVoertuig.code : 'een voertuig'}, ` +
+              `De AI bevestigde ${formatApptDateTime(appt.start, effectiveLang, regio.tz)} aan de lead voor ${herkendVoertuig ? herkendVoertuig.code : 'een voertuig'}, ` +
               `maar dat voertuig bleek niet meer boekbaar (${dealerControle.reden}). ` +
               `Er is GEEN afspraak aangemaakt en de lead is gevraagd om alternatieven — volg op als dat nog niet gebeurd is.\n\n` +
               `Dashboard: https://app.helvaro.pro/dashboard`;
@@ -2101,6 +2165,7 @@ async function processMessage(phone, text, scopedProjectCode, inkomendId) {
       try {
         const gAccess = await gcalAccess(client);
         gToken = gAccess.token; gCalId = gAccess.calId;
+        if (gAccess.nietBereikbaar) agendaGeverifieerd = false;   // L-03: koppeling bestaat, token werkt niet
         if (gToken) {
           const uitslag = await _gcal.checkSlot(gToken, gCalId, appt.start, appt.duration || appointmentDuration);
           slotTaken = !uitslag.free;
@@ -2149,6 +2214,7 @@ async function processMessage(phone, text, scopedProjectCode, inkomendId) {
       }
 
       if (slotTaken) {
+        await schrapAntwoordInWachtrij(_lang.buildSlotConflictMessage(effectiveLang));   // L-02: geen "ingepland" voor een bezet moment
         // The AI's reply THIS turn (already sent above in step 10 — e.g.
         // "Ingepland. Tot dan.") told the lead the slot was confirmed BEFORE
         // we ever get a chance to check Google; the AI drafts that line as
@@ -2178,7 +2244,7 @@ async function processMessage(phone, text, scopedProjectCode, inkomendId) {
             `Naam: ${leadName || '(onbekend)'}\n` +
             `Tel: ${phone}\n` +
             `Project: ${projectCode}\n\n` +
-            `De AI bevestigde ${formatApptDateTime(appt.start, effectiveLang)} aan de lead, maar dat moment bleek net bezet in de Google agenda. ` +
+            `De AI bevestigde ${formatApptDateTime(appt.start, effectiveLang, regio.tz)} aan de lead, maar dat moment bleek net bezet in de Google agenda. ` +
             `Er is GEEN afspraak aangemaakt en de lead is gevraagd een ander moment te kiezen — volg op als dat nog niet gebeurd is.\n\n` +
             `Dashboard: https://app.helvaro.pro/dashboard`;
           const conflictNotifySent = await sendWA(ownerPhone, conflictNotice, clientPhoneNumberId);
@@ -2241,6 +2307,7 @@ async function processMessage(phone, text, scopedProjectCode, inkomendId) {
               });
               if (!naResultaat.ok) {
                 dealerVerloren = true;
+                await schrapAntwoordInWachtrij(_lang.buildVehicleUnavailableMessage(effectiveLang));   // L-02
                 console.warn(`[whatsapp] BOOK verloren van een race op het voertuig (${herkendVoertuig && herkendVoertuig.code}) voor ${maskPhone(phone)} (${projectCode})`);
                 try {
                   const correctieSent = await sendWA(phone, _lang.buildVehicleUnavailableMessage(effectiveLang), clientPhoneNumberId, { projectCode });
@@ -2254,7 +2321,7 @@ async function processMessage(phone, text, scopedProjectCode, inkomendId) {
                     `Naam: ${leadName || '(onbekend)'}\n` +
                     `Tel: ${phone}\n` +
                     `Project: ${projectCode}\n\n` +
-                    `De AI bevestigde ${formatApptDateTime(appt.start, effectiveLang)} aan de lead voor ${herkendVoertuig ? herkendVoertuig.code : 'een voertuig'}, ` +
+                    `De AI bevestigde ${formatApptDateTime(appt.start, effectiveLang, regio.tz)} aan de lead voor ${herkendVoertuig ? herkendVoertuig.code : 'een voertuig'}, ` +
                     `maar een andere afspraak op dat voertuig won de race. Er staat GEEN afspraak meer voor deze lead en de lead is gevraagd om alternatieven.\n\n` +
                     `Dashboard: https://app.helvaro.pro/dashboard`;
                   const noticeSent = await sendWA(ownerPhone, notice, clientPhoneNumberId);
@@ -2293,7 +2360,8 @@ async function processMessage(phone, text, scopedProjectCode, inkomendId) {
             // creation failed" (it already exists at this point) — log it
             // distinctly instead.
             try {
-              const when = formatApptDateTime(appt.start, effectiveLang);
+              await stuurAntwoordInWachtrij();   // L-02: pas NU, de afspraak staat
+              const when = formatApptDateTime(appt.start, effectiveLang, regio.tz);
               const confirmSent = await sendWA(phone, _lang.buildConfirmMessage(effectiveLang, clientName, when, address), clientPhoneNumberId, { projectCode });
               if (!confirmSent) console.error(`[whatsapp] booking confirmation naar ${maskPhone(phone)} niet aangekomen (afspraak zelf blijft geldig)`);
             } catch (err) {
@@ -2334,7 +2402,7 @@ async function processMessage(phone, text, scopedProjectCode, inkomendId) {
                   `[Even nakijken] Afspraak geboekt zonder agendacontrole\n\n` +
                   `Naam: ${leadName || '(onbekend)'}\n` +
                   `Tel: ${phone}\n` +
-                  `Wanneer: ${formatApptDateTime(appt.start, effectiveLang)}\n\n` +
+                  `Wanneer: ${formatApptDateTime(appt.start, effectiveLang, regio.tz)}\n\n` +
                   `De afspraak staat en de lead heeft een bevestiging. Alleen kon je Google agenda op dat moment niet gelezen worden, ` +
                   `dus dit tijdstip is NIET gecontroleerd op een dubbele boeking. Kijk het even na.\n\n` +
                   `Blijft dit terugkomen, dan is de koppeling met Google waarschijnlijk verlopen — opnieuw verbinden in Instellingen.\n\n` +
@@ -2387,7 +2455,7 @@ async function processMessage(phone, text, scopedProjectCode, inkomendId) {
               try {
                 const melding = _dealerMelding.bouwAfspraakBericht({
                   lang, leadNaam: leadName,
-                  wanneer: formatApptDateTime(appt.start, lang),
+                  wanneer: formatApptDateTime(appt.start, lang, regio.tz),
                   voertuigNaam: herkendVoertuig ? _vehicles.naam(herkendVoertuig) : '',
                   prijsTekst: herkendVoertuig ? _vehicles.prijsTekst(herkendVoertuig.prijs) : '',
                   type: dealerType,
@@ -2402,7 +2470,7 @@ async function processMessage(phone, text, scopedProjectCode, inkomendId) {
                      Meta goedgekeurd is. Tot dan gebruikt de melding de
                      generieke lead_alert; zie api/_dealer-melding.js. */
                   sjabloon: {
-                    naam: leadName, wanneer: formatApptDateTime(appt.start, lang),
+                    naam: leadName, wanneer: formatApptDateTime(appt.start, lang, regio.tz),
                     voertuig: herkendVoertuig ? _vehicles.naam(herkendVoertuig) : '',
                     prijs: herkendVoertuig ? _vehicles.prijsTekst(herkendVoertuig.prijs) : '',
                     type: dealerType,
@@ -2437,6 +2505,10 @@ async function processMessage(phone, text, scopedProjectCode, inkomendId) {
       } // sluit "if (!dealerControle || dealerControle.ok)" -- zie Fase 2b/3 hierboven
     }
   }
+
+  /* L-02: geen boeking geprobeerd (al geboekt, niets te doen) of de boeking
+     was idempotent/geweigerd zonder correctie nodig: het antwoord gaat alsnog uit. */
+  await stuurAntwoordInWachtrij();
 
   // 11c. Owner notificaties bij qualified (zowel in_chat als callback). Skip bij escalatie.
   // Intentioneel NIET gegated op sendOk: de kwalificatie is gebaseerd op wat de
@@ -3472,7 +3544,7 @@ async function createAppointment({ startTime, duration, projectCode, leadId, lea
 // Gebruikt door de booking-confirmation hierboven. cron-followup.js en
 // api/leads.js hebben elk hun eigen kopie — zelfde per-file helper-duplicatie
 // conventie als mergeWaFailedFlag hierboven.
-function formatApptDateTime(iso, lang) {
+function formatApptDateTime(iso, lang, tz) {
   const dt = new Date(iso);
   if (isNaN(dt.getTime())) return String(iso || '');
   // calendar:'gregory' is NOT redundant — verified this matters. Several
@@ -3484,7 +3556,7 @@ function formatApptDateTime(iso, lang) {
   // Calendar would be genuinely confusing, not just a translation nicety.
   // Forcing 'gregory' keeps every language showing the SAME calendar date,
   // just formatted in that language's own words/script.
-  const opts = { weekday: 'long', day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Brussels', calendar: 'gregory' };
+  const opts = { weekday: 'long', day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit', timeZone: tz || 'Europe/Brussels', calendar: 'gregory' };
   return dt.toLocaleString(_lang.getLocale(lang), opts);
 }
 
@@ -3530,9 +3602,21 @@ async function gcalAccess(client) {
     if (!enc) return { token: '', calId: 'primary' };
     const refresh = _gcal.decryptToken(enc);
     if (!refresh) return { token: '', calId: 'primary' };
-    const token = await _gcal.getAccessToken(refresh);
     const calId = client.fields['fldWBxxhGYEZNIMqA'] || client.fields['Google Calendar ID'] || 'primary';
-    return { token, calId };
+    try {
+      const token = await _gcal.getAccessToken(refresh);
+      return { token, calId };
+    } catch (e) {
+      /* L-03: een koppeling die er WEL is maar niet werkt, mag niet als "geen
+         agenda gekoppeld" doorgaan -- dan kent de boeking de agenda niet en
+         zegt hij dat ook niet. */
+      console.error('[gcal] token vernieuwen mislukt:', e && e.message);
+      const reauth = !!(e && e.code === 'reauth_required');
+      if (reauth) {
+        try { _afspraken.meldKoppelingVerlopen(String(client.fields['fldN4dL0bGgfBOXwM'] || client.fields['Project Code'] || '').trim()); } catch (_) { /* bijzaak */ }
+      }
+      return { token: '', calId, nietBereikbaar: true, reauth };
+    }
   } catch (e) {
     console.error('[gcal] access failed:', e && e.message);
     return { token: '', calId: 'primary' };
@@ -3659,44 +3743,10 @@ function antwoordPauzeMs() {
 const { maskPhone } = require('./_masker');
 
 // Merge a waFailed:true marker into a lead's existing Notities JSON without
-// clobbering notes/tasks/calls a client may already have added manually.
-// api/form.js's flagWaFailed overwrites the field outright, which is safe
-// there because it only ever runs immediately after lead creation (Notities
-// is still empty). Here we're mid-conversation, so an unconditional overwrite
-// could wipe out real staff notes — merge instead.
-//
-// Notities isn't always JSON: dashboard.js's parseNotities() also accepts
-// bare legacy text (pre-JSON-envelope manual notes) and wraps it as a
-// {id:'legacy', text, ts} note on read. If we don't do the same here, a lead
-// with an old-style plain-text note would have that note silently destroyed
-// the moment it gets flagged — preserve it instead.
-//
-// `detail` (optional, added for the status-callback path — see
-// handleStatusCallback() above): Meta's error code/title for a 'failed'
-// status. Stored alongside the same `waFailed:true` flag the dashboard's
-// "Niet bereikbaar" widget already reads — NOT a new flag/mechanism, just
-// richer context riding in the same envelope for whoever investigates later.
-// api/form.js's flagWaFailed call site never had this context to give, so it
-// stays undefined there and this parameter is a no-op for that caller.
-function mergeWaFailedFlag(raw, detail) {
-  const trimmed = raw ? String(raw).trim() : '';
-  let data    = { _v: 1, notes: [], tasks: [], calls: [] };
-  let handled = false;
-  if (trimmed.startsWith('{')) {
-    try {
-      const parsed = JSON.parse(trimmed);
-      if (parsed && typeof parsed === 'object') { data = { ...data, ...parsed }; handled = true; }
-    } catch { /* malformed JSON: fall through, preserve as legacy text below */ }
-  }
-  if (!handled && trimmed) {
-    data.notes = [{ id: 'legacy', text: trimmed, ts: new Date().toISOString() }];
-  }
-  data.waFailed = true;
-  if (detail && (detail.code !== undefined || detail.title !== undefined)) {
-    data.waFailedReason = { code: detail.code ?? null, title: detail.title ?? null, at: new Date().toISOString() };
-  }
-  return JSON.stringify(data);
-}
+// clobbering notes/tasks/calls/consent/property. The implementation lives in
+// api/_notities-vlag.js so api/form.js shares it (its own flagWaFailed used to
+// overwrite the whole field and destroyed consent proof + vehicle code).
+const { mergeWaFailedFlag } = require('./_notities-vlag');
 
 // Merge a 'read' marker into a lead's Notities JSON — same merge-not-
 // overwrite contract as mergeWaFailedFlag above (including legacy-plain-text
