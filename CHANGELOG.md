@@ -806,6 +806,11 @@ lokale teller, dus dit verandert niets zolang Upstash niet is aangesloten.
 
 ## 9 oktober 2026 — beveiliging
 
+- **Pushmeldingen voor een nieuwe lead kwamen nooit aan.** Zonder gevraagde
+  wagen ging de melding zonder tekst naar OneSignal, en die weigert dat. Elke
+  zo'n melding mislukte stil (gezien in de logs van vandaag). Ze heeft nu een
+  korte tekst zonder naam ("Iemand liet zijn gegevens achter"), want ze staat
+  op je vergrendelscherm.
 - **Inloggen wordt nu ook per account begrensd** (10 pogingen per 15
   minuten), niet alleen per IP-adres. Wie wachtwoorden gokt vanaf veel adressen
   tegelijk, komt niet meer verder dan tien keer. Een geslaagde login zet de teller

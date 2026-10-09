@@ -611,6 +611,7 @@ async function formHandler(req, res) {
       : require('./_push').stuurVertaald({
           projectCode:  project_code,
           titelSleutel: 'push.lead.title',
+          tekstSleutel: 'push.lead.body',
           url:          'https://app.helvaro.pro/dashboard',
         }))).catch(() => {});
     try { waitUntil(Promise.allSettled([mailWerk, pushWerk])); } catch (_) { /* geen requestcontext: lokaal */ }

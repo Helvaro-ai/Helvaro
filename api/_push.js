@@ -65,7 +65,10 @@ async function stuurNaarKantoor({ projectCode, titel, tekst, url } = {}) {
     target_channel: 'push',
     include_aliases: { external_id: [code] },
     headings: { en: String(titel || 'Helvaro') },
-    contents: { en: String(tekst || '') },
+    /* OneSignal weigert (400) een melding zonder inhoud. Een lege tekst liet
+       zo elke nieuwe-leadmelding stil mislukken; dan liever de titel twee keer
+       dan geen melding. */
+    contents: { en: String(tekst || titel || 'Helvaro') },
   };
   if (url) body.url = String(url);
 
