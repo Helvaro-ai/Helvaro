@@ -103,6 +103,16 @@ const NICHE_DEALERSHIP = Object.freeze([
   'garage', 'automotive', 'autohandel', 'concessionnaire', 'autohaus',
 ]);
 
+/* Motorfietsen zijn geen eigen markt maar een SEGMENT binnen dealership (zie
+   api/_segment.js): zelfde voorraad, zelfde gesprek, andere woorden. Deze
+   niches lezen dus als dealership -- tot nu toe vielen ze stilletjes terug op
+   vastgoed. De segmentlezer gebruikt dezelfde lijst om 'motor' te kiezen. */
+const NICHE_MOTOR = Object.freeze([
+  'motor', 'motoren', 'motorfiets', 'motorfietsen', 'motorbike', 'motorbikes',
+  'motorcycle', 'motorcycles', 'moto', 'motos', 'motorrad', 'motorraeder',
+  'harley', 'harley_davidson', 'harleydavidson', 'motordealer', 'motorcycle_dealer',
+]);
+
 /* Dezelfde ruime opzet voor de drie nieuwe. Ook hier geldt: een niche wordt
    met de hand ingetypt, in vier talen, door iemand die haast heeft. Wat er
    niet in staat valt terug op vastgoed, en dat is de veilige kant. */
@@ -128,6 +138,7 @@ const NICHE_RENOVATIE = Object.freeze([
    staat vooraan omdat die lijst er het langst is en het meest specifiek. */
 const NICHE_TABEL = Object.freeze([
   [DEALERSHIP, NICHE_DEALERSHIP],
+  [DEALERSHIP, NICHE_MOTOR],
   [BOUW,       NICHE_BOUW],
   [KEUKEN,     NICHE_KEUKEN],
   [RENOVATIE,  NICHE_RENOVATIE],
@@ -313,6 +324,7 @@ module.exports = {
   NICHE_VELD,
   NICHE_VELD_ID,
   NICHE_DEALERSHIP,
+  NICHE_MOTOR,
   NICHE_BOUW,
   NICHE_KEUKEN,
   NICHE_RENOVATIE,
