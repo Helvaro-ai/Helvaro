@@ -294,7 +294,7 @@ console.log('\n— de marktkeuze zet autohandel vooraan —');
     const arr = eval(m[1].replace(/\/\*[\s\S]*?\*\//g, ""));
     ck("autohandel staat vooraan", arr[0] && arr[0].id === "dealership", arr.map((x) => x.id));
     ck("vastgoed staat er nog", arr.some((x) => x.id === "real_estate"), null);
-    ck("alle vijf markten plus \"iets anders\" staan er", arr.length === 6, arr.length);
+    ck("alle markten plus \"iets anders\" staan er (zeven: motordealer is een segment van dealership)", arr.length === 7, arr.length);
     /* DIT is het subtiele stuk. hvSectorBijVertical() pakt de EERSTE regel met
        een passend vertical, en zowel real_estate als other wijzen naar
        vastgoed. Zou other voor real_estate komen te staan, dan krijgt een

@@ -45,7 +45,7 @@ console.log('\n  de keuzelijst leest dezelfde lijst als de rest');
 {
   /* DIT is de regressie. De oude regel noemde alleen dealership en other. */
   ck('de markt komt uit hvSectorBijVertical(), niet uit een eigen lijstje',
-    /var huidig = d\.sector === 'other' \? 'other' : hvSectorBijVertical\(hvVertical\)/.test(bron), null);
+    /var huidig = d\.sector === 'other' \? 'other' : hvSectorBijVertical\(hvVertical(?:, hvSegment)?\)/.test(bron), null);
   ck('en het oude drie-markten-lijstje is weg',
     !/d\.vertical === 'dealership'\) \? 'dealership'/.test(bron), null);
 }
@@ -57,7 +57,7 @@ console.log('\n  alle zes de keuzes bestaan aan beide kanten');
      dan valt hij stil terug op vastgoed zonder dat er iets misgaat wat je
      kunt zien. */
   const opties = [...bron.matchAll(/<option value="([a-z_]+)">\$\{T\('set\.markt\./g)].map((m) => m[1]);
-  ck('de keuzelijst heeft zes opties', opties.length === 6, opties);
+  ck('de keuzelijst heeft zeven opties (zes markten plus motordealer binnen dealership)', opties.length === 7, opties);
   const iM = bron.indexOf('var WIZARD_MARKTEN = [');
   const markten = bron.slice(iM, iM + 4000);
   for (const id of opties) {

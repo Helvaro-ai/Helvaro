@@ -1100,6 +1100,8 @@ module.exports = _errors.vangAf(async function handler(req, res) {
                Leeg leest als 'vastgoed'; zie api/_vertical.js voor waarom dat
                de enige veilige standaard is. */
             vertical:       _vertical.van(rec.fields),
+            /* Auto of motor binnen dealership (api/_segment.js); leeg = auto. */
+            segment:        _segment.van(rec.fields),
             maxDiscount:    Number(rec.fields['Max Discount EUR'])        || 0,
             faroDiscount:   Number(rec.fields['Faro Discount Limit EUR']) || 0,
             calendlyLink:   rec.fields['fldNEj1ysRgINOOtr'] || rec.fields['Calendly Link']       || '',
@@ -1278,6 +1280,11 @@ module.exports = _errors.vangAf(async function handler(req, res) {
         // tot het veld bestaat.
         const wantsCountryUpdate = body.country !== undefined
           && !!_regio.land(String(body.country || '').trim().toUpperCase());
+        // Segment (auto|motor) — zelfde isolatie: 'Vehicle Segment' bestaat op
+        // veel bases nog niet, en meeliften in `u` zou het opslaan van de rest
+        // breken. Alleen bekende waarden; iets anders wordt genegeerd.
+        const wantsSegmentUpdate = body.segment !== undefined
+          && _segment.BEKEND.indexOf(String(body.segment || '').trim().toLowerCase()) !== -1;
         if (body.workingHours   !== undefined) {
           // Lightweight format validation. Must match 'days hours' or be empty.
           // Twee letters per dag mag: 'ma-vr 9-18' is wat het scherm zelf als
@@ -1322,7 +1329,7 @@ module.exports = _errors.vangAf(async function handler(req, res) {
           u.fldnbM5YKh274ISAl = String(body.learnedPatterns).slice(0, 1500);
         }
         if (Object.keys(u).length === 0 && !wantsMatchLeadLanguageUpdate && !wantsChecklistDismissUpdate
-            && !wantsWelcomeDoneUpdate && !wantsCountryUpdate) {
+            && !wantsWelcomeDoneUpdate && !wantsCountryUpdate && !wantsSegmentUpdate) {
           return res.status(400).json({ error: 'Niets om bij te werken' });
         }
 
@@ -1433,6 +1440,28 @@ module.exports = _errors.vangAf(async function handler(req, res) {
             }
           } catch (err) {
             console.warn('[config-save] "Country" PATCH exception:', err.message);
+          }
+        }
+
+        // Segment — apart, best-effort. Een veld dat (nog) niet bestaat mag een
+        // verder geslaagde save niet onderuit halen; een motor-niche (Niche) beslist
+        // dan nog steeds, zie api/_segment.js van().
+        if (wantsSegmentUpdate) {
+          try {
+            const sRes = await atFetch(
+              `https://api.airtable.com/v0/${BASE_ID}/${CLIENTS_TABLE}/${rec.id}`,
+              {
+                method:  'PATCH',
+                headers: { Authorization: `Bearer ${AIRTABLE_TOKEN}`, 'Content-Type': 'application/json' },
+                body:    JSON.stringify({ fields: { [_segment.VELD]: _segment.norm(body.segment) }, typecast: true })
+              }
+            );
+            if (!sRes.ok) {
+              const txt = await sRes.text().catch(() => '');
+              console.warn('[config-save] "Vehicle Segment" niet opgeslagen (veld bestaat waarschijnlijk nog niet in Airtable):', sRes.status, txt.slice(0, 200));
+            }
+          } catch (err) {
+            console.warn('[config-save] "Vehicle Segment" PATCH exception:', err.message);
           }
         }
 
