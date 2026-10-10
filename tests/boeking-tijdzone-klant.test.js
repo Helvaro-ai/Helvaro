@@ -32,6 +32,9 @@ const ck = (n, ok, got) => { console.log(`  ${ok ? 'OK  ' : 'FOUT'}  ${n}${ok ? 
   const b = await WB.vrijeMomenten('BRU', { nu, alle: true });
   ck('klant met Timezone Europe/London krijgt Londense uren', l.momenten[0] === '2026-01-12T09:00:00.000Z', l.momenten[0]);
   ck('klant zonder Timezone blijft Brussel', b.momenten[0] === '2026-01-12T08:00:00.000Z', b.momenten[0]);
+  // De bezette Google-momenten die de AI te zien krijgt, staan ook in de tijdzone van de klant.
+  const wa = require('fs').readFileSync(require('path').join(__dirname, '..', 'api', 'whatsapp.js'), 'utf8');
+  ck('bezet-lijst voor de AI in de tijdzone van de klant', /const tzKlant = \(regio && regio\.tz\) \|\| 'Europe\/Brussels';/.test(wa) && /const tOpt = \{ hour: '2-digit', minute: '2-digit', timeZone: tzKlant \};/.test(wa));
   console.log(`\n${fail === 0 ? 'ALLES GROEN' : 'ER IS IETS STUK'} — ${pass} ok, ${fail} fout\n`);
   process.exit(fail === 0 ? 0 : 1);
 })();

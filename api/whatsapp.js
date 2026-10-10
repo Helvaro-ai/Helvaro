@@ -1129,8 +1129,11 @@ async function processMessage(phone, text, scopedProjectCode, inkomendId, nood =
           console.error('[GCAL] agenda niet gelezen voor', projectCode,
             '— de assistent stelt tijden voor ZONDER de Google-agenda te kennen');
         }
-        const dOpt = { weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Brussels' };
-        const tOpt = { hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Brussels' };
+        /* In de tijdzone van de klant (api/_regio.js), zoals de rest van de
+           planning; zonder instelling blijft het Brussel. */
+        const tzKlant = (regio && regio.tz) || 'Europe/Brussels';
+        const dOpt = { weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit', timeZone: tzKlant };
+        const tOpt = { hour: '2-digit', minute: '2-digit', timeZone: tzKlant };
         for (const b of (busy || [])) {
           const s = new Date(b.start), e = new Date(b.end);
           existingAppointments.push(`${s.toLocaleString('nl-BE', dOpt)}–${e.toLocaleString('nl-BE', tOpt)} (Google agenda, bezet)`);

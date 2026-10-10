@@ -716,7 +716,13 @@ async function runVoorraad(now, { budgetS = 180, trigger = 'dagelijks', archiver
     const vr = await atFetch(`https://api.airtable.com/v0/${process.env.BASE_AIRTABLE}/tblPidTrwGRzRt4LZ?pageSize=100${offset ? '&offset=' + encodeURIComponent(offset) : ''}`, {
       headers: { Authorization: `Bearer ${process.env.API_AIRTABLE}` },
     });
-    if (!vr.ok) break;
+    if (!vr.ok) {
+      /* Stond hier als een stille break: een 429 of storing op pagina 2 liet elke
+         dealer daarachter dit uur zonder sync, zonder dat iemand het zag. */
+      console.error('[cron-followup] voorraad: klantenlijst onvolledig (HTTP ' + vr.status + ') na ' + dealers.length + ' dealers');
+      uit.lijstOnvolledig = true;
+      break;
+    }
     const d = await vr.json();
     for (const rec of d.records || []) {
       const f = rec.fields || {};
@@ -736,6 +742,13 @@ async function runVoorraad(now, { budgetS = 180, trigger = 'dagelijks', archiver
     offset = d.offset;
   }
   uit.dealers = dealers.length;
+  /* Elk uur een andere startdealer. Met een vaste volgorde viel bij een krappe
+     tijdsbudget altijd dezelfde staart van de lijst weg, uur na uur; nu schuift
+     wie wacht elk uur een plaats op. */
+  if (dealers.length > 1) {
+    const s0 = Math.floor(now.getTime() / 3600000) % dealers.length;
+    dealers.push(...dealers.splice(0, s0));
+  }
   for (const dlr of dealers) {
     if (!dlr.feed && !archiveren) continue;   // uurrun: niets te doen zonder feed
     if ((Date.now() - now.getTime()) / 1000 > budgetS) { uit.overgeslagen++; continue; }

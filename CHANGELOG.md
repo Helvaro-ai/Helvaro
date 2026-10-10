@@ -913,6 +913,11 @@ lokale teller, dus dit verandert niets zolang Upstash niet is aangesloten.
 
 ## 9 oktober 2026 — beveiliging
 
+- **De uurlijkse voorraadsync slaat niet meer elk uur dezelfde dealers over**
+  als de tijd krap wordt: de volgorde schuift elk uur op. Lukt het ophalen van de
+  klantenlijst niet, dan staat dat nu in de log in plaats van stil te stoppen.
+- **De assistent ziet de bezette agendamomenten in de tijdzone van de dealer**
+  (voor dealers buiten België); voor Belgische dealers verandert er niets.
 - **Een link of voorraadfeed kan Helvaro niet meer naar een intern adres sturen,
   ook niet met een DNS-truc.** Het adres wordt nu gecontroleerd op het moment
   van verbinden, niet alleen vooraf.
