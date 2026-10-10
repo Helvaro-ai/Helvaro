@@ -1013,7 +1013,7 @@ async function importeerUitLink(projectCode, url, opties = {}) {
     km:           getal(d.km),
     inschrijving: String(d.inschrijving || '').trim(),
     brandstof:    kies(d.brandstof, ['benzine', 'diesel', 'hybride', 'plug-in hybride', 'elektrisch', 'lpg', 'cng', 'waterstof', 'overig']),
-    transmissie:  kies(d.transmissie, ['automaat', 'handgeschakeld']),
+    transmissie:  kies(d.transmissie, ['automaat', 'handgeschakeld', 'semi-automaat']),   // semi-automaat: motoren (quickshifter/DCT)
     kw:           getal(d.kw),
     carrosserie:  String(d.carrosserie || '').trim(),
     kleur:        String(d.kleur || '').trim(),
