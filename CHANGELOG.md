@@ -14,6 +14,22 @@ enige eerlijke datum voor "uitgerold" is de dag dat `main` deployt.
 
 ## Nog niet uitgerold
 
+### Motordealers lezen motorwoorden, in vier talen
+
+- **Websiteboeking voor motor in nl, fr, en, de.** De foutmeldingen bij het boeken
+  (moment bezet, motor niet meer in het aanbod, testrit niet meer mogelijk, enzovoort)
+  en de antwoorden van de websiteassistent over een veranderde status bestonden voor
+  motor alleen in het Nederlands, en een verdwenen motor heette nog "wagen". Ze komen nu
+  in de taal van de bezoeker. Een autodealer houdt zijn eigen teksten letterlijk.
+- **Dashboard van een motordealer zonder autowoorden.** Testrit in plaats van proefrit
+  in de funnel en de scoreredenen, "inruilmotor" in plaats van "inruilwagen", motor in
+  de verliesredenen, de verwijder- en bronteksten en de voorraadmeldingen. De
+  import- en hulpteksten noemen voor motor geen AutoScout24 meer maar een
+  advertentielink of feed; voor auto blijft alles zoals het was.
+- **Voertuigformulier voor motor**: brandstof benzine of elektrisch, versnelling manueel,
+  automaat of semi-automaat (de opgeslagen waarden blijven compatibel), een typelijst met
+  de motortypes uit de matching, en voorbeeldteksten van een motor in plaats van een BMW.
+
 ### Bevestiging na het leadformulier: wat gebeurt er nu
 
 - **Na het versturen ziet de koper een rustig "wat gebeurt er nu"-paneel** in plaats
