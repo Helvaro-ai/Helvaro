@@ -21,6 +21,37 @@ const net = require('net');
  * api/_inventaris.js voor de voorraadfeed; nu gedeeld met de pand- en
  * voertuigimport en de websitelezer. */
 const { isInternIp } = require('./ip-intern');
+/* ── DNS vastpinnen (review 2026-10-09) ──────────────────────────────────────
+ * hostIsExtern() hieronder controleert de naam VOOR het ophalen, maar fetch()
+ * lost hem daarna opnieuw op. Een naam met een TTL van 0 kan de eerste keer
+ * een extern adres geven en de tweede keer 169.254.169.254 (DNS-rebinding).
+ * Deze Agent doet de controle op het moment van verbinden, op het adres dat
+ * echt gebruikt wordt. Elke interne uitkomst breekt de verbinding af. */
+let _veiligeAgent = null;
+function veiligeAgent() {
+  if (_veiligeAgent) return _veiligeAgent;
+  const { Agent } = require('undici');
+  _veiligeAgent = new Agent({ connect: { lookup: veiligeLookup } });
+  return _veiligeAgent;
+}
+function veiligeLookup(hostname, options, cb) {
+  if (typeof options === 'function') { cb = options; options = {}; }
+  dns.lookup(hostname, { all: true }).then((lijst) => {
+    if (!lijst.length || lijst.some((a) => isInternIp(a.address))) {
+      const e = new Error('intern adres geweigerd: ' + hostname); e.code = 'ERR_INTERN_ADRES';
+      return cb(e);
+    }
+    if (options && options.all) return cb(null, lijst);
+    return cb(null, lijst[0].address, lijst[0].family);
+  }, cb);
+}
+/** fetch() met de vastgepinde, gecontroleerde DNS hierboven. */
+function veiligFetch(url, opts = {}) {
+  let dispatcher;
+  try { dispatcher = veiligeAgent(); } catch (_) { dispatcher = undefined; }
+  return fetch(url, dispatcher ? { ...opts, dispatcher } : opts);
+}
+
 async function hostIsExtern(hostname) {
   const h = String(hostname || '').replace(/^\[|\]$/g, '');
   if (net.isIP(h)) return !isInternIp(h);
@@ -47,7 +78,7 @@ async function fetchWebsite(url, opts = {}) {
       return null;
     }
 
-    const res  = await fetch(url, {
+    const res  = await veiligFetch(url, {
       headers: { 'User-Agent': 'Mozilla/5.0' },
       redirect: 'manual',                               // Don't follow redirects to internal IPs
       signal:  AbortSignal.timeout(5000),
@@ -156,7 +187,7 @@ async function fetchPage(url, opts = {}) {
 
     let res;
     try {
-      res = await fetch(parsed.toString(), {
+      res = await veiligFetch(parsed.toString(), {
         headers: { 'User-Agent': 'Mozilla/5.0 (compatible; HelvaroBot/1.0)', 'Accept-Language': 'nl,en;q=0.8' },
         redirect: 'manual',
         signal: AbortSignal.timeout(timeoutMs),
@@ -231,4 +262,4 @@ async function fetchPage(url, opts = {}) {
   }
 }
 
-module.exports = { fetchWebsite, fetchPage, urlToegestaan, hostIsExtern, isInternIp };
+module.exports = { fetchWebsite, fetchPage, urlToegestaan, hostIsExtern, isInternIp, veiligFetch, _test: { veiligeLookup } };

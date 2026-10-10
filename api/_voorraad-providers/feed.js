@@ -15,7 +15,7 @@
  */
 
 const crypto = require('crypto');
-const { urlToegestaan, hostIsExtern, isInternIp } = require('../_lib/fetch-website');
+const { urlToegestaan, hostIsExtern, isInternIp, veiligFetch } = require('../_lib/fetch-website');
 const { normaliseer } = require('./fouten');
 
 const MAX_FEED_BYTES = 5 * 1024 * 1024; // 5 MB
@@ -28,7 +28,7 @@ async function haalFeed(url) {
     const parsed = urlToegestaan(huidige, '[voorraadfeed]');
     if (!parsed || parsed.protocol !== 'https:') { const e = new Error('feed-adres niet toegestaan (alleen https, geen interne adressen)'); e.code = 'url_geweigerd'; throw e; }
     if (!(await hostIsExtern(parsed.hostname))) { const e = new Error('feed-adres wijst naar een intern netwerk'); e.code = 'url_geweigerd'; throw e; }
-    const res = await fetch(parsed.toString(), { redirect: 'manual', headers: { 'User-Agent': 'HelvaroInventory/1.0', Accept: 'text/csv,application/json,application/xml,text/xml,*/*' }, signal: AbortSignal.timeout(20000) });
+    const res = await veiligFetch(parsed.toString(), { redirect: 'manual', headers: { 'User-Agent': 'HelvaroInventory/1.0', Accept: 'text/csv,application/json,application/xml,text/xml,*/*' }, signal: AbortSignal.timeout(20000) });
     if (res.status >= 300 && res.status < 400) { huidige = new URL(res.headers.get('location') || '', parsed).toString(); continue; }
     if (!res.ok) { const e = new Error('feed antwoordde HTTP ' + res.status); e.code = 'feed_http'; e.http = res.status; throw e; }
     const lengte = Number(res.headers.get('content-length') || 0);

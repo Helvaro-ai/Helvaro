@@ -55,6 +55,7 @@ function internV6(ip) {
   if ((g[0] & 0xffc0) === 0xfec0) return true;               // fec0::/10 site-local (verouderd)
   if ((g[0] & 0xff00) === 0xff00) return true;               // ff00::/8  multicast
   if (g.slice(0, 5).every((x) => x === 0) && (g[5] === 0xffff || g[5] === 0)) return internV4(v4Uit(g[6], g[7])); // ::ffff:a.b.c.d en ::a.b.c.d
+  if (g.slice(0, 4).every((x) => x === 0) && g[4] === 0xffff && g[5] === 0) return internV4(v4Uit(g[6], g[7])); // ::ffff:0:a.b.c.d (IPv4-translated, RFC 2765)
   if (g[0] === 0x64 && g[1] === 0xff9b && g.slice(2, 6).every((x) => x === 0)) return internV4(v4Uit(g[6], g[7])); // NAT64
   if (g[0] === 0x2002) return internV4(v4Uit(g[1], g[2]));   // 6to4
   return false;

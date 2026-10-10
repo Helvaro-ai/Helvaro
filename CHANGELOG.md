@@ -897,6 +897,9 @@ lokale teller, dus dit verandert niets zolang Upstash niet is aangesloten.
 
 ## 9 oktober 2026 — beveiliging
 
+- **Een link of voorraadfeed kan Helvaro niet meer naar een intern adres sturen,
+  ook niet met een DNS-truc.** Het adres wordt nu gecontroleerd op het moment
+  van verbinden, niet alleen vooraf.
 - **Uitnodigingscodes raden gaat niet meer:** na tien foute codes per uur
   stopt het, over alle servers heen.
 - **Het verborgen anti-botveld op het formulier** heet nu zo dat geen browser
