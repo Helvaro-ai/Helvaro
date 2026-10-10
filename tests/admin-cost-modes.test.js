@@ -26,10 +26,7 @@ const ck = (n, ok, got) => {
   ok ? pass++ : fail++;
 };
 
-const ADMIN_TOKEN = crypto
-  .createHmac('sha256', process.env.ADMIN_KEY)
-  .update('helvaro-admin-v1')
-  .digest('hex');
+const ADMIN_TOKEN = require(require('path').join(__dirname, '..', 'api', '_session.js')).mintAdminToken();   // verlopend adm2-token (2026-10-09)
 
 const CLIENTS_TABLE = 'tblPidTrwGRzRt4LZ';
 const ACTIVITEIT_TABLE = 'tblzZSLA5wp60WVZm';

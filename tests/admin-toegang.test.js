@@ -101,7 +101,7 @@ function render(url, query) {
     ck('ADMIN_KEY wordt timing-safe vergeleken in api/auth.js',
       /safeEqual\(password, ADMIN_KEY\)/.test(auth), null);
     ck('en de ruwe sleutel verlaat de server niet',
-      /deriveAdminToken\(ADMIN_KEY\)/.test(auth), null);
+      /const _tok\s+= deriveAdminToken\(\);/.test(auth) && /apiKey:\s+_tok/.test(auth) && !/apiKey:\s+ADMIN_KEY/.test(auth), null);
   }
 
   console.log('\n  de back-officepagina\'s blijven eruit geknipt zonder adminsessie');

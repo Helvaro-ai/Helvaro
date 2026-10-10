@@ -57,7 +57,7 @@ function sessionToken(projectCode) {
 }
 
 function adminToken() {
-  return crypto.createHmac('sha256', process.env.ADMIN_KEY).update('helvaro-admin-v1').digest('hex');
+  return require(require('path').join(__dirname, '..', 'api', '_session.js')).mintAdminToken();
 }
 
 // ── Data: één afspraak en één lead, allebei van TENANT_A ───────────────────

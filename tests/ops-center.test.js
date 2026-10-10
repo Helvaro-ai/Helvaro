@@ -37,10 +37,7 @@ const ck = (n, ok, got) => {
 };
 
 /* Het echte admintoken zoals de app het afleidt (HMAC over de ADMIN_KEY). */
-const ADMIN_TOKEN = crypto
-  .createHmac('sha256', process.env.ADMIN_KEY)
-  .update('helvaro-admin-v1')
-  .digest('hex');
+const ADMIN_TOKEN = require(require('path').join(__dirname, '..', 'api', '_session.js')).mintAdminToken();   // verlopend adm2-token (2026-10-09)
 
 /* Vier klanten: drie Nederlandstalige Belgen (één taal, één inzending) en
    één Franstalige. Precies de situatie uit de opdracht. */

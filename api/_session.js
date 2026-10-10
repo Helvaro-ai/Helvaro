@@ -158,16 +158,33 @@ function safeBody(req) {
    mode:'session' en de dashboard-GET. Gevolg: herladen als beheerder gaf 401,
    de cookie werd gewist en je stond weer op het inlogscherm; en de
    back-officepagina's werden nooit meegestuurd. Eén functie, hier. */
+/* Sinds 2026-10-09 (audit S-14) verloopt de beheerderssessie: adm2.<exp>.<mac>.
+   De oude v1 was een vaste afgeleide van ADMIN_KEY -- wie hem één keer
+   onderschepte (een browser, een gedeelde schermafdruk) was voor altijd
+   beheerder, tot ADMIN_KEY zelf veranderde. Twaalf uur is een werkdag. */
+const ADMIN_TTL_MS = 12 * 60 * 60 * 1000;
+function adminMac(key, exp) {
+  return crypto.createHmac('sha256', key).update('helvaro-admin-v2:' + exp).digest('base64url');
+}
+function mintAdminToken() {
+  const key = String(process.env.ADMIN_KEY || '');
+  if (!key) return '';
+  const exp = Date.now() + ADMIN_TTL_MS;
+  return `adm2.${exp}.${adminMac(key, exp)}`;
+}
 function isAdminToken(provided) {
   const key = String(process.env.ADMIN_KEY || '');
   if (!key || !provided) return false;
-  const expected = crypto.createHmac('sha256', key).update('helvaro-admin-v1').digest('hex');
-  return safeEqual(provided, expected);
+  const m = /^adm2\.(\d{13})\.([A-Za-z0-9_-]{43})$/.exec(String(provided));
+  if (!m) return false;
+  const exp = Number(m[1]);
+  if (!(exp > Date.now()) || exp > Date.now() + ADMIN_TTL_MS + 60 * 1000) return false;
+  return safeEqual(m[2], adminMac(key, exp));
 }
 
 module.exports = {
   SESSION_COOKIE, CSRF_COOKIE, CSRF_HEADER,
   parseCookies, readToken, authedViaCookie,
   setSessionCookies, clearSessionCookies, csrfOk,
-  verifySignedSession, safeBody, isAdminToken,
+  verifySignedSession, safeBody, isAdminToken, mintAdminToken, ADMIN_TTL_MS,
 };

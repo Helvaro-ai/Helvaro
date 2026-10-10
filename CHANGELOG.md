@@ -897,6 +897,10 @@ lokale teller, dus dit verandert niets zolang Upstash niet is aangesloten.
 
 ## 9 oktober 2026 — beveiliging
 
+- **De beheerderslogin verloopt nu na 12 uur.** Het oude beheerderstoken was
+  vast en gold voor altijd. **Actie:** log één keer opnieuw in als beheerder
+  (je oude sessie is ongeldig). De sociale-mediapagina (social.html) en de
+  meldingen werken gewoon door.
 - **Faro stelde zich aan autodealers voor als CRM voor vastgoedmakelaars.** Hij
   sprak over panden en bezichtigingen. Voor een autodealer gaat het nu over
   wagens, proefritten en afspraken; voor makelaars verandert er niets.

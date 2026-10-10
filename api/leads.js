@@ -157,10 +157,9 @@ function safeEqual(a, b) {
   } catch { return false; }
 }
 
-function isAdminToken(provided, adminKey) {
-  if (!adminKey || !provided) return false;
-  const expected = crypto.createHmac('sha256', adminKey).update('helvaro-admin-v1').digest('hex');
-  return safeEqual(provided, expected);
+function isAdminToken(provided) {
+  // Eén definitie (api/_session.js): het verlopende adm2-token.
+  return _session.isAdminToken(provided);
 }
 
 // ── Session token verification ─────────────────────────────────────────────────
@@ -441,7 +440,7 @@ module.exports = _errors.vangAf(async function handler(req, res) {
        calendlyLink opzoeken BIJ EEN API-SLEUTEL. Die drie staan er bij een
        Clerk-sessie al, dus overslaan verliest niets. */
     // Path B: legacy API key (admin derived token or old sessions before this deploy)
-    if (!/^[A-Za-z0-9\-_]{8,100}$/.test(raw)) {
+    if (!/^[A-Za-z0-9\-_.]{8,100}$/.test(raw)) {
       return res.status(401).json({ error: 'Ongeldige API key' });
     }
 

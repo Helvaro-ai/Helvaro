@@ -45,7 +45,7 @@ function render(pad) {
   process.env.ADMIN_KEY = 'test-admin-sleutel'; process.env.BASE_AIRTABLE = 'appTest'; process.env.API_AIRTABLE = 'patTest';
   const admin = require(BASE + 'api/admin.js');
   const crypto = require('crypto');
-  const tok = crypto.createHmac('sha256', process.env.ADMIN_KEY).update('helvaro-admin-v1').digest('hex');
+  const tok = require(require('path').join(__dirname, '..', 'api', '_session.js')).mintAdminToken();
   const roep = async (key) => {
     const res = { _c: 200, _j: null, setHeader() {}, getHeader() {}, status(c) { this._c = c; return this; }, json(o) { this._j = o; return this; }, send(b) { this._j = b; return this; }, end() { return this; } };
     await admin({ method: 'GET', url: '/api/admin?section=founder&type=dagtaken', query: { section: 'founder', type: 'dagtaken' }, headers: key ? { 'x-api-key': key } : {} }, res);

@@ -113,8 +113,9 @@ async function isAdminKeyRateLimited(ip) {
 // Derive a stable admin session token from ADMIN_KEY so the raw secret
 // never leaves the server. The token is deterministic (no DB needed) but
 // cannot be reversed to obtain the original key.
-function deriveAdminToken(adminKey) {
-  return crypto.createHmac('sha256', adminKey).update('helvaro-admin-v1').digest('hex');
+function deriveAdminToken() {
+  // Verlopend beheerderstoken (adm2.<exp>.<mac>), zie api/_session.js.
+  return _session.mintAdminToken();
 }
 
 // ── Signed session tokens ──────────────────────────────────────────────────────
@@ -546,7 +547,7 @@ module.exports = _errors.vangAf(async function handler(req, res) {
       // Admin gets the derived HMAC token. NOT a session token.
       // leads.js recognises it via isAdminToken() before session verification.
       {
-        const _tok  = deriveAdminToken(ADMIN_KEY);
+        const _tok  = deriveAdminToken();
         const _csrf = _session.setSessionCookies(res, _tok);
         return res.status(200).json({
           success:     true,

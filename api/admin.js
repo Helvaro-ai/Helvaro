@@ -76,9 +76,10 @@ function safeEqual(a, b) {
 
 function isValidAdminToken(provided, adminKey) {
   if (!adminKey || !provided) return false;
-  // Accept the derived HMAC token (current) or the raw key (legacy sessions)
-  const derived = crypto.createHmac('sha256', adminKey).update('helvaro-admin-v1').digest('hex');
-  return safeEqual(provided, derived) || safeEqual(provided, adminKey);
+  /* Het verlopende beheerderstoken (api/_session.js), of de ruwe ADMIN_KEY zelf:
+     die laatste gebruikt public/social.html, en wie de sleutel heeft is per
+     definitie beheerder. Het oude vaste afgeleide v1-token telt niet meer. */
+  return _session.isAdminToken(provided) || safeEqual(provided, adminKey);
 }
 
 /*
