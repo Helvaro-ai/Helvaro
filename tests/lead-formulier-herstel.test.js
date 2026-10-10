@@ -268,7 +268,7 @@ const blobVan = (id) => JSON.parse(rijen[id][NOT]);
     klantRecords = [klantRij({ Language: 'de', Vertical: 'dealership' })];
     const de = await render('/start/GARAGE');
     ck('Duits ingesteld: de pagina is Duits', /<html lang="de">/.test(de) && /Ihre WhatsApp-Nummer/.test(de) && !/Je WhatsApp nummer/.test(de), (de.match(/<html lang="[^"]*"/) || [''])[0]);
-    ck('de honeypot staat in het formulier', /name="website_url"/.test(de));
+    ck('de honeypot staat in het formulier', /id="hp-url"[^>]*name="hv_veld_leeg"/.test(de));
     ck('en de foutcode unknown_project is vertaald', /"unknown_project":/.test(de));
     ck('de bedankpagina kent een neutrale tekst', /s3t_neutraal/.test(de) && /id="ok-s2t"/.test(de));
 

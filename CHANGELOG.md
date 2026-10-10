@@ -897,6 +897,11 @@ lokale teller, dus dit verandert niets zolang Upstash niet is aangesloten.
 
 ## 9 oktober 2026 — beveiliging
 
+- **Uitnodigingscodes raden gaat niet meer:** na tien foute codes per uur
+  stopt het, over alle servers heen.
+- **Het verborgen anti-botveld op het formulier** heet nu zo dat geen browser
+  het automatisch invult. Zo kan een echte bezoeker niet per ongeluk als bot
+  gezien worden.
 - **De beheerderslogin verloopt nu na 12 uur.** Het oude beheerderstoken was
   vast en gold voor altijd. **Actie:** log één keer opnieuw in als beheerder
   (je oude sessie is ongeldig). De sociale-mediapagina (social.html) en de

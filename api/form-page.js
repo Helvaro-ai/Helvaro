@@ -1075,7 +1075,7 @@ module.exports = _errors.vangAf(async function handler(req, res) {
 
   <!-- Form (default visible) -->
   <div class="form-area" id="form">
-    <div class="hp" aria-hidden="true"><label for="hp-url">Website</label><input id="hp-url" type="text" name="website_url" tabindex="-1" autocomplete="off" value=""></div>
+    <div class="hp" aria-hidden="true"><label for="hp-url">Laat dit veld leeg</label><input id="hp-url" type="text" name="hv_veld_leeg" tabindex="-1" autocomplete="one-time-code" value=""></div>
     <label for="naam">${escHtml(t.labelName)}</label>
     <input id="naam" type="text" placeholder="${escHtml(t.placeholderName)}" autocomplete="name" required>
 

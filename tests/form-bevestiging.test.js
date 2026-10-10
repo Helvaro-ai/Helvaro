@@ -74,7 +74,7 @@ async function render(client, veh, url) {
     ck('reduced motion is gerespecteerd', /prefers-reduced-motion: reduce[\s\S]{0,80}\.bev \{ animation: none/.test(html));
     ck('autokaart met echte data', /bev-auto-titel">BMW M4</.test(html) && /€ 5\.000/.test(html) && /class="bev-auto-foto" src="https:\/\/img.test\/a.jpg"/.test(html));
     ck('drie knoppen met echte doelen', /data-cta="voertuig" href="https:\/\/garage.be\/bmw"/.test(html) && /data-cta="bel" href="tel:\+32478123456"/.test(html) && /data-cta="website" href="https:\/\/www.garage.be\/"/.test(html));
-    ck('honeypot en toestemming blijven', /name="website_url"/.test(html) && /id="consent"/.test(html) && /if \(consent && !consent.checked\)/.test(html));
+    ck('honeypot en toestemming blijven', /id="hp-url"[^>]*name="hv_veld_leeg"/.test(html) && /id="consent"/.test(html) && /if \(consent && !consent.checked\)/.test(html));
     ck('"Powered by Helvaro" blijft', /Powered by <a href="https:\/\/helvaro.pro"/.test(html));
 
     const kaal = await render({ Phone: '0499 99 99 99' }, Object.assign({}, auto, { link: '', fotos: [] }));

@@ -1764,6 +1764,13 @@ module.exports = _errors.vangAf(async function handler(req, res) {
       const provided = String(body.inviteCode || '').trim();
       const validInvite = !!ONBOARD_CODE && safeEqual(provided, ONBOARD_CODE);
       if (!validInvite) {
+        /* Gedeelde teller voor foute codes (audit S-11). De begrenzer bovenaan
+           deze route is per serverinstantie; een vaste, herbruikbare code is zo
+           te raden. Tien foute pogingen per IP per uur, over alle instanties. */
+        if (provided) {
+          const fout = await require('./_ratelimit').hit('onboard-code', String(ip || 'onbekend'), 10, 60 * 60 * 1000);
+          if (fout && fout.limited) return res.status(429).json({ error: 'Te veel pogingen. Probeer het over een uur opnieuw.' });
+        }
         if (!PUBLIC_SIGNUP_ENABLED) {
           // Exact pre-existing behavior: no valid invite code = hard reject.
           return res.status(401).json({ error: 'Ongeldige uitnodigingscode' });
