@@ -148,6 +148,7 @@ async function runTurn({ res, ctx, conversationId, history, userContent, tier })
 
   const components = [];      // cards emitted this turn
   let assistantText = '';
+  let wachtOpBevestiging = false;
   let usage = { inputTokens: 0, outputTokens: 0 };
   let iterations = 0;
 
@@ -288,13 +289,29 @@ async function runTurn({ res, ctx, conversationId, history, userContent, tier })
 
       // An act-tool proposed something. The turn ends here; the user's
       // confirmation click starts a fresh request.
-      if (awaitingConfirmation) break;
+      if (awaitingConfirmation) { wachtOpBevestiging = true; break; }
 
       // Stop AT the ceiling rather than relying on the provider to notice we
       // stopped offering tools. A provider that kept emitting tool calls would
       // otherwise loop forever, executing tools and streaming, with no bound —
       // the exact runaway the ceiling exists to prevent.
       if (atCeiling) break;
+    }
+
+    /* Nooit een stille beurt (live gezien 2026-10-10): zocht het model tot aan
+       het plafond van gereedschapsrondes -- bv. omdat er elf leads "frade"
+       heetten -- dan eindigde de beurt met alleen kaartjes en geen woord.
+       Wacht er geen bevestiging, dan zegt Faro nu wat er aan de hand is. */
+    if (!assistantText.trim() && !wachtOpBevestiging) {
+      const STIL = {
+        nl: 'Ik kwam er binnen de stappen die ik per vraag zet niet uit. Kun je je vraag iets specifieker maken? Bijvoorbeeld welke lead je precies bedoelt.',
+        fr: 'Je n’ai pas abouti dans le nombre d’étapes que je fais par question. Pouvez-vous préciser votre demande ? Par exemple, de quel prospect il s’agit.',
+        en: 'I couldn’t get there within the steps I take per question. Could you make it a bit more specific? For example, which lead you mean.',
+        de: 'Ich bin mit den Schritten pro Frage nicht ans Ziel gekommen. Kannst du die Frage etwas genauer stellen? Zum Beispiel, welchen Lead du meinst.',
+      };
+      const stil = STIL[String((ctx && ctx.lang) || 'nl').slice(0, 2)] || STIL.nl;
+      assistantText = stil;
+      stream.send(res, 'text', { delta: stil });
     }
 
     // Charge once, after the turn actually produced something. Fire-and-forget

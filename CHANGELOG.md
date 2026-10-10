@@ -913,6 +913,9 @@ lokale teller, dus dit verandert niets zolang Upstash niet is aangesloten.
 
 ## 9 oktober 2026 — beveiliging
 
+- **Faro bleef soms stil.** Bij een vraag die niet eenduidig was (bv. elf leads
+  met dezelfde naam) zocht hij tot zijn limiet en toonde dan alleen kaartjes,
+  zonder één woord. Nu vraagt hij in dat geval om een specifiekere vraag.
 - **"Bekijk als klant" in het beheer toont weer het dashboard van die klant**
   (was leeg).
 - **Twee laatste uitgaande verbindingen** (websitecontrole bij aanmelden en
