@@ -81,7 +81,9 @@ async function vraag(url, opties = {}) {
 
   let res;
   try {
-    res = await fetch(url, {
+    /* veiligFetch: het IP wordt gecontroleerd op het moment van verbinden, niet
+       alleen vooraf in api/_crm/adres.js (DNS-rebinding, review 2026-10-10). */
+    res = await require('../_lib/fetch-website').veiligFetch(url, {
       method:  opties.method || 'GET',
       headers: opties.headers || {},
       body:    opties.body,

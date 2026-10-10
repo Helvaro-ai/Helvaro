@@ -913,6 +913,10 @@ lokale teller, dus dit verandert niets zolang Upstash niet is aangesloten.
 
 ## 9 oktober 2026 — beveiliging
 
+- **"Bekijk als klant" in het beheer toont weer het dashboard van die klant**
+  (was leeg).
+- **Twee laatste uitgaande verbindingen** (websitecontrole bij aanmelden en
+  CRM-koppelingen) controleren nu ook het adres op het moment van verbinden.
 - **Een motortestrit kon over een bestaande afspraak heen geboekt worden.** De
   controle rekende met 30 minuten terwijl een testrit 60 minuten duurt. Nu
   gebruiken controle, opslaan en het agenda-item dezelfde duur.

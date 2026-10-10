@@ -48,7 +48,10 @@ function veiligeLookup(hostname, options, cb) {
 /** fetch() met de vastgepinde, gecontroleerde DNS hierboven. */
 function veiligFetch(url, opts = {}) {
   let dispatcher;
-  try { dispatcher = veiligeAgent(); } catch (_) { dispatcher = undefined; }
+  try { dispatcher = veiligeAgent(); } catch (e) {
+    dispatcher = undefined;
+    if (!veiligFetch._gemeld) { veiligFetch._gemeld = true; console.error('[fetch-website] undici niet geladen -- DNS niet vastgepind, alleen de controle vooraf:', e && e.message); }
+  }
   return fetch(url, dispatcher ? { ...opts, dispatcher } : opts);
 }
 

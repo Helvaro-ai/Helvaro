@@ -413,7 +413,13 @@ async function checkWebsiteExists(url) {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), 3000);
   try {
-    const r = await fetch(u, { method: 'GET', redirect: 'follow', signal: controller.signal });
+    /* Geen omleidingen volgen en DNS bij het verbinden controleren
+       (veiligFetch): de URL komt van een anonieme aanmelder, en "volg tot waar
+       hij wil" was een blinde SSRF (review 2026-10-10). Een 3xx telt als
+       "bestaat" -- meer hoeft deze controle niet te weten. */
+    const { veiligFetch, urlToegestaan } = require('./_lib/fetch-website');
+    if (!urlToegestaan(u, '[signup-guard]')) return { exists: false, checked: true, error: 'url_geweigerd' };
+    const r = await veiligFetch(u, { method: 'GET', redirect: 'manual', signal: controller.signal });
     return { exists: true, checked: true, status: r.status };
   } catch (err) {
     return { exists: false, checked: true, error: err && err.name };

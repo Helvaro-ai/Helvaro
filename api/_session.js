@@ -44,6 +44,12 @@ function parseCookies(req) {
 // Cookie first, then the legacy header. Returns '' when neither is present.
 function readToken(req) {
   const fromCookie = parseCookies(req)[SESSION_COOKIE];
+  const fromHeader = String((req && req.headers && req.headers['x-api-key']) || '').trim().slice(0, 2048);
+  /* "Bekijk als klant" (dashboard switchToClient): de beheerder stuurt de sleutel
+     van de klant als header, maar zijn eigen admin-cookie won altijd, dus hij
+     zag een leeg dashboard. Alleen bij een geldige admin-cookie gaat de header
+     voor -- dat geeft niemand iets wat hij niet al had. */
+  if (fromCookie && fromHeader && isAdminToken(String(fromCookie).trim())) return fromHeader;
   if (fromCookie) return String(fromCookie).trim().slice(0, 2048);
   return String((req && req.headers && req.headers['x-api-key']) || '').trim().slice(0, 2048);
 }
