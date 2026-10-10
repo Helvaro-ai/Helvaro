@@ -17651,6 +17651,8 @@ async function importeerPand() {
       zet('pd-f-brandstof',    c.brandstof);
       zet('pd-f-transmissie',  c.transmissie);
       zet('pd-f-kw',           c.kw);
+      zet('pd-f-cc',           c.cc);
+      zet('pd-f-rijbewijs',    c.rijbewijs);
       zet('pd-f-carrosserie',  c.carrosserie);
       zet('pd-f-kleur',        c.kleur);
       zet('pd-f-omschrijving', c.omschrijving);

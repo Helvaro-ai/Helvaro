@@ -913,6 +913,13 @@ lokale teller, dus dit verandert niets zolang Upstash niet is aangesloten.
 
 ## 9 oktober 2026 — beveiliging
 
+- **Een motortestrit kon over een bestaande afspraak heen geboekt worden.** De
+  controle rekende met 30 minuten terwijl een testrit 60 minuten duurt. Nu
+  gebruiken controle, opslaan en het agenda-item dezelfde duur.
+- **De dagelijkse herinnering bij een geblokkeerde voorraadwijziging** werkt nu
+  echt (ze kwam nooit, omdat er te weinig geschiedenis bewaard wordt).
+- **Een motor importeren uit een advertentielink** neemt nu ook cilinderinhoud,
+  rijbewijsklasse en een semi-automatische versnellingsbak over.
 - **AutoScout24: verkochte wagens bleven soms voorgoed beschikbaar.** Toonde het
   profiel een paar advertenties meer dan zijn eigen telling (bv. een gesponsorde),
   dan werd er nooit meer iets op verkocht gezet. Een klein verschil mag nu; alleen

@@ -700,6 +700,13 @@ async function syncBinnenSlot(tenant, { door = 'systeem', trigger = 'handmatig',
     runs: [run].concat(Array.isArray(staat.runs) ? staat.runs : []).slice(0, GESCHIEDENIS),
   });
   if (!upload && bron.type === 'feed') nieuw.bronnen = bronnenStaat;
+  /* Sinds wanneer een daling geblokkeerd staat. De geschiedenis houdt maar
+     GESCHIEDENIS runs bij (zo'n tien uur bij de uurrun), dus daaruit is "een
+     volle dag geblokkeerd" nooit af te lezen; vandaar een eigen tijdstip. */
+  if (!upload && !fout) {
+    if (resultaat && resultaat.dalingGeblokkeerd) nieuw.dalingSinds = staat.dalingSinds || run.at;
+    else delete nieuw.dalingSinds;
+  }
   if (!fout && !upload) {
     /* De versheid van het geheel is die van de OUDSTE bron: een platform dat
        niet gelezen kon worden maakt de voorraad niet "vers", ook al lukte de
@@ -787,12 +794,12 @@ async function syncBinnenSlot(tenant, { door = 'systeem', trigger = 'handmatig',
    bij de overgang was te weinig: een kleine dealer die twee van zijn vier
    wagens verkocht, zag ze dagenlang beschikbaar en boekbaar op zijn website
    staan (review 2026-10-09). Daarom: één herinnering per volle dag dat de
-   blokkade aanhoudt, gerekend vanaf de eerste geblokkeerde run die nog in de
-   geschiedenis staat. */
-function dagHerinnering(run, vorige) {
+   blokkade aanhoudt, gerekend vanaf staat.dalingSinds (de eerste geblokkeerde
+   run; de geschiedenis zelf is daarvoor te kort). */
+function dagHerinnering(run, vorige, sinds) {
   const DAG = 24 * 60 * 60 * 1000;
-  let begin = null;
-  for (const r of vorige) { if (r && r.daling) begin = r.at; else break; }
+  let begin = sinds || null;
+  if (!begin) { for (const r of vorige) { if (r && r.daling) begin = r.at; else break; } }
   if (!begin || !vorige[0] || !vorige[0].at) return false;
   const t0 = Date.parse(begin), tVorige = Date.parse(vorige[0].at), tNu = Date.parse(run.at || new Date().toISOString());
   if (!Number.isFinite(t0) || !Number.isFinite(tVorige) || !Number.isFinite(tNu)) return false;
@@ -806,7 +813,7 @@ function meldVoorraadAlsNodig(tenant, bron, staat, run, resultaat) {
   if (!run.ok && vorige[0] && vorige[0].ok === false && !(vorige[1] && vorige[1].ok === false)) {
     tekstSleutel = 'push.voorraad.mislukt';
   } else if (run.ok && resultaat && resultaat.dalingGeblokkeerd
-             && (!(vorige[0] && vorige[0].daling) || dagHerinnering(run, vorige))) {
+             && (!(vorige[0] && vorige[0].daling) || dagHerinnering(run, vorige, staat && staat.dalingSinds))) {
     tekstSleutel = 'push.voorraad.daling';
     vars = { aantal: Number(resultaat.verdwenenAantal) || 0 };
   }

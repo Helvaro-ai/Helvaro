@@ -53,5 +53,12 @@ ck('al-gepland-melding in nl/fr/en/de', ['nl', 'fr', 'en', 'de'].every(t => _lan
 const dd = b.slice(b.indexOf('const dedupeRef ='), b.indexOf('const dedupeRef =') + 260);
 ck('dedupe-sleutel zonder telefoonnummer en zonder cijferreeksen', !/\$\{phone\}/.test(dd) && /ghijklmnop/.test(dd), dd);
 
+// Review 2 (2026-10-10): één duur voor controles en opslaan; afspraakStaat meteen na apptResult.ok.
+ck('slotcontrole Google met boekDuur', /checkSlot\(gToken, gCalId, appt\.start, boekDuur\)/.test(b));
+ck('botsingscontrole Airtable met boekDuur', /botsendeAfspraak\(bestaande, Date\.parse\(appt\.start\), boekDuur\)/.test(b));
+ck('opslaan met boekDuur', /duration:\s+boekDuur,/.test(b));
+ck('Google-event met boekDuur', /durationMin: boekDuur,/.test(b));
+ck('afspraakStaat direct na apptResult.ok', /if \(apptResult\.ok\) \{[\s\S]{0,300}afspraakStaat = true;/.test(b));
+
 console.log(`\n${fail === 0 ? 'ALLES GROEN' : 'ER IS IETS STUK'} — ${pass} ok, ${fail} fout\n`);
 process.exit(fail === 0 ? 0 : 1);

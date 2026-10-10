@@ -2094,6 +2094,14 @@ async function processMessage(phone, text, scopedProjectCode, inkomendId, nood =
     if (appt && appt.duration !== undefined) {
       appt.duration = Math.min(240, Math.max(5, Math.round(Number(appt.duration) || appointmentDuration)));
     }
+    /* Eén duur voor alle controles EN het opslaan (review 2026-10-09). Een
+       motortestrit duurt 60 min (api/_afspraaktypes.js), maar de slotcontroles
+       rekenden met de standaardduur (30): een testrit om 09:30 paste dan naast
+       een afspraak om 10:00 en werd toch als 09:30-10:30 bewaard. Voor auto en
+       vastgoed is dit precies de oude waarde. */
+    const boekDuur = (appt && vertical === _vertical.DEALERSHIP && segment === _segment.MOTOR)
+      ? _afspraaktypes.duurMin(_afspraaktypes.kiesType(String(appt.type || '').trim().toLowerCase(), segment), appt.duration || appointmentDuration)
+      : ((appt && appt.duration) || appointmentDuration);
     /* Na een afzegging in DEZELFDE beurt is de vlag hierboven al gewist in
        Airtable, maar `lead.fields` is een foto van het begin van deze beurt en
        zegt nog "ja, al geboekt". Zonder dit zou een lead die afzegt en meteen
@@ -2221,7 +2229,7 @@ async function processMessage(phone, text, scopedProjectCode, inkomendId, nood =
         gToken = gAccess.token; gCalId = gAccess.calId;
         if (gAccess.nietBereikbaar) agendaGeverifieerd = false;   // L-03: koppeling bestaat, token werkt niet
         if (gToken) {
-          const uitslag = await _gcal.checkSlot(gToken, gCalId, appt.start, appt.duration || appointmentDuration);
+          const uitslag = await _gcal.checkSlot(gToken, gCalId, appt.start, boekDuur);
           slotTaken = !uitslag.free;
           agendaGeverifieerd = uitslag.geverifieerd;
         }
@@ -2260,7 +2268,7 @@ async function processMessage(phone, text, scopedProjectCode, inkomendId, nood =
       if (!slotTaken) {
         try {
           const bestaande = await _afspraken.rondTijdstip(projectCode, appt.start ? Date.parse(appt.start) : NaN);
-          const botst = _afspraken.botsendeAfspraak(bestaande, Date.parse(appt.start), appt.duration || appointmentDuration);
+          const botst = _afspraken.botsendeAfspraak(bestaande, Date.parse(appt.start), boekDuur);
           if (botst) slotTaken = true;
         } catch (e) {
           console.error('[whatsapp] dubbelcheck mislukt (afspraak gaat door zonder die controle):', e && e.message);
@@ -2338,9 +2346,7 @@ async function processMessage(phone, text, scopedProjectCode, inkomendId, nood =
             : '';
           const apptResult = await createAppointment({
             startTime:     appt.start,
-            duration:      segment === _segment.MOTOR
-              ? _afspraaktypes.duurMin(dealerType, appt.duration || appointmentDuration)
-              : (appt.duration || appointmentDuration),
+            duration:      boekDuur,
             projectCode,
             leadId:        lead.id,
             leadName,
@@ -2351,6 +2357,10 @@ async function processMessage(phone, text, scopedProjectCode, inkomendId, nood =
             type:          dealerType || undefined,
           });
           if (apptResult.ok) {
+            /* Vanaf hier BESTAAT de afspraak. Gooit een latere stap (leadvlaggen,
+               CRM), dan moet de redding het vastgehouden "ingepland" sturen, niet
+               "dat moment past niet" (review 2026-10-09). */
+            afspraakStaat = true;
             /* Fase 2b: de race op het voertuig zelf sluiten -- ALTIJD na het
                aanmaken, nooit ervoor (zie api/_voertuigslot.js bevestigClaim).
                Verliest deze boeking, dan bestaat het Appointment-record niet
@@ -2442,7 +2452,7 @@ async function processMessage(phone, text, scopedProjectCode, inkomendId, nood =
                   summary:     `Afspraak: ${leadName || 'lead'} (Helvaro)`,
                   description: `Telefoon: ${phone}\nProject: ${projectCode}\n${aiResponse.summary || ''}`,
                   startISO:    appt.start,
-                  durationMin: appt.duration || appointmentDuration,
+                  durationMin: boekDuur,
                 });
                 if (ev.ok && ev.eventId) await setApptGoogleEvent(apptResult.id, ev.eventId);
                 else if (!ev.ok) console.error('[gcal] booking mirror failed:', ev.error);
