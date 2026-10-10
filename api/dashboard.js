@@ -4105,7 +4105,7 @@ ${faro.dock}
           </div>
         </div>
 
-        <label class="pd-label" for="pd-f-adlink">${T('veh.f.adlink')}</label>
+        <label class="pd-label" id="pd-l-adlink" for="pd-f-adlink">${T('veh.f.adlink')}</label>
         <input class="pd-input" id="pd-f-adlink" type="url" placeholder="https://www.autoscout24.be/aanbod/..." maxlength="500">
         <div class="pd-hint">${T('veh.f.adlinkHint')}</div>
 
@@ -4335,6 +4335,9 @@ const LOCALE = '${LOCALE_TAG}';
    letters die verder nergens voorkomt haalt die hele klasse fouten weg. */
 function tr(sleutel, vars) {
   var s = T_DICT[sleutel];
+  /* Motordealer: 'mot.o.<sleutel>' vervangt de tekst als die bestaat (api/_i18n.js).
+     Alleen bij dealership + segment motor; elke andere klant leest de gewone tekst. */
+  if (hvVertical === 'dealership' && hvSegment === 'motor' && T_DICT['mot.o.' + sleutel] !== undefined) s = T_DICT['mot.o.' + sleutel];
   if (s === undefined) { console.warn('[i18n] onbekende sleutel:', sleutel); return sleutel; }
   if (vars) for (var k in vars) s = s.split('{' + k + '}').join(String(vars[k]));
   return s;
@@ -17744,7 +17747,7 @@ function openPandModal(code) {
     if (impKop) impKop.textContent = tr('veh.import.kop');
     if (impSub) impSub.textContent = tr('veh.import.sub');
     if (impInp) {
-      impInp.placeholder = 'https://www.autoscout24.be/nl/aanbod/...';
+      impInp.placeholder = isMotor() ? 'https://...' : 'https://www.autoscout24.be/nl/aanbod/...';
       impInp.setAttribute('aria-label', vw('linkA11y'));
     }
   }
