@@ -42,7 +42,8 @@ async function at(pad, opts = {}) {
 }
 
 class BoekFout extends Error {
-  constructor(msg, code, status) { super(msg); this.code = code; this.status = status || 409; }
+  /* `sleutel` wijst naar de motortekst in api/_motor-meldingen.js. Auto leest hem nooit. */
+  constructor(msg, code, status, sleutel) { super(msg); this.code = code; this.status = status || 409; this.sleutel = sleutel || ''; }
 }
 
 /* ── Openingsuren (puur) ───────────────────────────────────────────────── */
@@ -161,10 +162,27 @@ async function vrijeMomenten(projectCode, { max = 8, nu = Date.now(), alle: alle
  * @param {{startISO, voertuigCode?, leadId, naam?, telefoon?, notitie?}} o
  */
 async function boek(projectCode, o = {}) {
+  try {
+    return await boekIntern(projectCode, o);
+  } catch (e) {
+    /* Motor: de foutmelding in de taal van de bezoeker en met motorwoorden
+       (api/_motor-meldingen.js). Alleen als de aanroeper een taal meegaf, en
+       alleen voor een motordealer: auto houdt exact zijn eigen tekst, en een
+       aanroeper zonder taal (WhatsApp, tests) kost hier geen extra lookup. */
+    if (e instanceof BoekFout && e.sleutel && o.taal) {
+      let motor = false;
+      try { motor = require('./_segment').van(await klantVelden(String(projectCode || '').trim())) === 'motor'; } catch (_) { motor = false; }
+      if (motor) { const m = require('./_motor-meldingen').melding(e.sleutel, o.taal); if (m) e.message = m; }
+    }
+    throw e;
+  }
+}
+
+async function boekIntern(projectCode, o = {}) {
   const t = String(projectCode || '').trim();
-  if (!o.leadId) throw new BoekFout('Laat eerst een e-mailadres of telefoonnummer achter.', 'geen_contact', 400);
+  if (!o.leadId) throw new BoekFout('Laat eerst een e-mailadres of telefoonnummer achter.', 'geen_contact', 400, 'geen_contact');
   const start = new Date(o.startISO);
-  if (isNaN(start.getTime())) throw new BoekFout('Ongeldig tijdstip.', 'bad_time', 400);
+  if (isNaN(start.getTime())) throw new BoekFout('Ongeldig tijdstip.', 'bad_time', 400, 'bad_time');
 
   /* Het gekozen moment moet NU nog vrij zijn -- opnieuw berekend, niet wat de
      browser ooit kreeg. */
@@ -179,13 +197,13 @@ async function boek(projectCode, o = {}) {
   const type = o.voertuigCode ? _at.kiesType('', segment) : '';
   const duur = type ? _at.duurMin(type, DUUR_MIN) : DUUR_MIN;
   const { momenten, agendaNietGelezen } = await vrijeMomenten(t, { alle: true, duur });
-  if (momenten.indexOf(start.toISOString()) === -1) throw new BoekFout('Dat moment is intussen niet meer vrij. Kies een ander.', 'slot_bezet');
+  if (momenten.indexOf(start.toISOString()) === -1) throw new BoekFout('Dat moment is intussen niet meer vrij. Kies een ander.', 'slot_bezet', 409, 'slot_intussen');
 
   /* Twee boekingen in dezelfde seconde (website + WhatsApp, of twee
      instanties) lezen hierboven allebei "vrij". De claim sluit dat gat over
      alle paden heen; zie api/_lock.js. Zonder Redis gaat alles door. */
   const slotClaim = await _lock.claim(_lock.slotSleutel(t, start.toISOString()), _lock.SLOT_CLAIM_MS, o.leadId);
-  if (!slotClaim.genomen) throw new BoekFout('Dat moment wordt net door iemand anders geboekt. Kies een ander.', 'slot_bezet');
+  if (!slotClaim.genomen) throw new BoekFout('Dat moment wordt net door iemand anders geboekt. Kies een ander.', 'slot_bezet', 409, 'slot_net');
   try {
     return await boekOpGeclaimdMoment(t, start, { ...o, agendaNietGelezen, segment, type, duur });
   } catch (e) {
@@ -202,14 +220,14 @@ async function boekOpGeclaimdMoment(t, start, o) {
   const segment = o.segment || 'auto';
   if (o.voertuigCode) {
     voertuig = await _vehicles.getByCode(t, o.voertuigCode).catch(() => null);
-    if (!voertuig) throw new BoekFout('Deze wagen staat niet meer in het aanbod.', 'vehicle_unavailable');
+    if (!voertuig) throw new BoekFout(segment === 'motor' ? require('./_motor-meldingen').melding('voertuig_weg', 'nl') : 'Deze wagen staat niet meer in het aanbod.', 'vehicle_unavailable', 409, 'voertuig_weg');
     const controle = await _dealerBoeking.controleer({ projectCode: t, voertuig, leadId: o.leadId, telefoon: o.telefoon || '', startISO: start.toISOString() });
     if (!controle.ok) {
       if (controle.reden === 'al_geboekt') return { ok: true, alGeboekt: true, startISO: start.toISOString() };
-      if (controle.reden === 'lead_heeft_afspraak') throw new BoekFout('Je hebt al een afspraak staan; het team neemt contact op.', 'lead_has_appointment');
+      if (controle.reden === 'lead_heeft_afspraak') throw new BoekFout('Je hebt al een afspraak staan; het team neemt contact op.', 'lead_has_appointment', 409, 'heeft_afspraak');
       throw new BoekFout(segment === 'motor'
         ? 'Deze motor kan nu geen testrit meer krijgen. Het team stelt een alternatief voor.'
-        : 'Deze wagen kan nu geen proefrit meer krijgen. Het team stelt een alternatief voor.', 'vehicle_unavailable');
+        : 'Deze wagen kan nu geen proefrit meer krijgen. Het team stelt een alternatief voor.', 'vehicle_unavailable', 409, 'voertuig_niet_beschikbaar');
     }
     apptId = controle.apptId;
   }
@@ -229,7 +247,7 @@ async function boekOpGeclaimdMoment(t, start, o) {
   if (!r.ok) {
     const txt = await r.text().catch(() => '');
     console.error('[webboeking] afspraak aanmaken mislukt', r.status, txt.slice(0, 200));
-    throw new BoekFout('De afspraak kon niet bewaard worden. Probeer het zo opnieuw.', 'opslaan', 502);
+    throw new BoekFout('De afspraak kon niet bewaard worden. Probeer het zo opnieuw.', 'opslaan', 502, 'opslaan');
   }
   const rec = await r.json();
 

@@ -283,7 +283,7 @@
         var chip = el('button', 'chip', label); chip.type = 'button';
         chip.onclick = function () {
           Array.prototype.forEach.call(chips.children, function (x) { x.disabled = true; });
-          vraag({ action: 'book', start: iso, vehicle: voertuig || undefined })
+          vraag({ action: 'book', start: iso, vehicle: voertuig || undefined, lang: TAAL })
             .then(function () { w.remove(); bubbel(TT('mGeboekt') + label, 'a'); })
             .catch(function (e) { bubbel(e.message, 's'); Array.prototype.forEach.call(chips.children, function (x) { x.disabled = false; }); });
         };

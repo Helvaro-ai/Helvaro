@@ -357,9 +357,13 @@ async function beurt({ siteKey, sessie, tekst, context = {}, origin, ip }) {
   const controle = await _inventaris.hercontroleer(t, genoemde.map(_inventaris.momentopname)).catch(() => ({ ok: false, veranderd: [], onleesbaar: true }));
   const oordeel = _inventaris.beoordeelVoorVerzenden(antwoord, genoemde.map(_inventaris.momentopname), controle);
   if (oordeel.actie !== 'versturen') {
-    antwoord = oordeel.actie === 'onbeschikbaar'
-      ? 'Die wagen is net van status veranderd. Ik laat het team je de actuele stand en vergelijkbare opties bezorgen.'
-      : 'Ik laat het team de actuele gegevens van deze wagen even nakijken, dan ben je zeker.';
+    /* Motor: eigen woorden en vier talen (api/_motor-meldingen.js). Auto: ongewijzigd. */
+    const _mm = require('./_motor-meldingen');
+    antwoord = dealer.segment === _segment.MOTOR
+      ? _mm.melding(oordeel.actie === 'onbeschikbaar' ? 'status_veranderd' : 'nakijken', context.taal)
+      : oordeel.actie === 'onbeschikbaar'
+        ? 'Die wagen is net van status veranderd. Ik laat het team je de actuele stand en vergelijkbare opties bezorgen.'
+        : 'Ik laat het team de actuele gegevens van deze wagen even nakijken, dan ben je zeker.';
   }
   const versPerCode = new Map((controle.veranderd || []).filter((x) => x.voertuig).map((x) => [x.code, x.voertuig]));
   const kaarten = oordeel.actie === 'versturen' ? genoemde.map((v) => kaart(versPerCode.get(v.code) || v)) : [];
@@ -564,7 +568,7 @@ async function momenten({ siteKey, sessie, origin, ip }) {
   return { momenten: uit.momenten };
 }
 
-async function boekMoment({ siteKey, sessie, start, voertuig, origin, ip }) {
+async function boekMoment({ siteKey, sessie, start, voertuig, origin, ip, taal }) {
   const dealer = await controleerToegang({ siteKey, origin, ip, sessie });
   const t = dealer.projectCode;
   if (verkoopModus(dealer)) throw new AssistentFout('Boeken gaat via de knop "Plan een demo".', 'niet_beschikbaar', 409);
@@ -572,7 +576,7 @@ async function boekMoment({ siteKey, sessie, start, voertuig, origin, ip }) {
   const wb = require('./_webboeking');
   let uit;
   try {
-    uit = await wb.boek(t, { startISO: String(start || ''), voertuigCode: String(voertuig || gesprek.voertuig || '').slice(0, 20), leadId: gesprek.leadId, naam, telefoon });
+    uit = await wb.boek(t, { startISO: String(start || ''), voertuigCode: String(voertuig || gesprek.voertuig || '').slice(0, 20), leadId: gesprek.leadId, naam, telefoon, taal: String(taal || '').slice(0, 5) });
   } catch (e) {
     if (e instanceof wb.BoekFout) throw new AssistentFout(e.message, e.code, e.status);
     throw e;
@@ -700,7 +704,7 @@ async function handler(req, res) {
     if (body.action === 'contact') return res.status(200).json(await contact(Object.assign(args, { email: body.email, telefoon: body.phone, naam: body.name, toestemming: body.consent === true, voertuig: body.vehicle })));
     if (body.action === 'handoff') return res.status(200).json(await handoff(Object.assign(args, { doel: body.target })));
     if (body.action === 'slots') return res.status(200).json(await momenten(args));
-    if (body.action === 'book') return res.status(200).json(await boekMoment(Object.assign(args, { start: body.start, voertuig: body.vehicle })));
+    if (body.action === 'book') return res.status(200).json(await boekMoment(Object.assign(args, { start: body.start, voertuig: body.vehicle, taal: body.lang })));
     if (body.action === 'config') {
       const d = await controleerToegang(args);
       if (verkoopModus(d)) return res.status(200).json({ naam: d.naam, modus: 'verkoop', handoffs: { whatsapp: false, email: false } });
