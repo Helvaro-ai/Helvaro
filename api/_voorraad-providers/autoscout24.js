@@ -182,7 +182,15 @@ async function haalAutoscout(bron, opties = {}) {
      dan wat we echt lazen -- dan is de lezing niet te controleren (audit F13).
      Toevoegen en bijwerken mag, maar wat we niet zien is dan onbekend, niet
      verkocht: de sync zet er niets op verkocht (geenVerwijdering). */
-  const geenVerwijdering = !totaalBekend || alle.size > totaal;
+  /* Iets MEER lezen dan het opgegeven totaal (een gesponsorde kaart, een
+     telling die net achterloopt) is geen onvolledige lezing: wat ontbreekt,
+     ontbreekt echt, en de dalingswacht in de sync blijft gelden. Met een harde
+     grens (> totaal) stopte het verwijderen dan voorgoed en bleven verkochte
+     wagens eeuwig beschikbaar (review 2026-10-09). Alleen een groot verschil
+     wijst op een veranderde pagina en blijft wantrouwig. */
+  const veelMeer = totaalBekend && alle.size > Math.ceil(totaal * 1.2) + 2;
+  if (totaalBekend && alle.size > totaal && !veelMeer) console.warn('[autoscout24] ' + alle.size + ' wagens gelezen, totaal zegt ' + totaal + ' -- klein verschil, verwijderen mag');
+  const geenVerwijdering = !totaalBekend || veelMeer;
   const voertuigen = Array.from(alle.values());
   const hash = crypto.createHash('sha256').update(JSON.stringify(voertuigen.map((v) => [v.bronId, v.prijs, v.km, v.uitvoering, v.fotos.length]).sort())).digest('hex').slice(0, 16);
   return Object.assign({ formaat: 'autoscout24', voertuigen, ongeldig, hash, totaalBijBron: totaal },

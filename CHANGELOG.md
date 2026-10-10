@@ -913,6 +913,10 @@ lokale teller, dus dit verandert niets zolang Upstash niet is aangesloten.
 
 ## 9 oktober 2026 — beveiliging
 
+- **AutoScout24: verkochte wagens bleven soms voorgoed beschikbaar.** Toonde het
+  profiel een paar advertenties meer dan zijn eigen telling (bv. een gesponsorde),
+  dan werd er nooit meer iets op verkocht gezet. Een klein verschil mag nu; alleen
+  een groot verschil (een veranderde pagina) blijft geblokkeerd.
 - **Twee keer snel na elkaar het formulier versturen** maakt nu ook bij een trage
   verbinding één lead: de tweede inzending wacht langer op de eerste.
 - **De uurlijkse voorraadsync slaat niet meer elk uur dezelfde dealers over**

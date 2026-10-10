@@ -34,6 +34,8 @@ const lees = (n, meld) => haalAutoscout({ url: 'https://www.autoscout24.be/nl/ve
   ck('totaal 0: idem', r.voertuigen.length === 45 && r.geenVerwijdering === true, { n: r.voertuigen.length, g: r.geenVerwijdering });
   r = await lees(20, 10);
   ck('totaal (10) kleiner dan gelezen (20): niet controleerbaar', r.voertuigen.length === 20 && r.geenVerwijdering === true && r.geenVerwijderingReden === 'totaal_kleiner_dan_gelezen', { n: r.voertuigen.length, g: r.geenVerwijderingReden });
+  r = await lees(20, 18);
+  ck('net iets meer gelezen (20) dan het totaal (18): verwijderen mag wel (geen eeuwige blokkade)', r.voertuigen.length === 20 && !r.geenVerwijdering, { n: r.voertuigen.length, g: r.geenVerwijdering });
   let e = null;
   try { await lees(30, 60); } catch (x) { e = x; }
   ck('onvolledig t.o.v. een bruikbaar totaal (30 van 60): nog steeds een fout', e && e.code === 'bron_onvolledig', e && e.code);
