@@ -292,6 +292,11 @@ const blobVan = (id) => JSON.parse(rijen[id][NOT]);
     ck('... en de pagina meldt het door (property_unavailable)', /var PAND_WEG = true/.test(arch) && /property_unavailable/.test(arch));
   }
 
-  console.log(`\n  ${pass} ok, ${fail} fout\n`);
+    // Review 2026-10-09: het formulier wacht lang genoeg op het slot van een trage eerste inzending.
+  {
+    const fsrc = require('fs').readFileSync(require('path').join(__dirname, '..', 'api', 'form.js'), 'utf8');
+    ck('formulierslot: 10 pogingen, 300 ms', /metSlot\(slotSleutel, 35000, maakOfHergebruik, \{ pogingen: 10, pauzeMs: 300 \}\)/.test(fsrc));
+  }
+console.log(`\n  ${pass} ok, ${fail} fout\n`);
   process.exit(fail ? 1 : 0);
 })().catch((e) => { console.error(e); process.exit(1); });

@@ -913,6 +913,8 @@ lokale teller, dus dit verandert niets zolang Upstash niet is aangesloten.
 
 ## 9 oktober 2026 — beveiliging
 
+- **Twee keer snel na elkaar het formulier versturen** maakt nu ook bij een trage
+  verbinding één lead: de tweede inzending wacht langer op de eerste.
 - **De uurlijkse voorraadsync slaat niet meer elk uur dezelfde dealers over**
   als de tijd krap wordt: de volgorde schuift elk uur op. Lukt het ophalen van de
   klantenlijst niet, dan staat dat nu in de log in plaats van stil te stoppen.

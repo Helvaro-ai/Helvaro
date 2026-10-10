@@ -380,7 +380,12 @@ async function formHandler(req, res) {
        als het slot na een paar pogingen nog vastligt, gaat het zoals voorheen
        (api/_lock.js faalt bewust open). */
     const slotSleutel = 'form:' + project_code + ':' + (waPhone || email);
-    const slot = await _lock.metSlot(slotSleutel, 35000, maakOfHergebruik);
+    /* Tot ~13 s wachten (10 pogingen, oplopend per 300 ms): een eerste inzending
+       die Airtable en WhatsApp afwacht duurt langer dan de standaard ~1,5 s, en
+       dan maakte de tweede alsnog een dubbele lead (review 2026-10-09). Ligt het
+       slot daarna nog vast, dan gaat het door zoals voorheen: liever een dubbele
+       dan een verloren lead. */
+    const slot = await _lock.metSlot(slotSleutel, 35000, maakOfHergebruik, { pogingen: 10, pauzeMs: 300 });
     const uitkomst = slot && slot.bezet ? await maakOfHergebruik() : slot.resultaat;
     if (uitkomst.fout) return res.status(uitkomst.fout[0]).json(uitkomst.fout[1]);
     const hergebruikt = uitkomst.hergebruikt;
